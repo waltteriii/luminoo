@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Phase, Campaign, ZoomLevel, QUARTERS, MONTHS } from "@/types/planner";
 import { MonthBlock } from "./MonthBlock";
+import { BlockSize } from "./BlockSizeControl";
 
 interface YearViewProps {
   year: number;
@@ -9,8 +10,12 @@ interface YearViewProps {
   zoomLevel: ZoomLevel;
   focusedQuarter?: number;
   focusedMonth?: number;
+  blockSize: BlockSize;
+  currentMonth: number;
   onMonthClick: (monthIndex: number) => void;
   onQuarterClick: (quarterIndex: number) => void;
+  onCampaignClick?: (campaign: Campaign) => void;
+  onCampaignUpdate?: (campaign: Campaign) => void;
 }
 
 export function YearView({
@@ -20,8 +25,12 @@ export function YearView({
   zoomLevel,
   focusedQuarter,
   focusedMonth,
+  blockSize,
+  currentMonth,
   onMonthClick,
   onQuarterClick,
+  onCampaignClick,
+  onCampaignUpdate,
 }: YearViewProps) {
   const getPhaseForMonth = (monthIndex: number): Phase | undefined => {
     return phases.find(
@@ -47,7 +56,7 @@ export function YearView({
   };
 
   // Render quarters for quarter view
-  if (zoomLevel === 'quarter' && focusedQuarter) {
+  if (zoomLevel === "quarter" && focusedQuarter) {
     const quarter = QUARTERS[focusedQuarter - 1];
     return (
       <div className="animate-scale-in">
@@ -65,7 +74,11 @@ export function YearView({
               zoomLevel={zoomLevel}
               isActive={true}
               isFocused={focusedMonth === monthIndex}
+              isCurrent={monthIndex === currentMonth}
+              blockSize={blockSize}
               onClick={() => onMonthClick(monthIndex)}
+              onCampaignClick={onCampaignClick}
+              onCampaignUpdate={onCampaignUpdate}
             />
           ))}
         </div>
@@ -74,7 +87,7 @@ export function YearView({
   }
 
   // Render single month for month view
-  if (zoomLevel === 'month' && focusedMonth !== undefined) {
+  if (zoomLevel === "month" && focusedMonth !== undefined) {
     return (
       <div className="animate-scale-in max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
@@ -88,7 +101,11 @@ export function YearView({
           zoomLevel={zoomLevel}
           isActive={true}
           isFocused={true}
+          isCurrent={focusedMonth === currentMonth}
+          blockSize={blockSize}
           onClick={() => {}}
+          onCampaignClick={onCampaignClick}
+          onCampaignUpdate={onCampaignUpdate}
         />
       </div>
     );
@@ -115,14 +132,17 @@ export function YearView({
             >
               <span className="font-medium">{quarter.label}</span>
               <span className="text-xs opacity-60">
-                {MONTHS[quarter.months[0]].slice(0, 3)} – {MONTHS[quarter.months[2]].slice(0, 3)}
+                {MONTHS[quarter.months[0]].slice(0, 3)} –{" "}
+                {MONTHS[quarter.months[2]].slice(0, 3)}
               </span>
             </button>
-            
+
             <div
               className={cn(
                 "grid grid-cols-3 gap-3 transition-all duration-500",
-                focusedQuarter && focusedQuarter !== quarterIndex + 1 && "focus-dimmed"
+                focusedQuarter &&
+                  focusedQuarter !== quarterIndex + 1 &&
+                  "focus-dimmed"
               )}
             >
               {quarter.months.map((monthIndex) => (
@@ -134,7 +154,11 @@ export function YearView({
                   zoomLevel={zoomLevel}
                   isActive={isMonthActive(monthIndex)}
                   isFocused={isMonthFocused(monthIndex)}
+                  isCurrent={monthIndex === currentMonth}
+                  blockSize={blockSize}
                   onClick={() => onMonthClick(monthIndex)}
+                  onCampaignClick={onCampaignClick}
+                  onCampaignUpdate={onCampaignUpdate}
                 />
               ))}
             </div>

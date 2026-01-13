@@ -1,12 +1,25 @@
 import { cn } from "@/lib/utils";
 import { Calendar, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "./ThemeToggle";
+import { TodayIndicator } from "./TodayIndicator";
+import { ViewSelector, ViewMode } from "./ViewSelector";
 
 interface HeaderProps {
   onSettingsClick?: () => void;
+  onJumpToToday: () => void;
+  currentMonth: number;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
-export function Header({ onSettingsClick }: HeaderProps) {
+export function Header({
+  onSettingsClick,
+  onJumpToToday,
+  currentMonth,
+  viewMode,
+  onViewModeChange,
+}: HeaderProps) {
   return (
     <header className="py-6 border-b border-border/40">
       <div className="calm-container flex items-center justify-between">
@@ -20,9 +33,14 @@ export function Header({ onSettingsClick }: HeaderProps) {
           </div>
         </div>
 
-        <Button variant="ghost" size="icon" onClick={onSettingsClick}>
-          <Settings className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-3">
+          <TodayIndicator onJumpToToday={onJumpToToday} currentMonth={currentMonth} />
+          <ViewSelector view={viewMode} onViewChange={onViewModeChange} />
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={onSettingsClick}>
+            <Settings className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </header>
   );
