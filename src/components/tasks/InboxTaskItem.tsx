@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { GripVertical, Calendar, Clock, Users, Check, X, Plus } from 'lucide-react';
+import { GripVertical, Calendar, Clock, Users, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -25,7 +25,6 @@ interface InboxTaskItemProps {
   onSchedule: (taskId: string, date: string, startTime?: string, endTime?: string) => void;
   onEnergyChange?: (taskId: string, energy: EnergyLevel) => void;
   onTitleChange?: (taskId: string, title: string) => void;
-  onAddBelow?: (afterTaskId: string) => void;
 }
 
 const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
@@ -41,7 +40,7 @@ const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
   { value: 'recovery', label: 'Recovery' },
 ];
 
-const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onAddBelow }: InboxTaskItemProps) => {
+const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -233,20 +232,6 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onAddB
           className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Add below */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddBelow?.(task.id);
-            }}
-            title="Add a task below"
-          >
-            <Plus className="w-3 h-3" />
-          </Button>
-
           <Button
             variant="ghost"
             size="sm"

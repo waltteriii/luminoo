@@ -171,6 +171,10 @@ const DraggableTask = ({
               e.preventDefault();
               setEditDialogOpen(true);
             }}
+            onMouseDown={(e) => {
+              // Prevent drag-to-create from triggering
+              e.stopPropagation();
+            }}
             title="Edit task details"
           >
             <Pencil className="w-3 h-3" />
