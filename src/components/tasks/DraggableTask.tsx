@@ -21,6 +21,7 @@ interface DraggableTaskProps {
   onDelete?: () => void;
   isShared?: boolean;
   compact?: boolean;
+  enableFullDrag?: boolean; // Allow dragging from entire element
 }
 
 const energyColors: Record<EnergyLevel, string> = {
@@ -30,9 +31,24 @@ const energyColors: Record<EnergyLevel, string> = {
   recovery: 'border-l-energy-recovery',
 };
 
-const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact }: DraggableTaskProps) => {
+const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFullDrag = false }: DraggableTaskProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditTitle(task.title);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setEditTitle(task.title);
+      setIsEditing(false);
+    }
+  };
 
   const {
     attributes,
@@ -63,28 +79,50 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact }: Draggabl
     onUpdate({ energy_level: energy });
   };
 
+  // Props to apply drag to the whole element or just the handle
+  const dragProps = enableFullDrag && !isEditing
+    ? { ...attributes, ...listeners }
+    : {};
+
   if (compact) {
     return (
       <div
         ref={setNodeRef}
         style={style}
+        {...dragProps}
         className={cn(
           "group flex items-center gap-2 p-2 rounded bg-secondary border-l-2",
           energyColors[task.energy_level],
           isDragging && "opacity-50 shadow-lg",
-          task.completed && "opacity-60"
+          task.completed && "opacity-60",
+          enableFullDrag && !isEditing && "cursor-grab active:cursor-grabbing"
         )}
+        onDoubleClick={handleDoubleClick}
       >
-        <button
-          {...attributes}
-          {...listeners}
-          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
-        >
-          <GripVertical className="w-3 h-3 text-foreground-muted" />
-        </button>
-        <span className={cn("text-xs truncate flex-1", task.completed && "line-through")}>
-          {task.title}
-        </span>
+        {!enableFullDrag && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="w-3 h-3 text-foreground-muted" />
+          </button>
+        )}
+        {isEditing ? (
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onBlur={handleSaveEdit}
+            onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            className="h-6 text-xs flex-1"
+          />
+        ) : (
+          <span className={cn("text-xs truncate flex-1", task.completed && "line-through")}>
+            {task.title}
+          </span>
+        )}
         {isShared && <Users className="w-3 h-3 text-primary" />}
       </div>
     );

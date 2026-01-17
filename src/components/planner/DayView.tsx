@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
+import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import ScheduleConfirmDialog from '@/components/tasks/ScheduleConfirmDialog';
+import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import {
   DndContext,
   closestCenter,
@@ -67,6 +69,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
   const [taskToSchedule, setTaskToSchedule] = useState<Task | null>(null);
   const [scheduleHour, setScheduleHour] = useState<number | undefined>();
   const timeGridRef = useRef<HTMLDivElement>(null);
+  
+  // State for drag-to-create immediate task creation
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -119,14 +125,13 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
       const startHour = Math.min(dragStartHour, dragEndHour);
       const endHour = Math.max(dragStartHour, dragEndHour) + 1;
       
-      // Show quick add at the selected time range
-      setAddingAtHour(startHour);
-      
-      // Store the time range for the quick add
-      localStorage.setItem('dragTimeRange', JSON.stringify({
+      // Immediately show the create dialog with pre-filled time range
+      const timeRange = {
         start: `${startHour.toString().padStart(2, '0')}:00`,
         end: `${endHour.toString().padStart(2, '0')}:00`,
-      }));
+      };
+      setCreateTimeRange(timeRange);
+      setShowCreateDialog(true);
     }
     
     setIsDraggingToCreate(false);
@@ -186,27 +191,32 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
     endTime?: string;
     endDate?: string;
   }) => {
-    // Check for stored drag time range
-    const storedRange = localStorage.getItem('dragTimeRange');
-    let finalStartTime = task.startTime;
-    let finalEndTime = task.endTime;
-    
-    if (storedRange) {
-      const { start, end } = JSON.parse(storedRange);
-      finalStartTime = finalStartTime || start;
-      finalEndTime = finalEndTime || end;
-      localStorage.removeItem('dragTimeRange');
-    }
-
     await addTask({
       title: task.title,
       energy_level: task.energy,
       due_date: task.date || dateStr,
-      start_time: finalStartTime,
-      end_time: finalEndTime,
+      start_time: task.startTime,
+      end_time: task.endTime,
       end_date: task.endDate,
     });
     setAddingAtHour(null);
+  };
+
+  const handleCreateFromDrag = async (
+    title: string,
+    energy: EnergyLevel,
+    startTime?: string,
+    endTime?: string
+  ) => {
+    await addTask({
+      title,
+      energy_level: energy,
+      due_date: dateStr,
+      start_time: startTime,
+      end_time: endTime,
+    });
+    setShowCreateDialog(false);
+    setCreateTimeRange(null);
   };
 
   const filteredTasks = energyFilter.length > 0
@@ -330,24 +340,29 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
           </DndContext>
         </div>
 
-        {/* Untimed tasks sidebar */}
+        {/* Untimed tasks sidebar - inside DndContext for drop support */}
         <div className="w-64 shrink-0">
           <h3 className="text-sm font-medium text-foreground-muted mb-3">
             Untimed Tasks
             <span className="ml-2 text-xs opacity-60">Drag to calendar</span>
           </h3>
-          <div className="space-y-2">
-            {untimedTasks.map(task => (
-              <DraggableTask
-                key={task.id}
-                task={task}
-                onUpdate={(updates) => updateTask(task.id, updates)}
-                onDelete={() => deleteTask(task.id)}
-                isShared={task.user_id !== userId}
-                compact
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-2">
+              {untimedTasks.map(task => (
+                <DraggableUntimedTask
+                  key={task.id}
+                  task={task}
+                  onUpdate={(updates) => updateTask(task.id, updates)}
+                  onDelete={() => deleteTask(task.id)}
+                  isShared={task.user_id !== userId}
+                />
+              ))}
+            </div>
+          </DndContext>
           <div className="mt-3">
             <QuickAddTask
               onAdd={handleQuickAdd}
@@ -367,6 +382,17 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
         targetDate={date}
         targetHour={scheduleHour}
         onConfirm={handleConfirmSchedule}
+      />
+
+      {/* Create task dialog for drag-to-create */}
+      <CreateTaskDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        targetDate={date}
+        startTime={createTimeRange?.start}
+        endTime={createTimeRange?.end}
+        defaultEnergy={currentEnergy}
+        onConfirm={handleCreateFromDrag}
       />
     </div>
   );

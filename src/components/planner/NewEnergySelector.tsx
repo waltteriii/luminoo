@@ -13,6 +13,7 @@ interface EnergySelectorProps {
   onFilterClick?: (energy: EnergyLevel) => void;
   activeFilters?: EnergyLevel[];
   onShowAll?: () => void;
+  onViewInbox?: (energy: EnergyLevel) => void;
 }
 
 const energyOptions: { value: EnergyLevel; label: string; description: string }[] = [
@@ -22,7 +23,7 @@ const energyOptions: { value: EnergyLevel; label: string; description: string }[
   { value: 'recovery', label: 'Recovery', description: 'Rest, reflection' },
 ];
 
-const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [], onShowAll }: EnergySelectorProps) => {
+const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [], onShowAll, onViewInbox }: EnergySelectorProps) => {
   const handleClick = (energy: EnergyLevel) => {
     if (onFilterClick) {
       onFilterClick(energy);
@@ -32,7 +33,12 @@ const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [], on
   };
 
   const handleDoubleClick = (energy: EnergyLevel) => {
-    onChange(energy);
+    // Double-click opens inbox view for this energy level
+    if (onViewInbox) {
+      onViewInbox(energy);
+    } else {
+      onChange(energy);
+    }
   };
 
   const showAllActive = activeFilters.length === 0;
@@ -102,7 +108,7 @@ const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [], on
               <TooltipContent side="bottom" className="text-xs">
                 <p>{option.description}</p>
                 {onFilterClick && (
-                  <p className="text-foreground-muted mt-1">Click to filter • Double-click to set state</p>
+                  <p className="text-foreground-muted mt-1">Click to filter • Double-click to view inbox</p>
                 )}
               </TooltipContent>
             </Tooltip>

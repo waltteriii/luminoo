@@ -127,6 +127,11 @@ const Index = () => {
     );
   };
 
+  const handleViewEnergyInbox = (energy: EnergyLevel) => {
+    // Set filter to only show this energy and clear others
+    setEnergyFilter([energy]);
+  };
+
   const handleBrainDumpItems = async (items: ParsedItem[]) => {
     if (!user) return;
     
@@ -191,6 +196,7 @@ const Index = () => {
         onProfileClick={() => setProfileOpen(true)}
         onFilterEnergy={handleToggleEnergyFilter}
         onClearFilters={() => setEnergyFilter([])}
+        onViewInbox={handleViewEnergyInbox}
         activeFilters={energyFilter}
         avatarUrl={userProfile?.avatarUrl}
       />

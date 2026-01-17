@@ -30,6 +30,7 @@ interface HeaderProps {
   onProfileClick: () => void;
   onFilterEnergy?: (energy: EnergyLevel) => void;
   onClearFilters?: () => void;
+  onViewInbox?: (energy: EnergyLevel) => void;
   activeFilters?: EnergyLevel[];
   avatarUrl?: string | null;
 }
@@ -42,6 +43,7 @@ const Header = ({
   onProfileClick,
   onFilterEnergy,
   onClearFilters,
+  onViewInbox,
   activeFilters = [],
   avatarUrl
 }: HeaderProps) => {
@@ -104,6 +106,7 @@ const Header = ({
           onFilterClick={onFilterEnergy}
           activeFilters={activeFilters}
           onShowAll={onClearFilters}
+          onViewInbox={onViewInbox}
         />
       </div>
 
