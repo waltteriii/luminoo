@@ -66,8 +66,8 @@ const ScheduleConfirmDialog = ({
       onConfirm(
         task.id,
         format(targetDate, 'yyyy-MM-dd'),
-        startTime || undefined,
-        endTime || undefined
+        startTime && startTime !== 'none' ? startTime : undefined,
+        endTime && endTime !== 'none' ? endTime : undefined
       );
       onOpenChange(false);
     }
@@ -107,7 +107,7 @@ const ScheduleConfirmDialog = ({
                   <SelectValue placeholder="Select start time" />
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
-                  <SelectItem value="">No specific time</SelectItem>
+                  <SelectItem value="none">No specific time</SelectItem>
                   {TIME_OPTIONS.map((time) => (
                     <SelectItem key={time} value={time}>
                       {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
@@ -125,8 +125,8 @@ const ScheduleConfirmDialog = ({
                   <SelectValue placeholder="Select end time" />
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
-                  <SelectItem value="">No specific time</SelectItem>
-                  {TIME_OPTIONS.filter(t => !startTime || t > startTime).map((time) => (
+                  <SelectItem value="none">No specific time</SelectItem>
+                  {TIME_OPTIONS.filter(t => !startTime || startTime === 'none' || t > startTime).map((time) => (
                     <SelectItem key={time} value={time}>
                       {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
                     </SelectItem>
