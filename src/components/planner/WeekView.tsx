@@ -1,12 +1,30 @@
 import { useState, useEffect } from 'react';
-import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import TaskItem from '@/components/tasks/TaskItem';
 import AddTaskButton from '@/components/tasks/AddTaskButton';
+import DraggableTask from '@/components/tasks/DraggableTask';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 
 interface WeekViewProps {
   startDate: Date;
@@ -16,85 +34,168 @@ interface WeekViewProps {
   onBack: () => void;
 }
 
-const WeekView = ({ startDate, currentEnergy, onDayClick, onBack }: WeekViewProps) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+interface DroppableDayProps {
+  date: Date;
+  tasks: Task[];
+  currentEnergy: EnergyLevel;
+  userId: string | null;
+  onDayClick: (date: Date) => void;
+  onAddTask: (date: Date, title: string, energy: EnergyLevel) => void;
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+  onDeleteTask: (taskId: string) => void;
+}
+
+const DroppableDay = ({
+  date,
+  tasks,
+  currentEnergy,
+  userId,
+  onDayClick,
+  onAddTask,
+  onUpdateTask,
+  onDeleteTask,
+}: DroppableDayProps) => {
+  const dateStr = format(date, 'yyyy-MM-dd');
+  const today = isToday(date);
+
+  const { isOver, setNodeRef } = useDroppable({
+    id: dateStr,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "rounded-lg border border-border bg-card p-3 min-h-[300px] transition-all",
+        today && "border-primary ring-1 ring-primary/20",
+        isOver && "ring-2 ring-primary bg-primary/5"
+      )}
+    >
+      <button
+        onClick={() => onDayClick(date)}
+        className={cn(
+          "w-full text-left mb-3 hover:text-primary transition-colors",
+          today && "text-primary"
+        )}
+      >
+        <div className="text-xs text-foreground-muted uppercase">
+          {format(date, 'EEE')}
+        </div>
+        <div className={cn(
+          "text-lg font-medium",
+          today ? "text-primary" : "text-foreground"
+        )}>
+          {format(date, 'd')}
+        </div>
+      </button>
+
+      <SortableContext
+        items={tasks.map(t => t.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-2">
+          {tasks.slice(0, 5).map(task => (
+            <DraggableTask
+              key={task.id}
+              task={task}
+              onUpdate={(updates) => onUpdateTask(task.id, updates)}
+              onDelete={() => onDeleteTask(task.id)}
+              isShared={task.user_id !== userId}
+              compact
+            />
+          ))}
+          {tasks.length > 5 && (
+            <button 
+              onClick={() => onDayClick(date)}
+              className="text-xs text-foreground-muted hover:text-primary"
+            >
+              +{tasks.length - 5} more
+            </button>
+          )}
+          <AddTaskButton
+            onAdd={(title, energy) => onAddTask(date, title, energy)}
+            defaultEnergy={currentEnergy}
+          />
+        </div>
+      </SortableContext>
+    </div>
+  );
+};
+
+const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onBack }: WeekViewProps) => {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+    });
+  }, []);
 
   const weekStart = startOfWeek(startDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  useEffect(() => {
-    loadTasks();
-  }, [startDate]);
+  const { tasks, loading, addTask, updateTask, deleteTask, rescheduleTask } = useRealtimeTasks({
+    userId: userId || undefined,
+    dateRange: {
+      start: format(weekStart, 'yyyy-MM-dd'),
+      end: format(addDays(weekStart, 6), 'yyyy-MM-dd'),
+    },
+    includeShared: true,
+  });
 
-  const loadTasks = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const startStr = format(weekStart, 'yyyy-MM-dd');
-      const endStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('due_date', startStr)
-        .lte('due_date', endStr)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setTasks(data as Task[] || []);
-    } catch (err) {
-      console.error('Load tasks error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const getTasksForDay = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return tasks.filter(t => t.due_date === dateStr);
+    let dayTasks = tasks.filter(t => t.due_date === dateStr);
+    
+    if (energyFilter.length > 0) {
+      dayTasks = dayTasks.filter(t => energyFilter.includes(t.energy_level));
+    }
+    
+    return dayTasks;
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = tasks.find(t => t.id === event.active.id);
+    setActiveTask(task || null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const targetDate = over.id as string;
+
+    // Check if dropped on a day (date format)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task && task.due_date !== targetDate) {
+        console.log('Rescheduling task', taskId, 'to', targetDate);
+        await rescheduleTask(taskId, targetDate);
+      }
+    }
   };
 
   const handleAddTask = async (date: Date, title: string, energy: EnergyLevel) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: user.id,
-          title,
-          energy_level: energy,
-          due_date: format(date, 'yyyy-MM-dd'),
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        setTasks(prev => [...prev, data as Task]);
-      }
-    } catch (err) {
-      console.error('Add task error:', err);
-    }
-  };
-
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', taskId);
-
-      if (error) throw error;
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
-    } catch (err) {
-      console.error('Update task error:', err);
-    }
+    await addTask({
+      title,
+      energy_level: energy,
+      due_date: format(date, 'yyyy-MM-dd'),
+    });
   };
 
   return (
@@ -114,63 +215,36 @@ const WeekView = ({ startDate, currentEnergy, onDayClick, onBack }: WeekViewProp
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-3">
-        {weekDays.map((day) => {
-          const dayTasks = getTasksForDay(day);
-          const today = isToday(day);
-
-          return (
-            <div
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-7 gap-3">
+          {weekDays.map((day) => (
+            <DroppableDay
               key={day.toISOString()}
-              className={cn(
-                "rounded-lg border border-border bg-card p-3 min-h-[300px]",
-                today && "border-primary ring-1 ring-primary/20"
-              )}
-            >
-              <button
-                onClick={() => onDayClick(day)}
-                className={cn(
-                  "w-full text-left mb-3 hover:text-primary transition-colors",
-                  today && "text-primary"
-                )}
-              >
-                <div className="text-xs text-foreground-muted uppercase">
-                  {format(day, 'EEE')}
-                </div>
-                <div className={cn(
-                  "text-lg font-medium",
-                  today ? "text-primary" : "text-foreground"
-                )}>
-                  {format(day, 'd')}
-                </div>
-              </button>
+              date={day}
+              tasks={getTasksForDay(day)}
+              currentEnergy={currentEnergy}
+              userId={userId}
+              onDayClick={onDayClick}
+              onAddTask={handleAddTask}
+              onUpdateTask={updateTask}
+              onDeleteTask={deleteTask}
+            />
+          ))}
+        </div>
 
-              <div className="space-y-2">
-                {dayTasks.slice(0, 3).map(task => (
-                  <div
-                    key={task.id}
-                    className={cn(
-                      "text-xs p-2 rounded bg-secondary truncate",
-                      task.completed && "line-through opacity-60"
-                    )}
-                  >
-                    {task.title}
-                  </div>
-                ))}
-                {dayTasks.length > 3 && (
-                  <div className="text-xs text-foreground-muted">
-                    +{dayTasks.length - 3} more
-                  </div>
-                )}
-                <AddTaskButton
-                  onAdd={(title, energy) => handleAddTask(day, title, energy)}
-                  defaultEnergy={currentEnergy}
-                />
-              </div>
+        <DragOverlay>
+          {activeTask && (
+            <div className="bg-card border border-primary rounded-lg p-2 shadow-xl opacity-90">
+              <span className="text-sm">{activeTask.title}</span>
             </div>
-          );
-        })}
-      </div>
+          )}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 };

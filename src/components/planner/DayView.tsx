@@ -5,8 +5,24 @@ import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import TaskItem from '@/components/tasks/TaskItem';
 import AddTaskButton from '@/components/tasks/AddTaskButton';
+import DraggableTask from '@/components/tasks/DraggableTask';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 
 interface DayViewProps {
   date: Date;
@@ -15,77 +31,56 @@ interface DayViewProps {
   onBack: () => void;
 }
 
-const DayView = ({ date, currentEnergy, onBack }: DayViewProps) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProps) => {
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTasks();
-  }, [date]);
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+    });
+  }, []);
 
-  const loadTasks = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const dateStr = format(date, 'yyyy-MM-dd');
+  const { tasks, loading, addTask, updateTask, deleteTask } = useRealtimeTasks({
+    userId: userId || undefined,
+    singleDate: dateStr,
+    includeShared: true,
+  });
 
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('due_date', dateStr)
-        .order('created_at', { ascending: true });
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-      if (error) throw error;
-      setTasks(data as Task[] || []);
-    } catch (err) {
-      console.error('Load tasks error:', err);
-    } finally {
-      setLoading(false);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      // Reordering within the same day - just visual for now
+      // Could implement task order field if needed
+      console.log('Reordered:', active.id, 'over', over.id);
     }
   };
 
   const handleAddTask = async (title: string, energy: EnergyLevel) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: user.id,
-          title,
-          energy_level: energy,
-          due_date: format(date, 'yyyy-MM-dd'),
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        setTasks(prev => [...prev, data as Task]);
-      }
-    } catch (err) {
-      console.error('Add task error:', err);
-    }
+    await addTask({
+      title,
+      energy_level: energy,
+      due_date: dateStr,
+    });
   };
 
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', taskId);
+  const filteredTasks = energyFilter.length > 0
+    ? tasks.filter(t => energyFilter.includes(t.energy_level))
+    : tasks;
 
-      if (error) throw error;
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
-    } catch (err) {
-      console.error('Update task error:', err);
-    }
-  };
-
-  const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6am to 10pm
+  const hours = Array.from({ length: 16 }, (_, i) => i + 6);
 
   return (
     <div className="animate-fade-in">
@@ -116,15 +111,28 @@ const DayView = ({ date, currentEnergy, onBack }: DayViewProps) => {
 
         {/* Tasks column */}
         <div className="border-l border-border pl-4">
-          <div className="space-y-2 mb-4">
-            {tasks.map(task => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onUpdate={(updates) => handleUpdateTask(task.id, updates)}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredTasks.map(t => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2 mb-4">
+                {filteredTasks.map(task => (
+                  <DraggableTask
+                    key={task.id}
+                    task={task}
+                    onUpdate={(updates) => updateTask(task.id, updates)}
+                    onDelete={() => deleteTask(task.id)}
+                    isShared={task.user_id !== userId}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           <AddTaskButton onAdd={handleAddTask} defaultEnergy={currentEnergy} />
         </div>
       </div>
