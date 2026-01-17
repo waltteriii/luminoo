@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -99,150 +100,153 @@ const EditTaskDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle>Edit Task</DialogTitle>
           <DialogDescription>
             Update task details and scheduling
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-          {/* Task title */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-title">Title</Label>
-            <Input
-              id="edit-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-description">Description (optional)</Label>
-            <Textarea
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add notes or details..."
-              className="min-h-[80px]"
-            />
-          </div>
-
-          {/* Energy level selector */}
-          <div className="space-y-2">
-            <Label>Energy Level</Label>
-            <div className="flex gap-2">
-              {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setEnergy(e)}
-                  className={cn(
-                    "transition-all rounded-full",
-                    energy === e 
-                      ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
-                      : "opacity-60 hover:opacity-100"
-                  )}
-                >
-                  <EnergyPill energy={e} />
-                </button>
-              ))}
+        <ScrollArea className="max-h-[60vh] px-6">
+          <div className="space-y-6 pb-6">
+            {/* Task title */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title</Label>
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Task title"
+              />
             </div>
-          </div>
 
-          {/* Date picker */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1">
-              <CalendarIcon className="w-3 h-3" />
-              Due Date
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  {dueDate ? format(dueDate, 'PPP') : 'Pick a date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={setDueDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description (optional)</Label>
+              <Textarea
+                id="edit-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add notes or details..."
+                className="min-h-[80px] resize-none"
+              />
+            </div>
 
-          {/* Time selection */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Label className="flex items-center gap-1 mb-2">
-                <Clock className="w-3 h-3" />
-                Start time
+            {/* Energy level selector */}
+            <div className="space-y-3">
+              <Label>Energy Level</Label>
+              <div className="flex gap-3">
+                {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((e) => (
+                  <button
+                    key={e}
+                    onClick={() => setEnergy(e)}
+                    className={cn(
+                      "transition-all rounded-full",
+                      energy === e 
+                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                        : "opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <EnergyPill energy={e} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date picker */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <CalendarIcon className="w-3.5 h-3.5" />
+                Due Date
               </Label>
-              <Select value={startTime} onValueChange={setStartTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  <SelectItem value="none">No specific time</SelectItem>
-                  {TIME_OPTIONS.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal h-11">
+                    {dueDate ? format(dueDate, 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate}
+                    onSelect={setDueDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            <div className="flex-1">
-              <Label className="mb-2 block">End time</Label>
-              <Select value={endTime} onValueChange={setEndTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  <SelectItem value="none">No specific time</SelectItem>
-                  {TIME_OPTIONS.filter(t => startTime === 'none' || t > startTime).map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* Time selection */}
+            <div className="flex gap-4">
+              <div className="flex-1 space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  Start time
+                </Label>
+                <Select value={startTime} onValueChange={setStartTime}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    <SelectItem value="none">No specific time</SelectItem>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label>End time</Label>
+                <Select value={endTime} onValueChange={setEndTime}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    <SelectItem value="none">No specific time</SelectItem>
+                    {TIME_OPTIONS.filter(t => startTime === 'none' || t > startTime).map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-location" className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" />
+                Location
+              </Label>
+              <Input
+                id="edit-location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Add a location (optional)"
+                className="h-11"
+              />
+            </div>
+
+            {/* Share toggle */}
+            <div className="flex items-center justify-between py-2">
+              <Label htmlFor="edit-share" className="flex items-center gap-2 cursor-pointer">
+                <Users className="w-4 h-4" />
+                Share this task
+              </Label>
+              <Switch
+                id="edit-share"
+                checked={isShared}
+                onCheckedChange={setIsShared}
+              />
             </div>
           </div>
+        </ScrollArea>
 
-          {/* Location */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-location" className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              Location
-            </Label>
-            <Input
-              id="edit-location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Add a location (optional)"
-            />
-          </div>
-
-          {/* Share toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="edit-share" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Share this task
-            </Label>
-            <Switch
-              id="edit-share"
-              checked={isShared}
-              onCheckedChange={setIsShared}
-            />
-          </div>
-        </div>
-
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col sm:flex-row gap-2 px-6 py-4 border-t border-border bg-background">
           {onDelete && (
             <Button 
               variant="destructive" 
