@@ -9,15 +9,12 @@ import {
   Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ViewMode, ZoomLevel } from '@/types';
-import ZoomControls from '@/components/planner/ZoomControls';
+import { ViewMode } from '@/types';
 
 interface SidebarProps {
   open: boolean;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  zoomLevel: ZoomLevel;
-  onZoomLevelChange: (level: ZoomLevel) => void;
   onBrainDumpClick: () => void;
   onTrendingClick: () => void;
   onFriendsClick: () => void;
@@ -28,8 +25,6 @@ const Sidebar = ({
   open, 
   viewMode, 
   onViewModeChange, 
-  zoomLevel, 
-  onZoomLevelChange,
   onBrainDumpClick,
   onTrendingClick,
   onFriendsClick,
@@ -51,7 +46,7 @@ const Sidebar = ({
       <div className="p-4 space-y-6">
         {/* View Mode */}
         <div className="space-y-2">
-          <span className="caption">View</span>
+          <span className="caption">Layout</span>
           <div className="space-y-1">
             {viewModes.map((mode) => (
               <Button
@@ -69,15 +64,6 @@ const Sidebar = ({
               </Button>
             ))}
           </div>
-        </div>
-
-        {/* Zoom Controls - New +/- design */}
-        <div className="space-y-2">
-          <span className="caption">Zoom</span>
-          <ZoomControls 
-            zoomLevel={zoomLevel} 
-            onZoomLevelChange={onZoomLevelChange} 
-          />
         </div>
 
         {/* Quick Actions */}
