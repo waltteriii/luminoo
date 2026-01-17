@@ -2,124 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Neuro-Aware Planner Design System
-   Inspired by Framer - calm, editorial, minimal
+/* AI-Powered Marketing Planner Design System
+   Framer-inspired dark-first aesthetic
    All colors in HSL */
 
 @layer base {
   :root {
-    /* Warm, calming palette */
-    --background: 40 20% 98%;
-    --foreground: 220 15% 15%;
+    /* Dark theme as default (Framer-inspired) */
+    --background: 0 0% 6%;
+    --background-elevated: 0 0% 10%;
+    --background-subtle: 0 0% 14%;
+    --foreground: 0 0% 98%;
+    --foreground-muted: 0 0% 64%;
+    --foreground-subtle: 0 0% 45%;
 
-    --card: 40 15% 99%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Framer blue accent */
+    --primary: 210 100% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Muted surfaces */
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 64%;
+
+    --accent: 210 60% 20%;
+    --accent-foreground: 210 100% 70%;
+
+    /* Destructive - soft red */
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders - very subtle */
+    --border: 0 0% 16%;
+    --border-subtle: 0 0% 12%;
+    --input: 0 0% 16%;
+    --ring: 210 100% 52%;
+
+    --radius: 0.625rem;
+
+    /* Energy states - vibrant for dark theme */
+    --energy-high: 142 50% 45%;
+    --energy-medium: 45 75% 55%;
+    --energy-low: 20 70% 55%;
+    --energy-recovery: 210 50% 55%;
+
+    /* Phase colors - muted for dark theme */
+    --phase-planning: 220 40% 35%;
+    --phase-creation: 142 35% 30%;
+    --phase-launch: 25 50% 40%;
+    --phase-reflection: 280 30% 35%;
+
+    /* Shadows for dark theme */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 24px rgba(0, 102, 255, 0.15);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 210 100% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 60% 20%;
+    --sidebar-accent-foreground: 210 100% 70%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 210 100% 52%;
+  }
+
+  .light {
+    /* Warm, calming light palette */
+    --background: 40 20% 98%;
+    --background-elevated: 0 0% 100%;
+    --background-subtle: 40 15% 95%;
+    --foreground: 220 15% 15%;
+    --foreground-muted: 220 8% 45%;
+    --foreground-subtle: 220 5% 60%;
+
+    --card: 0 0% 100%;
     --card-foreground: 220 15% 15%;
 
-    --popover: 40 15% 99%;
+    --popover: 0 0% 100%;
     --popover-foreground: 220 15% 15%;
 
-    /* Warm charcoal primary */
-    --primary: 220 12% 22%;
-    --primary-foreground: 40 20% 98%;
+    --primary: 210 100% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Soft warm gray secondary */
     --secondary: 35 12% 93%;
     --secondary-foreground: 220 12% 22%;
 
-    /* Muted tones for subtle text */
     --muted: 35 10% 94%;
     --muted-foreground: 220 8% 50%;
 
-    /* Soft sage accent - calming, creative */
-    --accent: 150 20% 92%;
-    --accent-foreground: 150 25% 25%;
+    --accent: 210 80% 95%;
+    --accent-foreground: 210 100% 40%;
 
-    /* Soft coral for gentle alerts */
-    --destructive: 15 60% 60%;
-    --destructive-foreground: 40 20% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Subtle borders */
-    --border: 35 15% 90%;
+    --border: 35 15% 88%;
+    --border-subtle: 35 10% 92%;
     --input: 35 15% 90%;
-    --ring: 220 12% 22%;
+    --ring: 210 100% 45%;
 
-    --radius: 0.75rem;
+    --energy-high: 142 45% 42%;
+    --energy-medium: 45 65% 50%;
+    --energy-low: 20 60% 52%;
+    --energy-recovery: 210 45% 52%;
 
-    /* Energy states - soft, non-aggressive */
-    --energy-high: 150 30% 45%;
-    --energy-medium: 45 50% 55%;
-    --energy-low: 25 35% 60%;
-    --energy-recovery: 220 25% 65%;
+    --phase-planning: 220 35% 90%;
+    --phase-creation: 142 30% 88%;
+    --phase-launch: 25 45% 88%;
+    --phase-reflection: 280 25% 90%;
 
-    /* Phase colors - muted, editorial */
-    --phase-planning: 220 20% 85%;
-    --phase-creation: 150 20% 85%;
-    --phase-launch: 25 30% 85%;
-    --phase-reflection: 280 15% 88%;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 24px rgba(0, 102, 255, 0.1);
 
-    /* Zoom levels opacity */
-    --opacity-distant: 0.4;
-    --opacity-near: 0.7;
-    --opacity-focus: 1;
-
-    /* Sidebar */
     --sidebar-background: 40 15% 97%;
     --sidebar-foreground: 220 15% 25%;
-    --sidebar-primary: 220 12% 22%;
-    --sidebar-primary-foreground: 40 20% 98%;
-    --sidebar-accent: 150 20% 92%;
-    --sidebar-accent-foreground: 150 25% 25%;
-    --sidebar-border: 35 15% 92%;
-    --sidebar-ring: 220 12% 22%;
-  }
-
-  .dark {
-    --background: 220 15% 8%;
-    --foreground: 40 15% 95%;
-
-    --card: 220 15% 10%;
-    --card-foreground: 40 15% 95%;
-
-    --popover: 220 15% 10%;
-    --popover-foreground: 40 15% 95%;
-
-    --primary: 40 15% 92%;
-    --primary-foreground: 220 15% 10%;
-
-    --secondary: 220 12% 18%;
-    --secondary-foreground: 40 15% 92%;
-
-    --muted: 220 12% 18%;
-    --muted-foreground: 40 10% 60%;
-
-    --accent: 150 15% 20%;
-    --accent-foreground: 150 25% 85%;
-
-    --destructive: 15 50% 45%;
-    --destructive-foreground: 40 20% 98%;
-
-    --border: 220 12% 18%;
-    --input: 220 12% 18%;
-    --ring: 40 15% 80%;
-
-    --energy-high: 150 25% 40%;
-    --energy-medium: 45 40% 45%;
-    --energy-low: 25 30% 50%;
-    --energy-recovery: 220 20% 55%;
-
-    --phase-planning: 220 15% 25%;
-    --phase-creation: 150 15% 25%;
-    --phase-launch: 25 20% 28%;
-    --phase-reflection: 280 12% 28%;
-
-    --sidebar-background: 220 15% 10%;
-    --sidebar-foreground: 40 15% 90%;
-    --sidebar-primary: 40 15% 92%;
-    --sidebar-primary-foreground: 220 15% 10%;
-    --sidebar-accent: 150 15% 20%;
-    --sidebar-accent-foreground: 150 25% 85%;
-    --sidebar-border: 220 12% 18%;
-    --sidebar-ring: 40 15% 80%;
+    --sidebar-primary: 210 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 80% 95%;
+    --sidebar-accent-foreground: 210 100% 40%;
+    --sidebar-border: 35 15% 90%;
+    --sidebar-ring: 210 100% 45%;
   }
 }
 
@@ -133,28 +148,47 @@
     font-feature-settings: "ss01", "ss02", "cv01";
   }
 
-  /* Typography scale - editorial, readable */
+  /* Typography scale - Framer-inspired, clean */
   h1 {
-    @apply text-4xl md:text-5xl font-light tracking-tight leading-tight;
+    @apply text-4xl md:text-5xl font-light tracking-[-0.02em] leading-[1.1];
   }
 
   h2 {
-    @apply text-2xl md:text-3xl font-light tracking-tight;
+    @apply text-2xl md:text-3xl font-normal tracking-[-0.015em] leading-tight;
   }
 
   h3 {
     @apply text-lg md:text-xl font-medium tracking-tight;
   }
 
+  h4 {
+    @apply text-base font-medium;
+  }
+
   p {
-    @apply leading-relaxed;
+    @apply leading-relaxed text-foreground-muted;
+  }
+
+  /* Custom selection color */
+  ::selection {
+    @apply bg-primary/30 text-foreground;
   }
 }
 
 @layer components {
-  /* Calm container with generous breathing room */
-  .calm-container {
-    @apply max-w-7xl mx-auto px-6 md:px-12 lg:px-16;
+  /* Glass morphism card */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border rounded-xl;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Elevated surface */
+  .surface-elevated {
+    background-color: hsl(var(--background-elevated));
+  }
+
+  .surface-subtle {
+    background-color: hsl(var(--background-subtle));
   }
 
   /* Phase indicator styles */
@@ -180,7 +214,7 @@
 
   /* Energy state indicators */
   .energy-indicator {
-    @apply w-2 h-2 rounded-full transition-colors duration-300;
+    @apply w-2.5 h-2.5 rounded-full transition-colors duration-300;
   }
 
   .energy-high {
@@ -199,57 +233,131 @@
     background-color: hsl(var(--energy-recovery));
   }
 
-  /* Zoom transition container */
-  .zoom-transition {
-    @apply transition-all duration-700 ease-out;
-  }
-
-  /* Focus window - dims everything outside */
-  .focus-dimmed {
-    @apply opacity-30 pointer-events-none transition-opacity duration-500;
+  /* Glow effect for accent elements */
+  .glow-accent {
+    box-shadow: var(--shadow-glow);
   }
 
   /* Subtle hover lift */
   .hover-lift {
-    @apply transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-sm;
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Framer-style button */
+  .btn-framer {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
+           text-sm font-medium rounded-lg transition-all duration-200
+           bg-primary text-primary-foreground hover:opacity-90
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 
+           focus:ring-offset-background;
+  }
+
+  .btn-framer-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
+           text-sm font-medium rounded-lg transition-all duration-200
+           bg-secondary text-secondary-foreground hover:bg-secondary/80
+           border border-border
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 
+           focus:ring-offset-background;
+  }
+
+  .btn-framer-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
+           text-sm font-medium rounded-lg transition-all duration-200
+           text-foreground-muted hover:text-foreground hover:bg-secondary
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 
+           focus:ring-offset-background;
+  }
+
+  /* Input styles */
+  .input-framer {
+    @apply w-full px-4 py-3 text-sm bg-background-elevated border border-border 
+           rounded-lg transition-all duration-200
+           placeholder:text-foreground-subtle
+           focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
   }
 
   /* Editorial link style */
   .editorial-link {
-    @apply relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-px 
+    @apply relative text-foreground-muted hover:text-foreground transition-colors duration-200
+           after:absolute after:bottom-0 after:left-0 after:w-0 after:h-px 
            after:bg-foreground/40 after:transition-all after:duration-300 
            hover:after:w-full;
+  }
+
+  /* Caption text */
+  .caption {
+    @apply text-xs font-medium uppercase tracking-[0.05em] text-foreground-subtle;
   }
 }
 
 @layer utilities {
+  /* Background utilities */
+  .bg-elevated {
+    background-color: hsl(var(--background-elevated));
+  }
+
+  .bg-subtle {
+    background-color: hsl(var(--background-subtle));
+  }
+
+  /* Text utilities */
+  .text-muted {
+    color: hsl(var(--foreground-muted));
+  }
+
+  .text-subtle {
+    color: hsl(var(--foreground-subtle));
+  }
+
+  /* Border utilities */
+  .border-subtle {
+    border-color: hsl(var(--border-subtle));
+  }
+
   /* Reduced motion for accessibility */
   @media (prefers-reduced-motion: reduce) {
-    .zoom-transition,
     .hover-lift,
     .phase-block {
       @apply transition-none;
     }
   }
 
-  /* Gentle fade in animation */
+  /* Animations */
   .animate-fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
+    animation: fadeIn 0.4s ease-out forwards;
   }
 
-  .animate-fade-in-delayed {
-    animation: fadeIn 0.6s ease-out 0.2s forwards;
-    opacity: 0;
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.5s ease-out forwards;
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
   }
 
   @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(12px);
     }
     to {
       opacity: 1;
@@ -260,7 +368,7 @@
   @keyframes scaleIn {
     from {
       opacity: 0;
-      transform: scale(0.96);
+      transform: scale(0.95);
     }
     to {
       opacity: 1;
@@ -268,17 +376,19 @@
     }
   }
 
-  /* Breathing animation for gentle UI pulse */
-  .animate-breathe {
-    animation: breathe 4s ease-in-out infinite;
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  @keyframes breathe {
-    0%, 100% {
-      opacity: 0.6;
-    }
-    50% {
-      opacity: 1;
-    }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
   }
 }
