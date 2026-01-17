@@ -277,6 +277,7 @@ export type Database = {
           niche_keywords: string[] | null
           onboarding_completed: boolean | null
           platforms: string[] | null
+          timezone: string | null
           updated_at: string
         }
         Insert: {
@@ -291,6 +292,7 @@ export type Database = {
           niche_keywords?: string[] | null
           onboarding_completed?: boolean | null
           platforms?: string[] | null
+          timezone?: string | null
           updated_at?: string
         }
         Update: {
@@ -305,6 +307,7 @@ export type Database = {
           niche_keywords?: string[] | null
           onboarding_completed?: boolean | null
           platforms?: string[] | null
+          timezone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -362,6 +365,7 @@ export type Database = {
           energy_level: Database["public"]["Enums"]["energy_level"] | null
           id: string
           is_shared: boolean | null
+          location: string | null
           shared_with: string[] | null
           start_time: string | null
           suggested_timeframe: string | null
@@ -384,6 +388,7 @@ export type Database = {
           energy_level?: Database["public"]["Enums"]["energy_level"] | null
           id?: string
           is_shared?: boolean | null
+          location?: string | null
           shared_with?: string[] | null
           start_time?: string | null
           suggested_timeframe?: string | null
@@ -406,6 +411,7 @@ export type Database = {
           energy_level?: Database["public"]["Enums"]["energy_level"] | null
           id?: string
           is_shared?: boolean | null
+          location?: string | null
           shared_with?: string[] | null
           start_time?: string | null
           suggested_timeframe?: string | null

@@ -105,7 +105,9 @@ const Index = () => {
   };
 
   const handleZoomOut = () => {
-    if (zoomLevel === 'day') {
+    if (zoomLevel === 'hour') {
+      setZoomLevel('day');
+    } else if (zoomLevel === 'day') {
       setZoomLevel('week');
     } else if (zoomLevel === 'week') {
       setZoomLevel('month');

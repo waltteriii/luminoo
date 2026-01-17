@@ -41,6 +41,21 @@ const platformOptions: { value: Platform; label: string }[] = [
   { value: 'podcast', label: 'Podcast' },
 ];
 
+const COMMON_TIMEZONES = [
+  { value: 'UTC', label: 'UTC' },
+  { value: 'America/New_York', label: 'Eastern Time (US)' },
+  { value: 'America/Chicago', label: 'Central Time (US)' },
+  { value: 'America/Denver', label: 'Mountain Time (US)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (US)' },
+  { value: 'Europe/London', label: 'London' },
+  { value: 'Europe/Paris', label: 'Paris/Berlin' },
+  { value: 'Europe/Helsinki', label: 'Helsinki' },
+  { value: 'Asia/Tokyo', label: 'Tokyo' },
+  { value: 'Asia/Shanghai', label: 'Shanghai' },
+  { value: 'Asia/Dubai', label: 'Dubai' },
+  { value: 'Australia/Sydney', label: 'Sydney' },
+];
+
 const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +68,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [interests, setInterests] = useState('');
   const [favoriteCreators, setFavoriteCreators] = useState('');
+  const [timezone, setTimezone] = useState('UTC');
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -81,8 +97,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
         setAudienceDescription(data.audience_description || '');
         setNicheKeywords((data.niche_keywords || []).join(', '));
         setSelectedPlatforms((data.platforms || []) as Platform[]);
-        // Parse interests and favorite creators from audience_description if it contains them
-        // For now, keep them separate in the UI
+        setTimezone((data as any).timezone || 'UTC');
       }
     } catch (err) {
       console.error('Load profile error:', err);
@@ -168,6 +183,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
           audience_description: fullDescription || null,
           niche_keywords: nicheKeywords.split(',').map(k => k.trim()).filter(Boolean),
           platforms: selectedPlatforms,
+          timezone: timezone,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
@@ -319,6 +335,23 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                   placeholder="e.g., indie music, watercolor, self-help"
                 />
                 <p className="text-2xs text-foreground-muted">Comma-separated keywords for better AI suggestions</p>
+              </div>
+
+              {/* Timezone */}
+              <div className="space-y-2">
+                <Label>Timezone</Label>
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_TIMEZONES.map(tz => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* More About You - Collapsible */}

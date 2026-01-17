@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { GripVertical, Check, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
+import { GripVertical, Check, MoreHorizontal, Pencil, Trash2, Users, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,6 +14,12 @@ import {
 import EnergyPill from '@/components/shared/EnergyPill';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DraggableTaskProps {
   task: Task;
@@ -178,13 +184,38 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
             {task.title}
           </span>
         )}
+        {/* Location indicator */}
+        {task.location && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-2xs text-foreground-muted flex items-center gap-0.5">
+                  <MapPin className="w-3 h-3" />
+                  {task.location}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Location: {task.location}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
-      {/* Shared indicator */}
-      {isShared && (
-        <div className="flex items-center gap-1 text-primary">
-          <Users className="w-4 h-4" />
-        </div>
+      {/* Shared indicator - show if task is marked as shared */}
+      {(isShared || task.is_shared) && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 text-primary">
+                <Users className="w-4 h-4" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isShared ? 'Shared with you' : 'You are sharing this task'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
 
       {/* Energy pill - clickable to change */}
