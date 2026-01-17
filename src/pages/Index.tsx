@@ -9,6 +9,7 @@ import PlannerView from '@/components/planner/PlannerView';
 import BrainDumpModal from '@/components/brain-dump/BrainDumpModal';
 import ProfileModal from '@/components/profile/ProfileModal';
 import TrendingTopicsModal from '@/components/trends/TrendingTopicsModal';
+import FriendsModal from '@/components/friends/FriendsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
 import EnergyFilter from '@/components/planner/EnergyFilter';
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
@@ -18,6 +19,7 @@ interface UserProfile {
   platforms: Platform[];
   nicheKeywords: string[];
   audienceDescription: string | null;
+  avatarUrl: string | null;
 }
 
 const Index = () => {
@@ -38,6 +40,7 @@ const Index = () => {
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [trendingOpen, setTrendingOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -46,7 +49,6 @@ const Index = () => {
       if (!session?.user) {
         navigate('/auth');
       } else {
-        // Load user profile for AI features
         loadUserProfile(session.user.id);
       }
       setLoading(false);
@@ -69,7 +71,7 @@ const Index = () => {
   const loadUserProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('creator_type, platforms, niche_keywords, audience_description')
+      .select('creator_type, platforms, niche_keywords, audience_description, avatar_url')
       .eq('id', userId)
       .maybeSingle();
 
@@ -78,7 +80,8 @@ const Index = () => {
         creatorType: data.creator_type,
         platforms: (data.platforms || []) as Platform[],
         nicheKeywords: data.niche_keywords || [],
-        audienceDescription: data.audience_description
+        audienceDescription: data.audience_description,
+        avatarUrl: data.avatar_url
       });
     }
   };
@@ -107,6 +110,13 @@ const Index = () => {
       setZoomLevel('year');
       setFocusedMonth(null);
     }
+  };
+
+  const handleJumpToToday = () => {
+    const today = new Date();
+    setFocusedDate(today);
+    setFocusedMonth(today.getMonth());
+    setZoomLevel('day');
   };
 
   const handleToggleEnergyFilter = (energy: EnergyLevel) => {
@@ -153,6 +163,14 @@ const Index = () => {
     // This is handled in UnscheduledTasks component
   };
 
+  const handleProfileClose = (open: boolean) => {
+    setProfileOpen(open);
+    // Reload profile when modal closes to sync avatar
+    if (!open && user) {
+      loadUserProfile(user.id);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -173,6 +191,7 @@ const Index = () => {
         onProfileClick={() => setProfileOpen(true)}
         onFilterEnergy={handleToggleEnergyFilter}
         activeFilters={energyFilter}
+        avatarUrl={userProfile?.avatarUrl}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar 
@@ -183,6 +202,8 @@ const Index = () => {
           onZoomLevelChange={setZoomLevel}
           onBrainDumpClick={() => setBrainDumpOpen(true)}
           onTrendingClick={() => setTrendingOpen(true)}
+          onFriendsClick={() => setFriendsOpen(true)}
+          onJumpToToday={handleJumpToToday}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Unscheduled tasks inbox */}
@@ -231,7 +252,7 @@ const Index = () => {
 
       <ProfileModal
         open={profileOpen}
-        onOpenChange={setProfileOpen}
+        onOpenChange={handleProfileClose}
         userId={user.id}
       />
 
@@ -240,6 +261,12 @@ const Index = () => {
         onOpenChange={setTrendingOpen}
         userProfile={userProfile}
         onAddTask={handleAddTrendTask}
+      />
+
+      <FriendsModal
+        open={friendsOpen}
+        onOpenChange={setFriendsOpen}
+        userId={user.id}
       />
     </div>
   );

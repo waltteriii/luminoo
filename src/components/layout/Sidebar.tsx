@@ -3,12 +3,10 @@ import {
   Grid3X3, 
   Circle, 
   LayoutList,
-  ZoomIn,
-  ZoomOut,
   Calendar,
-  Lightbulb,
   Brain,
-  TrendingUp
+  TrendingUp,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ViewMode, ZoomLevel } from '@/types';
@@ -21,6 +19,8 @@ interface SidebarProps {
   onZoomLevelChange: (level: ZoomLevel) => void;
   onBrainDumpClick: () => void;
   onTrendingClick: () => void;
+  onFriendsClick: () => void;
+  onJumpToToday: () => void;
 }
 
 const Sidebar = ({ 
@@ -30,7 +30,9 @@ const Sidebar = ({
   zoomLevel, 
   onZoomLevelChange,
   onBrainDumpClick,
-  onTrendingClick
+  onTrendingClick,
+  onFriendsClick,
+  onJumpToToday
 }: SidebarProps) => {
   const viewModes: { value: ViewMode; icon: React.ReactNode; label: string }[] = [
     { value: 'grid', icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
@@ -40,8 +42,9 @@ const Sidebar = ({
 
   const zoomLevels: { value: ZoomLevel; label: string }[] = [
     { value: 'year', label: 'Year' },
-    { value: 'quarter', label: 'Quarter' },
     { value: 'month', label: 'Month' },
+    { value: 'week', label: 'Week' },
+    { value: 'day', label: 'Day' },
   ];
 
   return (
@@ -77,7 +80,7 @@ const Sidebar = ({
         {/* Zoom Level */}
         <div className="space-y-2">
           <span className="caption">Zoom</span>
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+          <div className="grid grid-cols-2 gap-1 bg-secondary rounded-lg p-1">
             {zoomLevels.map((level) => (
               <Button
                 key={level.value}
@@ -85,7 +88,7 @@ const Sidebar = ({
                 size="sm"
                 onClick={() => onZoomLevelChange(level.value)}
                 className={cn(
-                  "flex-1 text-xs text-foreground-muted hover:text-foreground",
+                  "text-xs text-foreground-muted hover:text-foreground",
                   zoomLevel === level.value && "bg-background text-foreground shadow-sm"
                 )}
               >
@@ -117,6 +120,15 @@ const Sidebar = ({
               <TrendingUp className="w-4 h-4" />
               Trending Topics
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onFriendsClick}
+              className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground"
+            >
+              <Users className="w-4 h-4" />
+              Friends & Sharing
+            </Button>
           </div>
         </div>
 
@@ -125,6 +137,7 @@ const Sidebar = ({
           variant="outline" 
           size="sm" 
           className="w-full gap-2"
+          onClick={onJumpToToday}
         >
           <Calendar className="w-4 h-4" />
           Jump to Today

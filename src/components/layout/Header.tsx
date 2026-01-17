@@ -30,6 +30,7 @@ interface HeaderProps {
   onProfileClick: () => void;
   onFilterEnergy?: (energy: EnergyLevel) => void;
   activeFilters?: EnergyLevel[];
+  avatarUrl?: string | null;
 }
 
 const Header = ({ 
@@ -39,7 +40,8 @@ const Header = ({
   onToggleSidebar, 
   onProfileClick,
   onFilterEnergy,
-  activeFilters = []
+  activeFilters = [],
+  avatarUrl
 }: HeaderProps) => {
   const { toast } = useToast();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -122,8 +124,12 @@ const Header = ({
               variant="ghost" 
               className="flex items-center gap-2 text-foreground-muted hover:text-foreground"
             >
-              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center">
-                <UserIcon className="w-4 h-4 text-foreground-muted" />
+              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <UserIcon className="w-4 h-4 text-foreground-muted" />
+                )}
               </div>
               <span className="hidden sm:block text-sm">{displayName}</span>
               <ChevronDown className="w-4 h-4" />

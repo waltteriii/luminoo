@@ -178,6 +178,48 @@ export type Database = {
           },
         ]
       }
+      friendships: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phases: {
         Row: {
           color: string | null
@@ -267,6 +309,45 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_calendars: {
+        Row: {
+          can_edit: boolean | null
+          created_at: string
+          id: string
+          owner_id: string
+          shared_with_id: string
+        }
+        Insert: {
+          can_edit?: boolean | null
+          created_at?: string
+          id?: string
+          owner_id: string
+          shared_with_id: string
+        }
+        Update: {
+          can_edit?: boolean | null
+          created_at?: string
+          id?: string
+          owner_id?: string
+          shared_with_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_calendars_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_calendars_shared_with_id_fkey"
+            columns: ["shared_with_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           campaign_id: string | null
@@ -278,6 +359,8 @@ export type Database = {
           emotional_note: string | null
           energy_level: Database["public"]["Enums"]["energy_level"] | null
           id: string
+          is_shared: boolean | null
+          shared_with: string[] | null
           suggested_timeframe: string | null
           time_model: Database["public"]["Enums"]["time_model"] | null
           title: string
@@ -295,6 +378,8 @@ export type Database = {
           emotional_note?: string | null
           energy_level?: Database["public"]["Enums"]["energy_level"] | null
           id?: string
+          is_shared?: boolean | null
+          shared_with?: string[] | null
           suggested_timeframe?: string | null
           time_model?: Database["public"]["Enums"]["time_model"] | null
           title: string
@@ -312,6 +397,8 @@ export type Database = {
           emotional_note?: string | null
           energy_level?: Database["public"]["Enums"]["energy_level"] | null
           id?: string
+          is_shared?: boolean | null
+          shared_with?: string[] | null
           suggested_timeframe?: string | null
           time_model?: Database["public"]["Enums"]["time_model"] | null
           title?: string
