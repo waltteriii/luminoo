@@ -153,6 +153,7 @@ const Index = () => {
     
     for (const item of items) {
       if (item.type === 'task') {
+        // Use the user-selected due_date (or null for inbox)
         const dueDate = (item as any).due_date || null;
         
         await supabase.from('tasks').insert({
@@ -162,7 +163,7 @@ const Index = () => {
           urgency: item.urgency,
           emotional_note: item.emotional_note,
           suggested_timeframe: item.suggested_timeframe,
-          due_date: dueDate,
+          due_date: dueDate, // null means it goes to inbox
           detected_from_brain_dump: true,
         });
       }

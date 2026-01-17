@@ -115,7 +115,7 @@ const DraggableTask = ({
         style={style}
         {...dragProps}
         className={cn(
-          'group flex items-center gap-2 p-2 rounded bg-secondary border-l-2',
+          'group flex items-center gap-1.5 px-2 py-1.5 rounded bg-secondary border-l-2',
           energyColors[task.energy_level],
           isDragging && 'opacity-50 shadow-lg',
           task.completed && 'opacity-60',
@@ -127,7 +127,7 @@ const DraggableTask = ({
           <button
             {...attributes}
             {...listeners}
-            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing flex-shrink-0"
           >
             <GripVertical className="w-3 h-3 text-foreground-muted" />
           </button>

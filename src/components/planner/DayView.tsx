@@ -112,7 +112,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
       const rect = timeGridRef.current.getBoundingClientRect();
       const relativeY = ev.clientY - rect.top;
-      const hourHeight = 80; // Height of each hour slot
+      const hourHeight = 48; // Height of each hour slot (compact)
       const hoveredHour = Math.floor(relativeY / hourHeight) + 6; // 6 AM start
       const clampedHour = Math.max(6, Math.min(22, hoveredHour));
 
@@ -243,7 +243,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
           <div ref={timeGridRef} className="border-l border-border select-none relative">
             {/* Current time indicator - only show for today */}
             {isToday(currentDate) && (
-              <CurrentTimeIndicator startHour={6} hourHeight={80} timezone={timezone} />
+              <CurrentTimeIndicator startHour={6} hourHeight={48} timezone={timezone} />
             )}
 
             {hours.map(hour => {
@@ -263,7 +263,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
                   <div
                     className={cn(
-                      'group relative h-20 border-b border-border/50 transition-all cursor-crosshair',
+                      'group relative h-12 border-b border-border/50 transition-all cursor-crosshair',
                       isInSelection && 'bg-primary/20 ring-1 ring-primary/50'
                     )}
                     onMouseDown={(e) => handleMouseDown(hour, e)}

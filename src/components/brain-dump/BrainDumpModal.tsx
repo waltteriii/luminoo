@@ -88,7 +88,9 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
       const items = data.items.map((item: ParsedItem) => ({
         ...item,
-        user_override_energy: null
+        user_override_energy: null,
+        // Clear due_date by default - user must explicitly schedule
+        due_date: null
       }));
       
       setParsedItems(items);
@@ -118,6 +120,12 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
   const handleEnergyChange = (index: number, energy: EnergyLevel) => {
     setParsedItems(prev => prev.map((item, i) => 
       i === index ? { ...item, user_override_energy: energy } : item
+    ));
+  };
+
+  const handleDateChange = (index: number, date: string | null) => {
+    setParsedItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, due_date: date } : item
     ));
   };
 
@@ -241,13 +249,14 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             )}
 
             <ScrollArea className="flex-1 min-h-0">
-              <div className="space-y-3 pr-4 pb-2">
+              <div className="space-y-2 pr-4 pb-2">
                 {parsedItems.map((item, index) => (
                   <ParsedItemCard
                     key={index}
                     item={item}
                     onEnergyChange={(energy) => handleEnergyChange(index, energy)}
                     onRemove={() => handleRemoveItem(index)}
+                    onDateChange={(date) => handleDateChange(index, date)}
                   />
                 ))}
               </div>
