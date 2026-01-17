@@ -19,6 +19,7 @@ interface SidebarProps {
   onViewModeChange: (mode: ViewMode) => void;
   zoomLevel: ZoomLevel;
   onZoomLevelChange: (level: ZoomLevel) => void;
+  onBrainDumpClick: () => void;
 }
 
 const Sidebar = ({ 
@@ -26,7 +27,8 @@ const Sidebar = ({
   viewMode, 
   onViewModeChange, 
   zoomLevel, 
-  onZoomLevelChange 
+  onZoomLevelChange,
+  onBrainDumpClick
 }: SidebarProps) => {
   const viewModes: { value: ViewMode; icon: React.ReactNode; label: string }[] = [
     { value: 'grid', icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
@@ -98,6 +100,7 @@ const Sidebar = ({
             <Button
               variant="ghost"
               size="sm"
+              onClick={onBrainDumpClick}
               className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground"
             >
               <Brain className="w-4 h-4" />
