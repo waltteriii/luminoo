@@ -5,18 +5,32 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { User, Loader2, Save, Camera, ChevronDown, ChevronUp, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 interface ProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
+}
+
+interface SharedCalendar {
+  id: string;
+  shared_with_id: string;
+  can_edit: boolean;
+  created_at: string;
+  shared_with_profile?: {
+    display_name?: string;
+    email?: string;
+  };
 }
 
 const creatorTypes: { value: CreatorType; label: string; icon: React.ReactNode }[] = [
@@ -29,16 +43,8 @@ const creatorTypes: { value: CreatorType; label: string; icon: React.ReactNode }
   { value: 'other', label: 'Other', icon: <Plus className="w-4 h-4" /> },
 ];
 
-const platformOptions: { value: Platform; label: string }[] = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'spotify', label: 'Spotify' },
-  { value: 'newsletter', label: 'Newsletter' },
-  { value: 'blog', label: 'Blog' },
-  { value: 'twitter', label: 'Twitter/X' },
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'podcast', label: 'Podcast' },
+const PRESET_PLATFORMS = [
+  'Instagram', 'YouTube', 'TikTok', 'Spotify', 'Newsletter', 'Blog', 'Twitter/X', 'LinkedIn', 'Podcast', 'Twitch', 'Discord', 'Substack'
 ];
 
 // Comprehensive timezone list with search keywords
@@ -102,33 +108,39 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [creatorType, setCreatorType] = useState<CreatorType | ''>('');
   const [audienceDescription, setAudienceDescription] = useState('');
-  const [nicheKeywords, setNicheKeywords] = useState('');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
-  const [interests, setInterests] = useState('');
-  const [favoriteCreators, setFavoriteCreators] = useState('');
+  const [nicheKeywords, setNicheKeywords] = useState<string[]>([]);
+  const [newKeyword, setNewKeyword] = useState('');
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [newPlatform, setNewPlatform] = useState('');
+  const [moreAboutYou, setMoreAboutYou] = useState('');
   const [timezone, setTimezone] = useState('UTC');
-  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const [timezoneSearch, setTimezoneSearch] = useState('');
   const [timezonePopoverOpen, setTimezonePopoverOpen] = useState(false);
+  const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([]);
+  const [currentTime, setCurrentTime] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Current time based on selected timezone
-  const currentTime = useMemo(() => {
-    try {
-      return new Date().toLocaleTimeString('en-US', {
-        timeZone: timezone,
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return new Date().toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    }
+  // Update current time every second
+  useEffect(() => {
+    const updateTime = () => {
+      try {
+        const time = new Date().toLocaleTimeString('en-US', {
+          timeZone: timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+        setCurrentTime(time);
+      } catch {
+        setCurrentTime(new Date().toLocaleTimeString());
+      }
+    };
+    
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
   }, [timezone]);
 
   // Filter timezones based on search
@@ -147,6 +159,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   useEffect(() => {
     if (open && userId) {
       loadProfile();
+      loadSharedCalendars();
     }
   }, [open, userId]);
 
@@ -166,9 +179,16 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
         setAvatarUrl(data.avatar_url);
         setCreatorType(data.creator_type || '');
         setAudienceDescription(data.audience_description || '');
-        setNicheKeywords((data.niche_keywords || []).join(', '));
-        setSelectedPlatforms((data.platforms || []) as Platform[]);
+        setNicheKeywords(data.niche_keywords || []);
+        setPlatforms(data.platforms || []);
         setTimezone((data as any).timezone || 'UTC');
+        // Extract "More about you" from audience description if it exists
+        const desc = data.audience_description || '';
+        if (desc.includes('\n\nMore about me:')) {
+          const parts = desc.split('\n\nMore about me:');
+          setAudienceDescription(parts[0]);
+          setMoreAboutYou(parts[1]?.trim() || '');
+        }
       }
     } catch (err) {
       console.error('Load profile error:', err);
@@ -177,11 +197,24 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
     }
   };
 
+  const loadSharedCalendars = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shared_calendars')
+        .select('*')
+        .eq('owner_id', userId);
+
+      if (error) throw error;
+      setSharedCalendars(data || []);
+    } catch (err) {
+      console.error('Load shared calendars error:', err);
+    }
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -193,20 +226,14 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
 
     setUploadingAvatar(true);
     try {
-      // Create a unique file path
       const fileExt = file.name.split('.').pop();
       const filePath = `${userId}/avatar.${fileExt}`;
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
-        // If bucket doesn't exist, we'll store as base64
-        console.warn('Storage upload failed, using base64:', uploadError);
-        
-        // Convert to base64
         const reader = new FileReader();
         reader.onload = async (event) => {
           const base64 = event.target?.result as string;
@@ -214,7 +241,6 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
         };
         reader.readAsDataURL(file);
       } else {
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath);
@@ -236,13 +262,9 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Combine interests and favorite creators into audience description
       let fullDescription = audienceDescription;
-      if (interests) {
-        fullDescription += `\n\nInterests & Inspirations: ${interests}`;
-      }
-      if (favoriteCreators) {
-        fullDescription += `\n\nFavorite Creators/Brands: ${favoriteCreators}`;
+      if (moreAboutYou.trim()) {
+        fullDescription += `\n\nMore about me: ${moreAboutYou}`;
       }
 
       const { error } = await supabase
@@ -252,8 +274,8 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
           avatar_url: avatarUrl,
           creator_type: creatorType || null,
           audience_description: fullDescription || null,
-          niche_keywords: nicheKeywords.split(',').map(k => k.trim()).filter(Boolean),
-          platforms: selectedPlatforms,
+          niche_keywords: nicheKeywords,
+          platforms: platforms,
           timezone: timezone,
           updated_at: new Date().toISOString(),
         })
@@ -278,12 +300,27 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
     }
   };
 
-  const togglePlatform = (platform: Platform) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(platform)
-        ? prev.filter(p => p !== platform)
-        : [...prev, platform]
-    );
+  const addKeyword = () => {
+    const keyword = newKeyword.trim();
+    if (keyword && !nicheKeywords.includes(keyword)) {
+      setNicheKeywords([...nicheKeywords, keyword]);
+      setNewKeyword('');
+    }
+  };
+
+  const removeKeyword = (keyword: string) => {
+    setNicheKeywords(nicheKeywords.filter(k => k !== keyword));
+  };
+
+  const addPlatform = (platform: string) => {
+    if (platform && !platforms.includes(platform)) {
+      setPlatforms([...platforms, platform]);
+      setNewPlatform('');
+    }
+  };
+
+  const removePlatform = (platform: string) => {
+    setPlatforms(platforms.filter(p => p !== platform));
   };
 
   const handleTimezoneSelect = (tz: string) => {
@@ -292,239 +329,460 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
     setTimezoneSearch('');
   };
 
+  const revokeShare = async (shareId: string) => {
+    try {
+      const { error } = await supabase
+        .from('shared_calendars')
+        .delete()
+        .eq('id', shareId);
+
+      if (error) throw error;
+      setSharedCalendars(prev => prev.filter(s => s.id !== shareId));
+      toast({ title: "Access revoked" });
+    } catch (err) {
+      console.error('Revoke share error:', err);
+      toast({ title: "Failed to revoke access", variant: "destructive" });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-primary" />
-            Edit Profile
+            Settings
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
           </div>
         ) : (
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-5 pb-4">
-              {/* Clock and Timezone - Compact header */}
-              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-light text-foreground">{currentTime}</div>
-                </div>
-                <Popover open={timezonePopoverOpen} onOpenChange={setTimezonePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 text-sm text-foreground-muted hover:text-foreground transition-colors">
-                      <Clock className="w-4 h-4" />
-                      <span className="truncate max-w-[120px]">{selectedTimezoneLabel}</span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-0" align="end">
-                    <div className="p-2 border-b border-border">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
-                        <Input
-                          value={timezoneSearch}
-                          onChange={(e) => setTimezoneSearch(e.target.value)}
-                          placeholder="Search city or country..."
-                          className="pl-8 h-9"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <ScrollArea className="h-64">
-                      <div className="p-1">
-                        {filteredTimezones.map(tz => (
-                          <button
-                            key={tz.value}
-                            onClick={() => handleTimezoneSelect(tz.value)}
-                            className={cn(
-                              "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
-                              timezone === tz.value
-                                ? "bg-primary text-primary-foreground"
-                                : "hover:bg-secondary"
-                            )}
-                          >
-                            {tz.label}
-                          </button>
-                        ))}
-                        {filteredTimezones.length === 0 && (
-                          <div className="px-3 py-4 text-sm text-foreground-muted text-center">
-                            No timezones found
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-              </div>
+          <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="mx-6 mt-4 grid grid-cols-4 w-auto">
+              <TabsTrigger value="profile" className="text-xs gap-1">
+                <User className="w-3 h-3" />
+                Profile
+              </TabsTrigger>
+              <TabsTrigger value="sharing" className="text-xs gap-1">
+                <Share2 className="w-3 h-3" />
+                Sharing
+              </TabsTrigger>
+              <TabsTrigger value="account" className="text-xs gap-1">
+                <Shield className="w-3 h-3" />
+                Account
+              </TabsTrigger>
+              <TabsTrigger value="billing" className="text-xs gap-1">
+                <CreditCard className="w-3 h-3" />
+                Billing
+              </TabsTrigger>
+            </TabsList>
 
-              {/* Avatar */}
-              <div className="flex items-center gap-4">
-                <div 
-                  className="relative w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-8 h-8 text-foreground-muted" />
-                  )}
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    {uploadingAvatar ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    ) : (
-                      <Camera className="w-5 h-5 text-white" />
-                    )}
-                  </div>
+            <ScrollArea className="flex-1">
+              {/* Profile Tab */}
+              <TabsContent value="profile" className="p-6 space-y-6 mt-0">
+                {/* Clock and Timezone */}
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <div className="text-2xl font-light text-foreground tabular-nums">{currentTime}</div>
+                  <Popover open={timezonePopoverOpen} onOpenChange={setTimezonePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-1.5 text-sm text-foreground-muted hover:text-foreground transition-colors">
+                        <Clock className="w-4 h-4" />
+                        <span className="truncate max-w-[120px]">{selectedTimezoneLabel}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-0" align="end">
+                      <div className="p-2 border-b border-border">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
+                          <Input
+                            value={timezoneSearch}
+                            onChange={(e) => setTimezoneSearch(e.target.value)}
+                            placeholder="Search city or country..."
+                            className="pl-8 h-9"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <ScrollArea className="h-64">
+                        <div className="p-1">
+                          {filteredTimezones.map(tz => (
+                            <button
+                              key={tz.value}
+                              onClick={() => handleTimezoneSelect(tz.value)}
+                              className={cn(
+                                "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
+                                timezone === tz.value
+                                  ? "bg-primary text-primary-foreground"
+                                  : "hover:bg-secondary"
+                              )}
+                            >
+                              {tz.label}
+                            </button>
+                          ))}
+                          {filteredTimezones.length === 0 && (
+                            <div className="px-3 py-4 text-sm text-foreground-muted text-center">
+                              No timezones found
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <div className="flex-1">
-                  <Input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Your name"
-                    className="font-medium"
+
+                {/* Avatar and Name */}
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="relative w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-8 h-8 text-foreground-muted" />
+                    )}
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingAvatar ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                      ) : (
+                        <Camera className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Your name"
+                      className="font-medium"
+                    />
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
                   />
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </div>
 
-              {/* Creator Type - Visual Selector */}
-              <div className="space-y-2">
-                <Label>Creator Type</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {creatorTypes.slice(0, 4).map(type => (
-                    <button
-                      key={type.value}
-                      onClick={() => setCreatorType(type.value)}
-                      className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
-                        creatorType === type.value
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/50 text-foreground-muted"
-                      )}
-                    >
-                      {type.icon}
-                      <span className="text-2xs">{type.label}</span>
-                    </button>
-                  ))}
+                {/* Creator Type */}
+                <div className="space-y-2">
+                  <Label>Creator Type</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {creatorTypes.slice(0, 4).map(type => (
+                      <button
+                        key={type.value}
+                        onClick={() => setCreatorType(type.value)}
+                        className={cn(
+                          "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
+                          creatorType === type.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50 text-foreground-muted"
+                        )}
+                      >
+                        {type.icon}
+                        <span className="text-2xs">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {creatorTypes.slice(4).map(type => (
+                      <button
+                        key={type.value}
+                        onClick={() => setCreatorType(type.value)}
+                        className={cn(
+                          "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
+                          creatorType === type.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50 text-foreground-muted"
+                        )}
+                      >
+                        {type.icon}
+                        <span className="text-2xs">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {creatorTypes.slice(4).map(type => (
-                    <button
-                      key={type.value}
-                      onClick={() => setCreatorType(type.value)}
-                      className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
-                        creatorType === type.value
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/50 text-foreground-muted"
-                      )}
-                    >
-                      {type.icon}
-                      <span className="text-2xs">{type.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* Platforms */}
-              <div className="space-y-2">
-                <Label>Platforms</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {platformOptions.map(platform => (
-                    <Button
-                      key={platform.value}
-                      variant={selectedPlatforms.includes(platform.value) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => togglePlatform(platform.value)}
-                      className="text-xs h-7"
-                    >
-                      {platform.label}
+                {/* Platforms - Dynamic */}
+                <div className="space-y-2">
+                  <Label>Platforms</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {platforms.map(platform => (
+                      <Badge 
+                        key={platform} 
+                        variant="secondary"
+                        className="gap-1 pr-1"
+                      >
+                        {platform}
+                        <button
+                          onClick={() => removePlatform(platform)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {PRESET_PLATFORMS.filter(p => !platforms.includes(p)).slice(0, 6).map(platform => (
+                      <Button
+                        key={platform}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addPlatform(platform)}
+                        className="text-xs h-7"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        {platform}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newPlatform}
+                      onChange={(e) => setNewPlatform(e.target.value)}
+                      placeholder="Add custom platform"
+                      className="flex-1 h-8 text-sm"
+                      onKeyDown={(e) => e.key === 'Enter' && addPlatform(newPlatform)}
+                    />
+                    <Button size="sm" variant="secondary" onClick={() => addPlatform(newPlatform)} className="h-8">
+                      Add
                     </Button>
-                  ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Niche Keywords */}
-              <div className="space-y-2">
-                <Label htmlFor="nicheKeywords">Niche Keywords</Label>
-                <Input
-                  id="nicheKeywords"
-                  value={nicheKeywords}
-                  onChange={(e) => setNicheKeywords(e.target.value)}
-                  placeholder="e.g., indie music, watercolor, self-help"
-                />
-                <p className="text-2xs text-foreground-muted">Comma-separated keywords for better AI suggestions</p>
-              </div>
-
-              {/* More About You - Collapsible */}
-              <Collapsible open={moreInfoOpen} onOpenChange={setMoreInfoOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between text-foreground-muted">
-                    More about you (for better AI results)
-                    {moreInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="audienceDescription">About Your Audience</Label>
-                    <Textarea
-                      id="audienceDescription"
-                      value={audienceDescription}
-                      onChange={(e) => setAudienceDescription(e.target.value)}
-                      placeholder="Who is your audience? What do they care about?"
-                      className="min-h-[80px]"
-                    />
+                {/* Niche Keywords - Dynamic */}
+                <div className="space-y-2">
+                  <Label>Niche Keywords</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {nicheKeywords.map(keyword => (
+                      <Badge 
+                        key={keyword} 
+                        variant="outline"
+                        className="gap-1 pr-1"
+                      >
+                        {keyword}
+                        <button
+                          onClick={() => removeKeyword(keyword)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="interests">Interests & Inspirations</Label>
+                  <div className="flex gap-2">
                     <Input
-                      id="interests"
-                      value={interests}
-                      onChange={(e) => setInterests(e.target.value)}
-                      placeholder="e.g., Nine Inch Nails, minimalism, meditation"
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      placeholder="Add keyword (e.g., indie music, watercolor)"
+                      className="flex-1 h-8 text-sm"
+                      onKeyDown={(e) => e.key === 'Enter' && addKeyword()}
                     />
-                    <p className="text-2xs text-foreground-muted">Things you're into - helps AI find relevant trends</p>
+                    <Button size="sm" variant="secondary" onClick={addKeyword} className="h-8">
+                      Add
+                    </Button>
                   </div>
+                  <p className="text-2xs text-foreground-muted">Keywords help AI provide better suggestions</p>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="favoriteCreators">Favorite Creators/Brands</Label>
-                    <Input
-                      id="favoriteCreators"
-                      value={favoriteCreators}
-                      onChange={(e) => setFavoriteCreators(e.target.value)}
-                      placeholder="e.g., Gary Vee, Apple, MKBHD"
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                {/* About Audience */}
+                <div className="space-y-2">
+                  <Label htmlFor="audienceDescription">About Your Audience</Label>
+                  <Textarea
+                    id="audienceDescription"
+                    value={audienceDescription}
+                    onChange={(e) => setAudienceDescription(e.target.value)}
+                    placeholder="Who is your audience? What do they care about?"
+                    className="min-h-[80px]"
+                  />
+                </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={saving} className="gap-2">
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  Save
-                </Button>
-              </div>
+                {/* More About You */}
+                <div className="space-y-2">
+                  <Label htmlFor="moreAboutYou">More About You</Label>
+                  <Textarea
+                    id="moreAboutYou"
+                    value={moreAboutYou}
+                    onChange={(e) => setMoreAboutYou(e.target.value)}
+                    placeholder="Share your interests, inspirations, favorite creators... This helps AI understand your style."
+                    className="min-h-[100px]"
+                  />
+                  <p className="text-2xs text-foreground-muted">This information helps personalize AI suggestions</p>
+                </div>
+              </TabsContent>
+
+              {/* Sharing Tab */}
+              <TabsContent value="sharing" className="p-6 space-y-6 mt-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Shared Access
+                    </CardTitle>
+                    <CardDescription>
+                      People who can view or edit your calendar and tasks
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {sharedCalendars.length === 0 ? (
+                      <p className="text-sm text-foreground-muted py-4 text-center">
+                        You haven't shared your calendar with anyone yet
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {sharedCalendars.map(share => (
+                          <div key={share.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                            <div>
+                              <p className="text-sm font-medium">
+                                {share.shared_with_profile?.display_name || share.shared_with_profile?.email || 'User'}
+                              </p>
+                              <p className="text-xs text-foreground-muted">
+                                {share.can_edit ? 'Can edit' : 'View only'}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => revokeShare(share.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              Revoke
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Share2 className="w-4 h-4" />
+                      Shared Tasks
+                    </CardTitle>
+                    <CardDescription>
+                      Tasks you've shared with others will appear with a shared indicator
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground-muted">
+                      Enable sharing on individual tasks to collaborate with others
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Account Tab */}
+              <TabsContent value="account" className="p-6 space-y-6 mt-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Key className="w-4 h-4" />
+                      Password & Security
+                    </CardTitle>
+                    <CardDescription>
+                      Manage your account security settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button variant="outline" className="w-full justify-start">
+                      Change Password
+                    </Button>
+                    <Separator />
+                    <div className="text-sm text-foreground-muted">
+                      <p className="mb-2">Account created with email authentication</p>
+                      <p className="text-xs">Two-factor authentication coming soon</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+                    <CardDescription>
+                      Irreversible account actions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="destructive" size="sm">
+                      Delete Account
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Billing Tab */}
+              <TabsContent value="billing" className="p-6 space-y-6 mt-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Current Plan
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between p-4 bg-primary/10 rounded-lg">
+                      <div>
+                        <p className="font-medium">Free Plan</p>
+                        <p className="text-sm text-foreground-muted">Basic features included</p>
+                      </div>
+                      <Button variant="default" size="sm">
+                        Upgrade
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Payment Methods</CardTitle>
+                    <CardDescription>
+                      Add or manage payment methods
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Payment Method
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Billing History</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground-muted py-4 text-center">
+                      No billing history yet
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </ScrollArea>
+
+            {/* Save Button - Fixed at bottom */}
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border bg-background">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="gap-2">
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Save
+              </Button>
             </div>
-          </ScrollArea>
+          </Tabs>
         )}
       </DialogContent>
     </Dialog>
