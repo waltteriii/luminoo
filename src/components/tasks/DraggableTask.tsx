@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import EnergyPill from '@/components/shared/EnergyPill';
 import { useState } from 'react';
-import { Input } from '@/components/ui/input';
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +28,10 @@ interface DraggableTaskProps {
   isShared?: boolean;
   compact?: boolean;
   enableFullDrag?: boolean;
+  showDetailsButton?: boolean;
+  enableInlineTitleEdit?: boolean;
+  disableDoubleClickEdit?: boolean;
+  dndData?: Record<string, unknown>;
 }
 
 const energyColors: Record<EnergyLevel, string> = {
@@ -38,15 +41,26 @@ const energyColors: Record<EnergyLevel, string> = {
   recovery: 'border-l-energy-recovery',
 };
 
-const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFullDrag = false }: DraggableTaskProps) => {
+const DraggableTask = ({
+  task,
+  onUpdate,
+  onDelete,
+  isShared,
+  compact,
+  enableFullDrag = false,
+  showDetailsButton = false,
+  enableInlineTitleEdit = false,
+  disableDoubleClickEdit = false,
+  dndData,
+}: DraggableTaskProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
+    if (disableDoubleClickEdit) return;
     e.stopPropagation();
     e.preventDefault();
-    // Open edit dialog on double-click
     setEditDialogOpen(true);
   };
 
@@ -66,7 +80,10 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({
+    id: task.id,
+    data: { type: 'calendar-task', task, ...(dndData || {}) },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -78,8 +95,9 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
   };
 
   const handleSaveEdit = () => {
-    if (editTitle.trim()) {
-      onUpdate({ title: editTitle.trim() });
+    const trimmed = editTitle.trim();
+    if (trimmed) {
+      onUpdate({ title: trimmed });
     }
     setIsEditing(false);
   };
@@ -88,10 +106,7 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
     onUpdate({ energy_level: energy });
   };
 
-  // Props to apply drag to the whole element or just the handle
-  const dragProps = enableFullDrag && !isEditing
-    ? { ...attributes, ...listeners }
-    : {};
+  const dragProps = enableFullDrag && !isEditing ? { ...attributes, ...listeners } : {};
 
   if (compact) {
     return (
@@ -100,13 +115,13 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
         style={style}
         {...dragProps}
         className={cn(
-          "group flex items-center gap-2 p-2 rounded bg-secondary border-l-2",
+          'group flex items-center gap-2 p-2 rounded bg-secondary border-l-2',
           energyColors[task.energy_level],
-          isDragging && "opacity-50 shadow-lg",
-          task.completed && "opacity-60",
-          enableFullDrag && !isEditing && "cursor-grab active:cursor-grabbing"
+          isDragging && 'opacity-50 shadow-lg',
+          task.completed && 'opacity-60',
+          enableFullDrag && !isEditing && 'cursor-grab active:cursor-grabbing'
         )}
-        onDoubleClick={handleDoubleClick}
+        onDoubleClick={disableDoubleClickEdit ? undefined : handleDoubleClick}
       >
         {!enableFullDrag && (
           <button
@@ -117,22 +132,60 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
             <GripVertical className="w-3 h-3 text-foreground-muted" />
           </button>
         )}
+
         {isEditing ? (
-          <Input
+          <input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             onBlur={handleSaveEdit}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
             autoFocus
-            className="h-6 text-xs flex-1"
+            className="h-6 text-xs flex-1 bg-transparent border-none outline-none p-0 text-foreground"
           />
         ) : (
-          <span className={cn("text-xs truncate flex-1", task.completed && "line-through")}>
+          <span
+            className={cn('text-xs truncate flex-1 cursor-text', task.completed && 'line-through')}
+            onDoubleClick={
+              enableInlineTitleEdit
+                ? (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setEditTitle(task.title);
+                    setIsEditing(true);
+                  }
+                : undefined
+            }
+          >
             {task.title}
           </span>
         )}
+
+        {showDetailsButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setEditDialogOpen(true);
+            }}
+            title="Edit task details"
+          >
+            <Pencil className="w-3 h-3" />
+          </Button>
+        )}
+
         {isShared && <Users className="w-3 h-3 text-primary" />}
+
+        <EditTaskDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          task={task}
+          onSave={(taskId, updates) => onUpdate(updates)}
+          onDelete={onDelete ? () => onDelete() : undefined}
+        />
       </div>
     );
   }
@@ -142,11 +195,11 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-center gap-3 p-3 rounded-lg bg-card border border-border transition-all",
-        "border-l-4",
+        'group flex items-center gap-3 p-3 rounded-lg bg-card border border-border transition-all',
+        'border-l-4',
         energyColors[task.energy_level],
-        isDragging && "opacity-50 shadow-lg ring-2 ring-primary",
-        task.completed && "opacity-60"
+        isDragging && 'opacity-50 shadow-lg ring-2 ring-primary',
+        task.completed && 'opacity-60'
       )}
     >
       {/* Drag handle */}
@@ -162,10 +215,8 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
       <button
         onClick={handleToggleComplete}
         className={cn(
-          "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-          task.completed
-            ? "bg-primary border-primary"
-            : "border-foreground-muted hover:border-primary"
+          'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+          task.completed ? 'bg-primary border-primary' : 'border-foreground-muted hover:border-primary'
         )}
       >
         {task.completed && <Check className="w-3 h-3 text-primary-foreground" />}
@@ -174,20 +225,17 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
       {/* Content */}
       <div className="flex-1 min-w-0">
         {isEditing ? (
-          <Input
+          <input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             onBlur={handleSaveEdit}
             onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
             autoFocus
-            className="h-7 text-sm"
+            className="h-7 text-sm w-full bg-transparent border-none outline-none p-0 text-foreground"
           />
         ) : (
-          <span className={cn("text-sm", task.completed && "line-through")}>
-            {task.title}
-          </span>
+          <span className={cn('text-sm', task.completed && 'line-through')}>{task.title}</span>
         )}
-        {/* Location indicator */}
         {task.location && (
           <TooltipProvider>
             <Tooltip>
@@ -205,7 +253,7 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
         )}
       </div>
 
-      {/* Shared indicator - show if task is marked as shared */}
+      {/* Shared indicator */}
       {(isShared || task.is_shared) && (
         <TooltipProvider>
           <Tooltip>
@@ -221,7 +269,7 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
         </TooltipProvider>
       )}
 
-      {/* Energy pill - clickable to change */}
+      {/* Energy pill */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="focus:outline-none">
@@ -229,14 +277,18 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map(energy => (
-            <DropdownMenuItem
-              key={energy}
-              onClick={() => handleEnergyChange(energy)}
-              className="gap-2"
-            >
+          {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((energy) => (
+            <DropdownMenuItem key={energy} onClick={() => handleEnergyChange(energy)} className="gap-2">
               <EnergyPill energy={energy} />
-              <span className="capitalize">{energy === 'high' ? 'High Focus' : energy === 'medium' ? 'Steady' : energy === 'low' ? 'Low Energy' : 'Recovery'}</span>
+              <span className="capitalize">
+                {energy === 'high'
+                  ? 'High Focus'
+                  : energy === 'medium'
+                    ? 'Steady'
+                    : energy === 'low'
+                      ? 'Low Energy'
+                      : 'Recovery'}
+              </span>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
