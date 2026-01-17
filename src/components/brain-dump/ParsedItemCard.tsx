@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import { EnergyLevel, ParsedItem } from '@/types';
-import { X, AlertCircle, Lightbulb, Target, Calendar } from 'lucide-react';
+import { EnergyLevel, ParsedItem, Urgency } from '@/types';
+import { X, AlertCircle, Lightbulb, Target, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EnergyPill from '@/components/shared/EnergyPill';
 
@@ -16,20 +16,22 @@ const typeIcons = {
   idea: Lightbulb,
 };
 
-const urgencyColors = {
+const urgencyColors: Record<Urgency, string> = {
   low: 'text-foreground-muted',
   normal: 'text-foreground',
-  high: 'text-energy-medium',
-  critical: 'text-destructive',
+  high: 'text-amber-500',
+  critical: 'text-red-500',
 };
 
 const ParsedItemCard = ({ item, onEnergyChange, onRemove }: ParsedItemCardProps) => {
   const Icon = typeIcons[item.type];
   const currentEnergy = item.user_override_energy || item.detected_energy;
+  // Handle due_date from parsed response
+  const dueDate = (item as any).due_date;
 
   return (
     <div className={cn(
-      "p-4 rounded-lg border border-border bg-card",
+      "p-4 rounded-lg border border-border bg-card group",
       "hover:border-primary/30 transition-colors"
     )}>
       <div className="flex items-start gap-3">
@@ -48,7 +50,7 @@ const ParsedItemCard = ({ item, onEnergyChange, onRemove }: ParsedItemCardProps)
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 flex-shrink-0 text-foreground-muted hover:text-destructive"
+              className="h-6 w-6 flex-shrink-0 text-foreground-muted hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={onRemove}
             >
               <X className="w-3 h-3" />
@@ -57,9 +59,12 @@ const ParsedItemCard = ({ item, onEnergyChange, onRemove }: ParsedItemCardProps)
 
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className={cn(
-              "text-xs px-2 py-0.5 rounded-full bg-secondary",
+              "text-xs px-2 py-0.5 rounded-full bg-secondary flex items-center gap-1",
               urgencyColors[item.urgency]
             )}>
+              {(item.urgency === 'high' || item.urgency === 'critical') && (
+                <AlertCircle className="w-3 h-3" />
+              )}
               {item.urgency}
             </span>
 
@@ -70,15 +75,36 @@ const ParsedItemCard = ({ item, onEnergyChange, onRemove }: ParsedItemCardProps)
               </span>
             )}
 
-            <span className="text-xs text-foreground-muted">
-              {Math.round(item.confidence * 100)}% confident
-            </span>
+            {dueDate && (
+              <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {dueDate}
+              </span>
+            )}
+
+            {item.confidence < 0.9 && (
+              <span className="text-xs text-foreground-muted flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                {Math.round(item.confidence * 100)}%
+              </span>
+            )}
           </div>
 
           {item.emotional_note && (
             <p className="text-xs text-foreground-muted mt-2 italic">
               💭 {item.emotional_note}
             </p>
+          )}
+
+          {/* Related items */}
+          {item.related_items && item.related_items.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {item.related_items.map((rel, idx) => (
+                <span key={idx} className="text-xs px-2 py-0.5 rounded bg-secondary text-foreground-muted">
+                  🔗 {rel}
+                </span>
+              ))}
+            </div>
           )}
 
           {/* Energy selector */}

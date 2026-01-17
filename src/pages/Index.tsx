@@ -8,6 +8,8 @@ import Sidebar from '@/components/layout/Sidebar';
 import PlannerView from '@/components/planner/PlannerView';
 import BrainDumpModal from '@/components/brain-dump/BrainDumpModal';
 import ProfileModal from '@/components/profile/ProfileModal';
+import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
+import EnergyFilter from '@/components/planner/EnergyFilter';
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem } from '@/types';
 
 const Index = () => {
@@ -22,6 +24,7 @@ const Index = () => {
   const [focusedDate, setFocusedDate] = useState<Date | null>(null);
   const [currentEnergy, setCurrentEnergy] = useState<EnergyLevel>('medium');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [energyFilter, setEnergyFilter] = useState<EnergyLevel[]>([]);
   
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -74,11 +77,22 @@ const Index = () => {
     }
   };
 
+  const handleToggleEnergyFilter = (energy: EnergyLevel) => {
+    setEnergyFilter(prev => 
+      prev.includes(energy) 
+        ? prev.filter(e => e !== energy)
+        : [...prev, energy]
+    );
+  };
+
   const handleBrainDumpItems = async (items: ParsedItem[]) => {
     if (!user) return;
     
     for (const item of items) {
       if (item.type === 'task') {
+        // Get due_date from the parsed item (may be set by AI)
+        const dueDate = (item as any).due_date || null;
+        
         await supabase.from('tasks').insert({
           user_id: user.id,
           title: item.text,
@@ -86,10 +100,15 @@ const Index = () => {
           urgency: item.urgency,
           emotional_note: item.emotional_note,
           suggested_timeframe: item.suggested_timeframe,
+          due_date: dueDate,
           detected_from_brain_dump: true,
         });
       }
     }
+  };
+
+  const handleScheduleTask = async (taskId: string, date: Date) => {
+    // This is handled in UnscheduledTasks component
   };
 
   if (loading) {
@@ -120,18 +139,42 @@ const Index = () => {
           onZoomLevelChange={setZoomLevel}
           onBrainDumpClick={() => setBrainDumpOpen(true)}
         />
-        <main className="flex-1 overflow-auto">
-          <PlannerView
-            viewMode={viewMode}
-            zoomLevel={zoomLevel}
-            focusedMonth={focusedMonth}
-            focusedDate={focusedDate}
-            currentEnergy={currentEnergy}
-            onMonthClick={handleMonthClick}
-            onDayClick={handleDayClick}
-            onWeekClick={handleWeekClick}
-            onZoomOut={handleZoomOut}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Unscheduled tasks inbox */}
+          <UnscheduledTasks 
+            energyFilter={energyFilter}
+            onScheduleTask={handleScheduleTask}
           />
+          
+          {/* Filter bar */}
+          <div className="px-6 py-3 border-b border-border flex items-center gap-4">
+            <EnergyFilter
+              selectedEnergies={energyFilter}
+              onToggleEnergy={handleToggleEnergyFilter}
+              onClear={() => setEnergyFilter([])}
+            />
+            {energyFilter.length > 0 && (
+              <span className="text-xs text-foreground-muted">
+                Showing only {energyFilter.join(', ')} energy tasks
+              </span>
+            )}
+          </div>
+
+          {/* Main planner view */}
+          <div className="flex-1 overflow-auto">
+            <PlannerView
+              viewMode={viewMode}
+              zoomLevel={zoomLevel}
+              focusedMonth={focusedMonth}
+              focusedDate={focusedDate}
+              currentEnergy={currentEnergy}
+              energyFilter={energyFilter}
+              onMonthClick={handleMonthClick}
+              onDayClick={handleDayClick}
+              onWeekClick={handleWeekClick}
+              onZoomOut={handleZoomOut}
+            />
+          </div>
         </main>
       </div>
 
