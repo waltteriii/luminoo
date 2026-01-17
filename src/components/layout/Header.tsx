@@ -28,9 +28,19 @@ interface HeaderProps {
   onEnergyChange: (energy: EnergyLevel) => void;
   onToggleSidebar: () => void;
   onProfileClick: () => void;
+  onFilterEnergy?: (energy: EnergyLevel) => void;
+  activeFilters?: EnergyLevel[];
 }
 
-const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar, onProfileClick }: HeaderProps) => {
+const Header = ({ 
+  user, 
+  currentEnergy, 
+  onEnergyChange, 
+  onToggleSidebar, 
+  onProfileClick,
+  onFilterEnergy,
+  activeFilters = []
+}: HeaderProps) => {
   const { toast } = useToast();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
@@ -86,7 +96,9 @@ const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar, onProfil
       <div className="flex items-center">
         <EnergySelector 
           value={currentEnergy} 
-          onChange={onEnergyChange} 
+          onChange={onEnergyChange}
+          onFilterClick={onFilterEnergy}
+          activeFilters={activeFilters}
         />
       </div>
 

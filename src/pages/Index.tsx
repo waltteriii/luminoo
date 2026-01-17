@@ -8,14 +8,23 @@ import Sidebar from '@/components/layout/Sidebar';
 import PlannerView from '@/components/planner/PlannerView';
 import BrainDumpModal from '@/components/brain-dump/BrainDumpModal';
 import ProfileModal from '@/components/profile/ProfileModal';
+import TrendingTopicsModal from '@/components/trends/TrendingTopicsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
 import EnergyFilter from '@/components/planner/EnergyFilter';
-import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem } from '@/types';
+import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
+
+interface UserProfile {
+  creatorType: string | null;
+  platforms: Platform[];
+  nicheKeywords: string[];
+  audienceDescription: string | null;
+}
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState<ViewMode>('circular');
@@ -28,6 +37,7 @@ const Index = () => {
   
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [trendingOpen, setTrendingOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -35,6 +45,9 @@ const Index = () => {
       setUser(session?.user ?? null);
       if (!session?.user) {
         navigate('/auth');
+      } else {
+        // Load user profile for AI features
+        loadUserProfile(session.user.id);
       }
       setLoading(false);
     });
@@ -44,12 +57,31 @@ const Index = () => {
       setUser(session?.user ?? null);
       if (!session?.user) {
         navigate('/auth');
+      } else {
+        loadUserProfile(session.user.id);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const loadUserProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('creator_type, platforms, niche_keywords, audience_description')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data) {
+      setUserProfile({
+        creatorType: data.creator_type,
+        platforms: (data.platforms || []) as Platform[],
+        nicheKeywords: data.niche_keywords || [],
+        audienceDescription: data.audience_description
+      });
+    }
+  };
 
   const handleMonthClick = (month: number) => {
     setFocusedMonth(month);
@@ -90,7 +122,6 @@ const Index = () => {
     
     for (const item of items) {
       if (item.type === 'task') {
-        // Get due_date from the parsed item (may be set by AI)
         const dueDate = (item as any).due_date || null;
         
         await supabase.from('tasks').insert({
@@ -105,6 +136,17 @@ const Index = () => {
         });
       }
     }
+  };
+
+  const handleAddTrendTask = async (title: string, energy: EnergyLevel) => {
+    if (!user) return;
+    
+    await supabase.from('tasks').insert({
+      user_id: user.id,
+      title,
+      energy_level: energy,
+      detected_from_brain_dump: false,
+    });
   };
 
   const handleScheduleTask = async (taskId: string, date: Date) => {
@@ -129,6 +171,8 @@ const Index = () => {
         onEnergyChange={setCurrentEnergy}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onProfileClick={() => setProfileOpen(true)}
+        onFilterEnergy={handleToggleEnergyFilter}
+        activeFilters={energyFilter}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar 
@@ -138,6 +182,7 @@ const Index = () => {
           zoomLevel={zoomLevel}
           onZoomLevelChange={setZoomLevel}
           onBrainDumpClick={() => setBrainDumpOpen(true)}
+          onTrendingClick={() => setTrendingOpen(true)}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Unscheduled tasks inbox */}
@@ -188,6 +233,13 @@ const Index = () => {
         open={profileOpen}
         onOpenChange={setProfileOpen}
         userId={user.id}
+      />
+
+      <TrendingTopicsModal
+        open={trendingOpen}
+        onOpenChange={setTrendingOpen}
+        userProfile={userProfile}
+        onAddTask={handleAddTrendTask}
       />
     </div>
   );

@@ -20,6 +20,7 @@ interface SidebarProps {
   zoomLevel: ZoomLevel;
   onZoomLevelChange: (level: ZoomLevel) => void;
   onBrainDumpClick: () => void;
+  onTrendingClick: () => void;
 }
 
 const Sidebar = ({ 
@@ -28,7 +29,8 @@ const Sidebar = ({
   onViewModeChange, 
   zoomLevel, 
   onZoomLevelChange,
-  onBrainDumpClick
+  onBrainDumpClick,
+  onTrendingClick
 }: SidebarProps) => {
   const viewModes: { value: ViewMode; icon: React.ReactNode; label: string }[] = [
     { value: 'grid', icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
@@ -109,14 +111,7 @@ const Sidebar = ({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground"
-            >
-              <Lightbulb className="w-4 h-4" />
-              AI Suggestions
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+              onClick={onTrendingClick}
               className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground"
             >
               <TrendingUp className="w-4 h-4" />

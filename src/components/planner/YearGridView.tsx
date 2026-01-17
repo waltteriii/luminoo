@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
-import { ZoomLevel, EnergyLevel } from '@/types';
+import { useMemo, useEffect, useState } from 'react';
+import { ZoomLevel, EnergyLevel, Task } from '@/types';
 import MonthCard from './MonthCard';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { startOfMonth, endOfMonth, startOfYear, endOfYear, parseISO } from 'date-fns';
 
 interface YearGridViewProps {
   zoomLevel: ZoomLevel;
   focusedMonth: number | null;
   currentEnergy: EnergyLevel;
+  energyFilter?: EnergyLevel[];
   onMonthClick: (month: number) => void;
   onZoomOut: () => void;
 }
@@ -17,15 +20,70 @@ const MONTHS = [
   'September', 'October', 'November', 'December'
 ];
 
+interface MonthTaskData {
+  [month: number]: {
+    high: number;
+    medium: number;
+    low: number;
+    recovery: number;
+  };
+}
+
 const YearGridView = ({
   zoomLevel,
   focusedMonth,
   currentEnergy,
+  energyFilter = [],
   onMonthClick,
   onZoomOut,
 }: YearGridViewProps) => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
+  const [monthTaskData, setMonthTaskData] = useState<MonthTaskData>({});
+
+  // Fetch tasks for the year to show indicators
+  useEffect(() => {
+    const fetchYearTasks = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const yearStart = startOfYear(new Date());
+      const yearEnd = endOfYear(new Date());
+
+      const { data: tasks, error } = await supabase
+        .from('tasks')
+        .select('due_date, energy_level')
+        .eq('user_id', user.id)
+        .gte('due_date', yearStart.toISOString())
+        .lte('due_date', yearEnd.toISOString());
+
+      if (error) {
+        console.error('Error fetching year tasks:', error);
+        return;
+      }
+
+      // Group tasks by month and energy level
+      const grouped: MonthTaskData = {};
+      for (let i = 0; i < 12; i++) {
+        grouped[i] = { high: 0, medium: 0, low: 0, recovery: 0 };
+      }
+
+      tasks?.forEach(task => {
+        if (task.due_date) {
+          const date = parseISO(task.due_date);
+          const month = date.getMonth();
+          const energy = (task.energy_level || 'medium') as EnergyLevel;
+          if (grouped[month]) {
+            grouped[month][energy]++;
+          }
+        }
+      });
+
+      setMonthTaskData(grouped);
+    };
+
+    fetchYearTasks();
+  }, []);
 
   const gridClass = useMemo(() => {
     switch (zoomLevel) {
@@ -50,6 +108,26 @@ const YearGridView = ({
     }
     return Array.from({ length: 12 }, (_, i) => i);
   }, [zoomLevel, focusedMonth]);
+
+  const getTaskIndicators = (monthIndex: number) => {
+    const data = monthTaskData[monthIndex];
+    if (!data) return [];
+    
+    const indicators: { energy: EnergyLevel; count: number }[] = [];
+    
+    // If energy filter is active, only show filtered energies
+    const energiesToShow: EnergyLevel[] = energyFilter.length > 0 
+      ? energyFilter 
+      : ['high', 'medium', 'low', 'recovery'];
+    
+    energiesToShow.forEach(energy => {
+      if (data[energy] > 0) {
+        indicators.push({ energy, count: data[energy] });
+      }
+    });
+    
+    return indicators;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -84,6 +162,7 @@ const YearGridView = ({
             isCurrentMonth={monthIndex === currentMonth}
             zoomLevel={zoomLevel}
             onClick={() => onMonthClick(monthIndex)}
+            taskIndicators={getTaskIndicators(monthIndex)}
           />
         ))}
       </div>

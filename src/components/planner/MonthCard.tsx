@@ -1,6 +1,11 @@
 import { cn } from '@/lib/utils';
-import { ZoomLevel } from '@/types';
+import { ZoomLevel, EnergyLevel } from '@/types';
 import { Plus } from 'lucide-react';
+
+interface TaskIndicator {
+  energy: EnergyLevel;
+  count: number;
+}
 
 interface MonthCardProps {
   month: number;
@@ -8,7 +13,15 @@ interface MonthCardProps {
   isCurrentMonth: boolean;
   zoomLevel: ZoomLevel;
   onClick: () => void;
+  taskIndicators?: TaskIndicator[];
 }
+
+const energyColors: Record<EnergyLevel, string> = {
+  high: 'bg-energy-high',
+  medium: 'bg-energy-medium',
+  low: 'bg-energy-low',
+  recovery: 'bg-energy-recovery',
+};
 
 const MonthCard = ({
   month,
@@ -16,9 +29,13 @@ const MonthCard = ({
   isCurrentMonth,
   zoomLevel,
   onClick,
+  taskIndicators = [],
 }: MonthCardProps) => {
   const isCompact = zoomLevel === 'year';
   const isExpanded = zoomLevel === 'month';
+
+  // Calculate total tasks for display
+  const totalTasks = taskIndicators.reduce((sum, t) => sum + t.count, 0);
 
   return (
     <div
@@ -58,16 +75,55 @@ const MonthCard = ({
         </span>
       </div>
 
-      {/* Content area */}
+      {/* Task indicators - energy colored dots/bars */}
       <div className={cn(
-        "mt-4 flex-1",
+        "mt-3 flex-1",
         isCompact && "space-y-1",
         !isCompact && "space-y-2"
       )}>
-        {/* Placeholder for campaigns */}
-        <div className="flex flex-wrap gap-1">
-          {/* Sample campaign chips would go here */}
-        </div>
+        {totalTasks > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {taskIndicators.filter(t => t.count > 0).map((indicator) => (
+              <div key={indicator.energy} className="flex items-center gap-1">
+                {/* Show dots for compact view, bars for expanded */}
+                {isCompact ? (
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: Math.min(indicator.count, 5) }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          energyColors[indicator.energy]
+                        )}
+                      />
+                    ))}
+                    {indicator.count > 5 && (
+                      <span className="text-2xs text-foreground-muted ml-0.5">+{indicator.count - 5}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={cn(
+                        "h-2 rounded-full",
+                        energyColors[indicator.energy]
+                      )}
+                      style={{ width: `${Math.min(indicator.count * 8, 60)}px` }}
+                    />
+                    <span className="text-2xs text-foreground-muted">{indicator.count}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Total tasks count for compact */}
+        {isCompact && totalTasks > 0 && (
+          <p className="text-2xs text-foreground-muted mt-1">
+            {totalTasks} task{totalTasks !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
 
       {/* Add button - shows on hover for expanded views */}
