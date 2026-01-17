@@ -27,9 +27,10 @@ interface HeaderProps {
   currentEnergy: EnergyLevel;
   onEnergyChange: (energy: EnergyLevel) => void;
   onToggleSidebar: () => void;
+  onProfileClick: () => void;
 }
 
-const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar }: HeaderProps) => {
+const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar, onProfileClick }: HeaderProps) => {
   const { toast } = useToast();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
@@ -117,7 +118,7 @@ const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar }: Header
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem className="text-foreground-muted">
+            <DropdownMenuItem onClick={onProfileClick} className="text-foreground-muted cursor-pointer">
               <UserIcon className="w-4 h-4 mr-2" />
               Profile
             </DropdownMenuItem>

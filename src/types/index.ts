@@ -168,7 +168,7 @@ export interface TrendCache {
 
 // View Types
 export type ViewMode = 'grid' | 'circular' | 'timeline';
-export type ZoomLevel = 'year' | 'quarter' | 'month';
+export type ZoomLevel = 'year' | 'quarter' | 'month' | 'week' | 'day';
 
 // App State
 export interface AppState {
