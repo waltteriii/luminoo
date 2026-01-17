@@ -117,7 +117,7 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
     };
   }, [options.userId, sharedUserIds]);
 
-  const addTask = async (task: Partial<Task>) => {
+  const addTask = async (task: Partial<Task> & { start_time?: string; end_time?: string; end_date?: string }) => {
     if (!options.userId) return null;
 
     const { data, error } = await supabase
@@ -127,7 +127,15 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
         title: task.title || '',
         energy_level: task.energy_level || 'medium',
         due_date: task.due_date || null,
-        ...task,
+        start_time: task.start_time || null,
+        end_time: task.end_time || null,
+        end_date: task.end_date || null,
+        description: task.description,
+        campaign_id: task.campaign_id,
+        urgency: task.urgency,
+        emotional_note: task.emotional_note,
+        suggested_timeframe: task.suggested_timeframe,
+        detected_from_brain_dump: task.detected_from_brain_dump || false,
       })
       .select()
       .single();

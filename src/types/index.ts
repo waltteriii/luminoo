@@ -93,11 +93,16 @@ export interface Task {
   energy_level: EnergyLevel;
   time_model: TimeModel;
   due_date: string | null;
+  end_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   suggested_timeframe: string | null;
   urgency: Urgency;
   emotional_note: string | null;
   completed: boolean;
   detected_from_brain_dump: boolean;
+  is_shared: boolean;
+  shared_with: string[];
   created_at: string;
   updated_at: string;
 }

@@ -12,6 +12,7 @@ interface EnergySelectorProps {
   onChange: (energy: EnergyLevel) => void;
   onFilterClick?: (energy: EnergyLevel) => void;
   activeFilters?: EnergyLevel[];
+  onShowAll?: () => void;
 }
 
 const energyOptions: { value: EnergyLevel; label: string; description: string }[] = [
@@ -21,25 +22,47 @@ const energyOptions: { value: EnergyLevel; label: string; description: string }[
   { value: 'recovery', label: 'Recovery', description: 'Rest, reflection' },
 ];
 
-const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [] }: EnergySelectorProps) => {
+const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [], onShowAll }: EnergySelectorProps) => {
   const handleClick = (energy: EnergyLevel) => {
     if (onFilterClick) {
-      // If filter handler provided, toggle filter on click
       onFilterClick(energy);
     } else {
-      // Otherwise just set the value
       onChange(energy);
     }
   };
 
   const handleDoubleClick = (energy: EnergyLevel) => {
-    // Double click sets as current energy
     onChange(energy);
   };
+
+  const showAllActive = activeFilters.length === 0;
 
   return (
     <TooltipProvider>
       <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+        {/* Show All button */}
+        {onShowAll && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onShowAll}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200",
+                  "text-sm font-medium",
+                  showAllActive
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-foreground-muted hover:text-foreground"
+                )}
+              >
+                <span className="hidden sm:inline">All</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              <p>Show all energy levels</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {energyOptions.map((option) => {
           const isActive = value === option.value;
           const isFiltered = activeFilters.includes(option.value);
