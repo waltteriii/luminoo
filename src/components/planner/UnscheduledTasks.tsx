@@ -2,11 +2,17 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { InboxIcon, Calendar, ChevronRight, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { InboxIcon, ChevronRight, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import TaskItem from '@/components/tasks/TaskItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import InboxTaskItem from '@/components/tasks/InboxTaskItem';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 
 interface UnscheduledTasksProps {
   energyFilter: EnergyLevel[];
@@ -17,6 +23,15 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   useEffect(() => {
     loadTasks();
@@ -56,30 +71,40 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
     }
   };
 
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+  const handleScheduleTask = async (
+    taskId: string,
+    dueDate: string,
+    startTime?: string,
+    endTime?: string
+  ) => {
     try {
       const { error } = await supabase
         .from('tasks')
-        .update(updates)
+        .update({
+          due_date: dueDate,
+          start_time: startTime,
+          end_time: endTime,
+        })
         .eq('id', taskId);
 
       if (error) throw error;
       
-      // If due_date was set, remove from local state
-      if (updates.due_date) {
-        setTasks(prev => prev.filter(t => t.id !== taskId));
-      } else {
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
-      }
+      // Remove from local state
+      setTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
-      console.error('Update task error:', err);
+      console.error('Schedule task error:', err);
     }
   };
 
-  const handleQuickSchedule = async (taskId: string, daysFromNow: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() + daysFromNow);
-    await handleUpdateTask(taskId, { due_date: format(date, 'yyyy-MM-dd') });
+  const handleDragStart = (event: any) => {
+    const task = event.active.data.current?.task;
+    if (task) {
+      setActiveTask(task);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setActiveTask(null);
   };
 
   // Filter by energy if filter is active
@@ -90,66 +115,57 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
   if (filteredTasks.length === 0) return null;
 
   return (
-    <div className="border-b border-border bg-secondary/30">
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <InboxIcon className="w-4 h-4 text-foreground-muted" />
-          <span className="text-sm font-medium text-foreground">Inbox</span>
-          <span className="text-xs text-foreground-muted bg-secondary px-2 py-0.5 rounded-full">
-            {filteredTasks.length} unscheduled
-          </span>
-        </div>
-        {collapsed ? (
-          <ChevronRight className="w-4 h-4 text-foreground-muted" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-foreground-muted" />
-        )}
-      </button>
-
-      {!collapsed && (
-        <ScrollArea className="max-h-[250px]">
-          <div className="px-4 pb-4 space-y-2">
-            {filteredTasks.map(task => (
-              <div key={task.id} className="group">
-                <TaskItem
-                  task={task}
-                  onUpdate={(updates) => handleUpdateTask(task.id, updates)}
-                />
-                <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => handleQuickSchedule(task.id, 0)}
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => handleQuickSchedule(task.id, 1)}
-                  >
-                    Tomorrow
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => handleQuickSchedule(task.id, 7)}
-                  >
-                    Next week
-                  </Button>
-                </div>
-              </div>
-            ))}
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="border-b border-border bg-secondary/30">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <InboxIcon className="w-4 h-4 text-foreground-muted" />
+            <span className="text-sm font-medium text-foreground">Inbox</span>
+            <span className="text-xs text-foreground-muted bg-secondary px-2 py-0.5 rounded-full">
+              {filteredTasks.length} unscheduled
+            </span>
+            <span className="text-xs text-foreground-muted opacity-60 hidden sm:inline">
+              • Drag tasks to calendar
+            </span>
           </div>
-        </ScrollArea>
-      )}
-    </div>
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4 text-foreground-muted" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-foreground-muted" />
+          )}
+        </button>
+
+        {!collapsed && (
+          <ScrollArea className="max-h-[250px]">
+            <div className="px-4 pb-4 space-y-2">
+              {filteredTasks.map(task => (
+                <InboxTaskItem
+                  key={task.id}
+                  task={task}
+                  onSchedule={handleScheduleTask}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+
+      {/* Drag overlay for visual feedback */}
+      <DragOverlay>
+        {activeTask && (
+          <div className="p-2 rounded bg-card border border-primary shadow-lg opacity-90">
+            <span className="text-sm">{activeTask.title}</span>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 };
 

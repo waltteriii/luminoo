@@ -37,31 +37,34 @@ const EnergySelector = ({ value, onChange, onFilterClick, activeFilters = [], on
 
   const showAllActive = activeFilters.length === 0;
 
+  const handleShowAll = () => {
+    if (onShowAll) {
+      onShowAll();
+    }
+  };
   return (
     <TooltipProvider>
       <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-        {/* Show All button */}
-        {onShowAll && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onShowAll}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200",
-                  "text-sm font-medium",
-                  showAllActive
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-foreground-muted hover:text-foreground"
-                )}
-              >
-                <span className="hidden sm:inline">All</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <p>Show all energy levels</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+        {/* Show All button - always visible */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleShowAll}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200",
+                "text-sm font-medium",
+                showAllActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-foreground-muted hover:text-foreground"
+              )}
+            >
+              <span>All</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <p>Show all energy levels</p>
+          </TooltipContent>
+        </Tooltip>
 
         {energyOptions.map((option) => {
           const isActive = value === option.value;

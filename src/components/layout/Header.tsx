@@ -29,6 +29,7 @@ interface HeaderProps {
   onToggleSidebar: () => void;
   onProfileClick: () => void;
   onFilterEnergy?: (energy: EnergyLevel) => void;
+  onClearFilters?: () => void;
   activeFilters?: EnergyLevel[];
   avatarUrl?: string | null;
 }
@@ -40,6 +41,7 @@ const Header = ({
   onToggleSidebar, 
   onProfileClick,
   onFilterEnergy,
+  onClearFilters,
   activeFilters = [],
   avatarUrl
 }: HeaderProps) => {
@@ -101,6 +103,7 @@ const Header = ({
           onChange={onEnergyChange}
           onFilterClick={onFilterEnergy}
           activeFilters={activeFilters}
+          onShowAll={onClearFilters}
         />
       </div>
 

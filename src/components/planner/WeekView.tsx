@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, startOfWeek, addDays, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, isToday, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
+import ScheduleConfirmDialog from '@/components/tasks/ScheduleConfirmDialog';
 import {
   DndContext,
   closestCenter,
@@ -129,6 +130,9 @@ const DroppableDay = ({
 const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onBack }: WeekViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [taskToSchedule, setTaskToSchedule] = useState<Task | null>(null);
+  const [targetDate, setTargetDate] = useState<Date | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -182,16 +186,43 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     if (!over) return;
 
     const taskId = active.id as string;
-    const targetDate = over.id as string;
+    const targetDateStr = over.id as string;
+
+    // Check if this is an inbox task being dropped
+    if (active.data.current?.type === 'inbox-task') {
+      const task = active.data.current.task as Task;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
+        setTaskToSchedule(task);
+        setTargetDate(parse(targetDateStr, 'yyyy-MM-dd', new Date()));
+        setConfirmDialogOpen(true);
+      }
+      return;
+    }
 
     // Check if dropped on a day (date format)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
       const task = tasks.find(t => t.id === taskId);
-      if (task && task.due_date !== targetDate) {
-        console.log('Rescheduling task', taskId, 'to', targetDate);
-        await rescheduleTask(taskId, targetDate);
+      if (task && task.due_date !== targetDateStr) {
+        console.log('Rescheduling task', taskId, 'to', targetDateStr);
+        await rescheduleTask(taskId, targetDateStr);
       }
     }
+  };
+
+  const handleConfirmSchedule = async (
+    taskId: string,
+    dueDate: string,
+    startTime?: string,
+    endTime?: string
+  ) => {
+    await supabase
+      .from('tasks')
+      .update({
+        due_date: dueDate,
+        start_time: startTime,
+        end_time: endTime,
+      })
+      .eq('id', taskId);
   };
 
   const handleAddTask = async (date: Date, title: string, energy: EnergyLevel) => {
@@ -249,6 +280,15 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
           )}
         </DragOverlay>
       </DndContext>
+
+      {/* Schedule confirmation dialog */}
+      <ScheduleConfirmDialog
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        task={taskToSchedule}
+        targetDate={targetDate}
+        onConfirm={handleConfirmSchedule}
+      />
     </div>
   );
 };

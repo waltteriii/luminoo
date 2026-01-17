@@ -11,7 +11,7 @@ import ProfileModal from '@/components/profile/ProfileModal';
 import TrendingTopicsModal from '@/components/trends/TrendingTopicsModal';
 import FriendsModal from '@/components/friends/FriendsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
-import EnergyFilter from '@/components/planner/EnergyFilter';
+
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
 
 interface UserProfile {
@@ -190,6 +190,7 @@ const Index = () => {
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onProfileClick={() => setProfileOpen(true)}
         onFilterEnergy={handleToggleEnergyFilter}
+        onClearFilters={() => setEnergyFilter([])}
         activeFilters={energyFilter}
         avatarUrl={userProfile?.avatarUrl}
       />
@@ -212,20 +213,6 @@ const Index = () => {
             onScheduleTask={handleScheduleTask}
           />
           
-          {/* Filter bar */}
-          <div className="px-6 py-3 border-b border-border flex items-center gap-4">
-            <EnergyFilter
-              selectedEnergies={energyFilter}
-              onToggleEnergy={handleToggleEnergyFilter}
-              onClear={() => setEnergyFilter([])}
-            />
-            {energyFilter.length > 0 && (
-              <span className="text-xs text-foreground-muted">
-                Showing only {energyFilter.join(', ')} energy tasks
-              </span>
-            )}
-          </div>
-
           {/* Main planner view */}
           <div className="flex-1 overflow-auto">
             <PlannerView
