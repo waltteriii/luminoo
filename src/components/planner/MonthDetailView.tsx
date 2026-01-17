@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useDroppable } from '@dnd-kit/core';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
+import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 
 interface MonthDetailViewProps {
   month: number;
@@ -27,14 +28,20 @@ interface DroppableDayCellProps {
   today: boolean;
   userId: string | null;
   onDayClick: (date: Date) => void;
+  onEditTask: (task: Task) => void;
 }
 
-const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick }: DroppableDayCellProps) => {
+const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick, onEditTask }: DroppableDayCellProps) => {
   const dateStr = format(day, 'yyyy-MM-dd');
   const { isOver, setNodeRef } = useDroppable({ 
     id: dateStr,
     data: { type: 'day', date: day },
   });
+
+  const handleTaskDoubleClick = (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    onEditTask(task);
+  };
 
   return (
     <button
@@ -60,8 +67,9 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick }: Dr
         {tasks.slice(0, 2).map(task => (
           <div
             key={task.id}
+            onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
             className={cn(
-              "text-[10px] px-1 py-0.5 rounded truncate flex items-center gap-1",
+              "text-[10px] px-1 py-0.5 rounded truncate flex items-center gap-1 cursor-pointer hover:ring-1 hover:ring-primary/30",
               task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
               task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
               task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
@@ -87,6 +95,8 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick }: Dr
 
 const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayClick, onWeekClick, onBack }: MonthDetailViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -101,7 +111,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const { tasks } = useRealtimeTasks({
+  const { tasks, updateTask, deleteTask } = useRealtimeTasks({
     userId: userId || undefined,
     dateRange: {
       start: format(calendarStart, 'yyyy-MM-dd'),
@@ -119,6 +129,17 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     }
     
     return dayTasks;
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveTask = (taskId: string, updates: Partial<Task>) => {
+    updateTask(taskId, updates);
+    setEditDialogOpen(false);
+    setEditingTask(null);
   };
 
   // Group days by week
@@ -171,11 +192,25 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
                 today={isToday(day)}
                 userId={userId}
                 onDayClick={onDayClick}
+                onEditTask={handleEditTask}
               />
             ))}
           </div>
         ))}
       </div>
+
+      {/* Edit task dialog */}
+      <EditTaskDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        task={editingTask}
+        onSave={handleSaveTask}
+        onDelete={editingTask ? () => {
+          deleteTask(editingTask.id);
+          setEditDialogOpen(false);
+          setEditingTask(null);
+        } : undefined}
+      />
     </div>
   );
 };

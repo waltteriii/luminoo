@@ -1,8 +1,6 @@
 import { cn } from '@/lib/utils';
 import { 
   Grid3X3, 
-  Circle, 
-  LayoutList,
   Calendar,
   Brain,
   TrendingUp,
@@ -21,6 +19,13 @@ interface SidebarProps {
   onJumpToToday: () => void;
 }
 
+// Layout modes - currently only 'grid' is enabled
+// Kept flexible for future layout expansions
+const ENABLED_LAYOUTS: ViewMode[] = ['grid'];
+
+// Future layout options (disabled for now but kept in code for future use)
+// const FUTURE_LAYOUTS: ViewMode[] = ['circular', 'timeline'];
+
 const Sidebar = ({ 
   open, 
   viewMode, 
@@ -30,11 +35,13 @@ const Sidebar = ({
   onFriendsClick,
   onJumpToToday
 }: SidebarProps) => {
-  const viewModes: { value: ViewMode; icon: React.ReactNode; label: string }[] = [
-    { value: 'grid', icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
-    { value: 'circular', icon: <Circle className="w-4 h-4" />, label: 'Circular' },
-    { value: 'timeline', icon: <LayoutList className="w-4 h-4" />, label: 'Timeline' },
-  ];
+  // Only show enabled layouts - filter maintains proper typing
+  const viewModes = [
+    { value: 'grid' as ViewMode, icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
+    // Future layouts - uncomment when ready:
+    // { value: 'circular' as ViewMode, icon: <Circle className="w-4 h-4" />, label: 'Circular' },
+    // { value: 'timeline' as ViewMode, icon: <LayoutList className="w-4 h-4" />, label: 'Timeline' },
+  ].filter(mode => ENABLED_LAYOUTS.includes(mode.value));
 
   return (
     <aside 
@@ -44,27 +51,29 @@ const Sidebar = ({
       )}
     >
       <div className="p-4 space-y-6">
-        {/* View Mode */}
-        <div className="space-y-2">
-          <span className="caption">Layout</span>
-          <div className="space-y-1">
-            {viewModes.map((mode) => (
-              <Button
-                key={mode.value}
-                variant="ghost"
-                size="sm"
-                onClick={() => onViewModeChange(mode.value)}
-                className={cn(
-                  "w-full justify-start gap-2 text-foreground-muted hover:text-foreground",
-                  viewMode === mode.value && "bg-secondary text-foreground"
-                )}
-              >
-                {mode.icon}
-                {mode.label}
-              </Button>
-            ))}
+        {/* Layout Mode - Only show if multiple layouts are enabled */}
+        {viewModes.length > 1 && (
+          <div className="space-y-2">
+            <span className="caption">Layout</span>
+            <div className="space-y-1">
+              {viewModes.map((mode) => (
+                <Button
+                  key={mode.value}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onViewModeChange(mode.value)}
+                  className={cn(
+                    "w-full justify-start gap-2 text-foreground-muted hover:text-foreground",
+                    viewMode === mode.value && "bg-secondary text-foreground"
+                  )}
+                >
+                  {mode.icon}
+                  {mode.label}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Quick Actions */}
         <div className="space-y-2">
