@@ -48,7 +48,7 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick, onEd
       ref={setNodeRef}
       onClick={() => onDayClick(day)}
       className={cn(
-        "min-h-[80px] p-2 rounded-lg border text-left transition-all",
+        "h-[100px] p-2 rounded-lg border text-left transition-all overflow-hidden",
         inMonth 
           ? "bg-card border-border hover:border-primary/50" 
           : "bg-secondary/50 border-transparent opacity-50",
@@ -69,7 +69,7 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick, onEd
             key={task.id}
             onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
             className={cn(
-              "text-[10px] px-1 py-0.5 rounded truncate flex items-center gap-1 cursor-pointer hover:ring-1 hover:ring-primary/30",
+              "text-[10px] px-1.5 py-0.5 rounded cursor-pointer hover:ring-1 hover:ring-primary/30 overflow-hidden",
               task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
               task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
               task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
@@ -77,10 +77,12 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick, onEd
               task.completed && "line-through opacity-60"
             )}
           >
-            <span className="truncate">{task.title}</span>
-            {task.user_id !== userId && (
-              <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-            )}
+            <div className="flex items-center gap-1">
+              <span className="truncate flex-1 bg-gradient-to-r from-current to-transparent bg-clip-text" style={{ WebkitBackgroundClip: 'text' }}>{task.title}</span>
+              {task.user_id !== userId && (
+                <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+              )}
+            </div>
           </div>
         ))}
         {tasks.length > 2 && (
