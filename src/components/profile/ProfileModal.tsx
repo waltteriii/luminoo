@@ -347,7 +347,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-primary" />
@@ -383,14 +383,50 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
             <ScrollArea className="flex-1">
               {/* Profile Tab */}
               <TabsContent value="profile" className="p-6 space-y-6 mt-0">
-                {/* Clock and Timezone */}
-                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                  <div className="text-2xl font-light text-foreground tabular-nums">{currentTime}</div>
+                {/* Avatar and Name - FIRST */}
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="relative w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-8 h-8 text-foreground-muted" />
+                    )}
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingAvatar ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                      ) : (
+                        <Camera className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Your name"
+                      className="font-medium"
+                    />
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* Clock and Timezone - Compact, secondary */}
+                <div className="flex items-center justify-between px-3 py-2 bg-secondary/30 rounded-lg">
+                  <div className="text-sm font-medium text-foreground tabular-nums">{currentTime}</div>
                   <Popover open={timezonePopoverOpen} onOpenChange={setTimezonePopoverOpen}>
                     <PopoverTrigger asChild>
-                      <button className="flex items-center gap-1.5 text-sm text-foreground-muted hover:text-foreground transition-colors">
-                        <Clock className="w-4 h-4" />
-                        <span className="truncate max-w-[120px]">{selectedTimezoneLabel}</span>
+                      <button className="flex items-center gap-1.5 text-xs text-foreground-muted hover:text-foreground transition-colors">
+                        <Clock className="w-3 h-3" />
+                        <span className="truncate max-w-[100px]">{selectedTimezoneLabel}</span>
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-72 p-0" align="end">
@@ -432,8 +468,6 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Avatar and Name */}
                 <div className="flex items-center gap-4">
                   <div 
                     className="relative w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"

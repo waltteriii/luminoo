@@ -9,6 +9,7 @@ import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
 import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
+import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import { useDroppable } from '@dnd-kit/core';
 import {
@@ -23,6 +24,7 @@ interface DayViewProps {
   energyFilter?: EnergyLevel[];
   onBack: () => void;
   showHourFocus?: boolean;
+  timezone?: string;
 }
 
 interface TimeSlotDropZoneProps {
@@ -50,12 +52,14 @@ const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
   );
 };
 
-const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus = false }: DayViewProps) => {
+const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus = false, timezone = 'UTC' }: DayViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [addingAtHour, setAddingAtHour] = useState<number | null>(null);
   const [isDraggingToCreate, setIsDraggingToCreate] = useState(false);
   const [dragStartHour, setDragStartHour] = useState<number | null>(null);
   const [dragEndHour, setDragEndHour] = useState<number | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const timeGridRef = useRef<HTMLDivElement>(null);
   
   // State for drag-to-create immediate task creation
@@ -69,7 +73,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   }, []);
 
   const dateStr = format(date, 'yyyy-MM-dd');
-  const { tasks, loading, addTask, updateTask, deleteTask } = useRealtimeTasks({
+  const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
     userId: userId || undefined,
     singleDate: dateStr,
     includeShared: true,
@@ -164,6 +168,19 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     setCreateTimeRange(null);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setEditingTask(task);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveTask = (taskId: string, updates: Partial<Task>) => {
+    updateTask(taskId, updates);
+    setEditDialogOpen(false);
+    setEditingTask(null);
+  };
+
   const filteredTasks = energyFilter.length > 0
     ? tasks.filter(t => energyFilter.includes(t.energy_level))
     : tasks;
@@ -200,8 +217,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         {/* Time grid */}
         <div className="flex-1">
           <div ref={timeGridRef} className="border-l border-border select-none relative">
-            {/* Current time indicator */}
-            {isToday(date) && <CurrentTimeIndicator startHour={6} hourHeight={80} />}
+            {/* Current time indicator - only show for today */}
+            {isToday(date) && <CurrentTimeIndicator startHour={6} hourHeight={80} timezone={timezone} />}
             {hours.map(hour => {
               const isInSelection = selectionStart !== null && 
                 selectionEnd !== null && 
@@ -238,7 +255,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       >
                         <div className="space-y-1 py-1">
                           {hourTasks.map(task => (
-                            <div key={task.id} className="task-item">
+                            <div 
+                              key={task.id} 
+                              className="task-item cursor-pointer"
+                              onDoubleClick={(e) => handleDoubleClick(e, task)}
+                            >
                               <DraggableTask
                                 task={task}
                                 onUpdate={(updates) => updateTask(task.id, updates)}
@@ -318,6 +339,19 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         endTime={createTimeRange?.end}
         defaultEnergy={currentEnergy}
         onConfirm={handleCreateFromDrag}
+      />
+
+      {/* Edit task dialog for double-click editing */}
+      <EditTaskDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        task={editingTask}
+        onSave={handleSaveTask}
+        onDelete={editingTask ? () => {
+          deleteTask(editingTask.id);
+          setEditDialogOpen(false);
+          setEditingTask(null);
+        } : undefined}
       />
     </div>
   );

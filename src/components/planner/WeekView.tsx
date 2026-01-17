@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
+import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -31,6 +32,7 @@ interface DroppableDayProps {
   onAddTask: (date: Date, title: string, energy: EnergyLevel) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask: (task: Task) => void;
 }
 
 const DroppableDay = ({
@@ -42,6 +44,7 @@ const DroppableDay = ({
   onAddTask,
   onUpdateTask,
   onDeleteTask,
+  onEditTask,
 }: DroppableDayProps) => {
   const dateStr = format(date, 'yyyy-MM-dd');
   const today = isToday(date);
@@ -50,6 +53,11 @@ const DroppableDay = ({
     id: dateStr,
     data: { type: 'day', date },
   });
+
+  const handleDoubleClick = (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    onEditTask(task);
+  };
 
   return (
     <div
@@ -84,15 +92,20 @@ const DroppableDay = ({
       >
         <div className="space-y-2">
           {tasks.slice(0, 5).map(task => (
-            <DraggableTask
-              key={task.id}
-              task={task}
-              onUpdate={(updates) => onUpdateTask(task.id, updates)}
-              onDelete={() => onDeleteTask(task.id)}
-              isShared={task.user_id !== userId}
-              compact
-              enableFullDrag
-            />
+            <div 
+              key={task.id} 
+              onDoubleClick={(e) => handleDoubleClick(e, task)}
+              className="cursor-pointer"
+            >
+              <DraggableTask
+                task={task}
+                onUpdate={(updates) => onUpdateTask(task.id, updates)}
+                onDelete={() => onDeleteTask(task.id)}
+                isShared={task.user_id !== userId}
+                compact
+                enableFullDrag
+              />
+            </div>
           ))}
           {tasks.length > 5 && (
             <button 
@@ -118,6 +131,8 @@ const DroppableDay = ({
 
 const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onBack }: WeekViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -128,7 +143,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const weekStart = startOfWeek(startDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const { tasks, loading, addTask, updateTask, deleteTask, rescheduleTask } = useRealtimeTasks({
+  const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
     userId: userId || undefined,
     dateRange: {
       start: format(weekStart, 'yyyy-MM-dd'),
@@ -154,6 +169,17 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
       energy_level: energy,
       due_date: format(date, 'yyyy-MM-dd'),
     });
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveTask = (taskId: string, updates: Partial<Task>) => {
+    updateTask(taskId, updates);
+    setEditDialogOpen(false);
+    setEditingTask(null);
   };
 
   return (
@@ -185,9 +211,23 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             onAddTask={handleAddTask}
             onUpdateTask={updateTask}
             onDeleteTask={deleteTask}
+            onEditTask={handleEditTask}
           />
         ))}
       </div>
+
+      {/* Edit dialog for task editing */}
+      <EditTaskDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        task={editingTask}
+        onSave={handleSaveTask}
+        onDelete={editingTask ? () => {
+          deleteTask(editingTask.id);
+          setEditDialogOpen(false);
+          setEditingTask(null);
+        } : undefined}
+      />
     </div>
   );
 };
