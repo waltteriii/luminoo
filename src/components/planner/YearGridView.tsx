@@ -3,7 +3,8 @@ import { ZoomLevel, EnergyLevel, Task } from '@/types';
 import MonthCard from './MonthCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfMonth, endOfMonth, startOfYear, endOfYear, parseISO } from 'date-fns';
+import { startOfYear, endOfYear, parseISO } from 'date-fns';
+import { useDroppable } from '@dnd-kit/core';
 
 interface YearGridViewProps {
   zoomLevel: ZoomLevel;
@@ -28,6 +29,35 @@ interface MonthTaskData {
     recovery: number;
   };
 }
+
+interface DroppableMonthCardProps {
+  monthIndex: number;
+  name: string;
+  isCurrentMonth: boolean;
+  zoomLevel: ZoomLevel;
+  onClick: () => void;
+  taskIndicators: { energy: EnergyLevel; count: number }[];
+}
+
+const DroppableMonthCard = ({ monthIndex, name, isCurrentMonth, zoomLevel, onClick, taskIndicators }: DroppableMonthCardProps) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `month-${monthIndex}`,
+    data: { type: 'month', monthIndex },
+  });
+
+  return (
+    <div ref={setNodeRef} className={cn(isOver && "ring-2 ring-primary rounded-lg")}>
+      <MonthCard
+        month={monthIndex}
+        name={name}
+        isCurrentMonth={isCurrentMonth}
+        zoomLevel={zoomLevel}
+        onClick={onClick}
+        taskIndicators={taskIndicators}
+      />
+    </div>
+  );
+};
 
 const YearGridView = ({
   zoomLevel,
@@ -155,9 +185,9 @@ const YearGridView = ({
       {/* Grid */}
       <div className={cn('grid gap-4', gridClass)}>
         {visibleMonths.map((monthIndex) => (
-          <MonthCard
+          <DroppableMonthCard
             key={monthIndex}
-            month={monthIndex}
+            monthIndex={monthIndex}
             name={MONTHS[monthIndex]}
             isCurrentMonth={monthIndex === currentMonth}
             zoomLevel={zoomLevel}
@@ -170,7 +200,7 @@ const YearGridView = ({
       {/* Empty state hint */}
       {zoomLevel === 'year' && (
         <p className="text-center text-foreground-subtle text-sm mt-8">
-          Click on a month to zoom in and add campaigns
+          Click on a month to zoom in • Drag inbox tasks to schedule
         </p>
       )}
     </div>

@@ -12,6 +12,7 @@ import TrendingTopicsModal from '@/components/trends/TrendingTopicsModal';
 import FriendsModal from '@/components/friends/FriendsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
 import QuickAddTaskDialog from '@/components/tasks/QuickAddTaskDialog';
+import DndProvider from '@/components/dnd/DndProvider';
 
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
 
@@ -167,7 +168,7 @@ const Index = () => {
   };
 
   const handleScheduleTask = async (taskId: string, date: Date) => {
-    // This is handled in UnscheduledTasks component
+    // This is handled in UnscheduledTasks component and DndProvider
   };
 
   const handleProfileClose = (open: boolean) => {
@@ -189,92 +190,94 @@ const Index = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header 
-        user={user}
-        currentEnergy={currentEnergy}
-        onEnergyChange={setCurrentEnergy}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        onProfileClick={() => setProfileOpen(true)}
-        onFilterEnergy={handleToggleEnergyFilter}
-        onClearFilters={() => setEnergyFilter([])}
-        onViewInbox={handleViewEnergyInbox}
-        activeFilters={energyFilter}
-        avatarUrl={userProfile?.avatarUrl}
-        onAddTask={() => setQuickAddOpen(true)}
-        onBrainDump={() => setBrainDumpOpen(true)}
-      />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar 
-          open={sidebarOpen}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          zoomLevel={zoomLevel}
-          onZoomLevelChange={setZoomLevel}
-          onBrainDumpClick={() => setBrainDumpOpen(true)}
-          onTrendingClick={() => setTrendingOpen(true)}
-          onFriendsClick={() => setFriendsOpen(true)}
-          onJumpToToday={handleJumpToToday}
+    <DndProvider>
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header 
+          user={user}
+          currentEnergy={currentEnergy}
+          onEnergyChange={setCurrentEnergy}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onProfileClick={() => setProfileOpen(true)}
+          onFilterEnergy={handleToggleEnergyFilter}
+          onClearFilters={() => setEnergyFilter([])}
+          onViewInbox={handleViewEnergyInbox}
+          activeFilters={energyFilter}
+          avatarUrl={userProfile?.avatarUrl}
+          onAddTask={() => setQuickAddOpen(true)}
+          onBrainDump={() => setBrainDumpOpen(true)}
         />
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Unscheduled tasks inbox */}
-          <UnscheduledTasks 
-            energyFilter={energyFilter}
-            onScheduleTask={handleScheduleTask}
+        <div className="flex-1 flex overflow-hidden">
+          <Sidebar 
+            open={sidebarOpen}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            zoomLevel={zoomLevel}
+            onZoomLevelChange={setZoomLevel}
+            onBrainDumpClick={() => setBrainDumpOpen(true)}
+            onTrendingClick={() => setTrendingOpen(true)}
+            onFriendsClick={() => setFriendsOpen(true)}
+            onJumpToToday={handleJumpToToday}
           />
-          
-          {/* Main planner view */}
-          <div className="flex-1 overflow-auto">
-            <PlannerView
-              viewMode={viewMode}
-              zoomLevel={zoomLevel}
-              focusedMonth={focusedMonth}
-              focusedDate={focusedDate}
-              currentEnergy={currentEnergy}
+          <main className="flex-1 flex flex-col overflow-hidden">
+            {/* Unscheduled tasks inbox - now draggable to calendar */}
+            <UnscheduledTasks 
               energyFilter={energyFilter}
-              onMonthClick={handleMonthClick}
-              onDayClick={handleDayClick}
-              onWeekClick={handleWeekClick}
-              onZoomOut={handleZoomOut}
+              onScheduleTask={handleScheduleTask}
             />
-          </div>
-        </main>
-      </div>
+            
+            {/* Main planner view with droppable zones */}
+            <div className="flex-1 overflow-auto">
+              <PlannerView
+                viewMode={viewMode}
+                zoomLevel={zoomLevel}
+                focusedMonth={focusedMonth}
+                focusedDate={focusedDate}
+                currentEnergy={currentEnergy}
+                energyFilter={energyFilter}
+                onMonthClick={handleMonthClick}
+                onDayClick={handleDayClick}
+                onWeekClick={handleWeekClick}
+                onZoomOut={handleZoomOut}
+              />
+            </div>
+          </main>
+        </div>
 
-      <BrainDumpModal
-        open={brainDumpOpen}
-        onOpenChange={setBrainDumpOpen}
-        onItemsAdded={handleBrainDumpItems}
-      />
-
-      <ProfileModal
-        open={profileOpen}
-        onOpenChange={handleProfileClose}
-        userId={user.id}
-      />
-
-      <TrendingTopicsModal
-        open={trendingOpen}
-        onOpenChange={setTrendingOpen}
-        userProfile={userProfile}
-        onAddTask={handleAddTrendTask}
-      />
-
-      <FriendsModal
-        open={friendsOpen}
-        onOpenChange={setFriendsOpen}
-        userId={user.id}
-      />
-
-      {user && (
-        <QuickAddTaskDialog
-          open={quickAddOpen}
-          onOpenChange={setQuickAddOpen}
-          userId={user.id}
-          defaultEnergy={currentEnergy}
+        <BrainDumpModal
+          open={brainDumpOpen}
+          onOpenChange={setBrainDumpOpen}
+          onItemsAdded={handleBrainDumpItems}
         />
-      )}
-    </div>
+
+        <ProfileModal
+          open={profileOpen}
+          onOpenChange={handleProfileClose}
+          userId={user.id}
+        />
+
+        <TrendingTopicsModal
+          open={trendingOpen}
+          onOpenChange={setTrendingOpen}
+          userProfile={userProfile}
+          onAddTask={handleAddTrendTask}
+        />
+
+        <FriendsModal
+          open={friendsOpen}
+          onOpenChange={setFriendsOpen}
+          userId={user.id}
+        />
+
+        {user && (
+          <QuickAddTaskDialog
+            open={quickAddOpen}
+            onOpenChange={setQuickAddOpen}
+            userId={user.id}
+            defaultEnergy={currentEnergy}
+          />
+        )}
+      </div>
+    </DndProvider>
   );
 };
 

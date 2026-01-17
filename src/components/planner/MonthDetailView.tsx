@@ -5,17 +5,7 @@ import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  useDroppable,
-} from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 
 interface MonthDetailViewProps {
@@ -41,7 +31,10 @@ interface DroppableDayCellProps {
 
 const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick }: DroppableDayCellProps) => {
   const dateStr = format(day, 'yyyy-MM-dd');
-  const { isOver, setNodeRef } = useDroppable({ id: dateStr });
+  const { isOver, setNodeRef } = useDroppable({ 
+    id: dateStr,
+    data: { type: 'day', date: day },
+  });
 
   return (
     <button
@@ -94,7 +87,6 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick }: Dr
 
 const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayClick, onWeekClick, onBack }: MonthDetailViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -109,7 +101,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const { tasks, rescheduleTask } = useRealtimeTasks({
+  const { tasks } = useRealtimeTasks({
     userId: userId || undefined,
     dateRange: {
       start: format(calendarStart, 'yyyy-MM-dd'),
@@ -117,14 +109,6 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     },
     includeShared: true,
   });
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
 
   const getTasksForDay = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -135,28 +119,6 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     }
     
     return dayTasks;
-  };
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const task = tasks.find(t => t.id === event.active.id);
-    setActiveTask(task || null);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveTask(null);
-
-    if (!over) return;
-
-    const taskId = active.id as string;
-    const targetDate = over.id as string;
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-      const task = tasks.find(t => t.id === taskId);
-      if (task && task.due_date !== targetDate) {
-        await rescheduleTask(taskId, targetDate);
-      }
-    }
   };
 
   // Group days by week
@@ -189,46 +151,31 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
         ))}
       </div>
 
-      {/* Calendar grid with drag-and-drop */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="space-y-1">
-          {weeks.map((week, weekIdx) => (
-            <div key={weekIdx} className="grid grid-cols-[auto_repeat(7,1fr)] gap-1">
-              <button
-                onClick={() => onWeekClick(week[0])}
-                className="w-12 flex items-center justify-center text-xs text-foreground-muted hover:text-primary hover:bg-secondary rounded transition-colors"
-              >
-                W{getWeek(week[0])}
-              </button>
-              
-              {week.map((day) => (
-                <DroppableDayCell
-                  key={day.toISOString()}
-                  day={day}
-                  tasks={getTasksForDay(day)}
-                  inMonth={isSameMonth(day, monthDate)}
-                  today={isToday(day)}
-                  userId={userId}
-                  onDayClick={onDayClick}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <DragOverlay>
-          {activeTask && (
-            <div className="bg-card border border-primary rounded-lg p-2 shadow-xl opacity-90">
-              <span className="text-sm">{activeTask.title}</span>
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+      {/* Calendar grid */}
+      <div className="space-y-1">
+        {weeks.map((week, weekIdx) => (
+          <div key={weekIdx} className="grid grid-cols-[auto_repeat(7,1fr)] gap-1">
+            <button
+              onClick={() => onWeekClick(week[0])}
+              className="w-12 flex items-center justify-center text-xs text-foreground-muted hover:text-primary hover:bg-secondary rounded transition-colors"
+            >
+              W{getWeek(week[0])}
+            </button>
+            
+            {week.map((day) => (
+              <DroppableDayCell
+                key={day.toISOString()}
+                day={day}
+                tasks={getTasksForDay(day)}
+                inMonth={isSameMonth(day, monthDate)}
+                today={isToday(day)}
+                userId={userId}
+                onDayClick={onDayClick}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

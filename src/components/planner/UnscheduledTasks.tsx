@@ -1,18 +1,11 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { InboxIcon, ChevronRight, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
+import { format } from 'date-fns';
 
 interface UnscheduledTasksProps {
   energyFilter: EnergyLevel[];
@@ -23,15 +16,6 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
 
   useEffect(() => {
     loadTasks();
@@ -114,17 +98,6 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
     }
   };
 
-  const handleDragStart = (event: any) => {
-    const task = event.active.data.current?.task;
-    if (task) {
-      setActiveTask(task);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setActiveTask(null);
-  };
-
   // Filter by energy if filter is active
   const filteredTasks = energyFilter.length > 0
     ? tasks.filter(t => energyFilter.includes(t.energy_level))
@@ -133,58 +106,43 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
   if (filteredTasks.length === 0) return null;
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="border-b border-border bg-secondary/30">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <InboxIcon className="w-4 h-4 text-foreground-muted" />
-            <span className="text-sm font-medium text-foreground">Inbox</span>
-            <span className="text-xs text-foreground-muted bg-secondary px-2 py-0.5 rounded-full">
-              {filteredTasks.length} unscheduled
-            </span>
-            <span className="text-xs text-foreground-muted opacity-60 hidden sm:inline">
-              • Drag tasks to calendar
-            </span>
-          </div>
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4 text-foreground-muted" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-foreground-muted" />
-          )}
-        </button>
-
-        {!collapsed && (
-          <ScrollArea className="max-h-[250px]">
-            <div className="px-4 pb-4 space-y-2">
-              {filteredTasks.map(task => (
-                <InboxTaskItem
-                  key={task.id}
-                  task={task}
-                  onSchedule={handleScheduleTask}
-                  onEnergyChange={handleEnergyChange}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+    <div className="border-b border-border bg-secondary/30">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <InboxIcon className="w-4 h-4 text-foreground-muted" />
+          <span className="text-sm font-medium text-foreground">Inbox</span>
+          <span className="text-xs text-foreground-muted bg-secondary px-2 py-0.5 rounded-full">
+            {filteredTasks.length} unscheduled
+          </span>
+          <span className="text-xs text-foreground-muted opacity-60 hidden sm:inline">
+            • Drag tasks to calendar
+          </span>
+        </div>
+        {collapsed ? (
+          <ChevronRight className="w-4 h-4 text-foreground-muted" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-foreground-muted" />
         )}
-      </div>
+      </button>
 
-      {/* Drag overlay for visual feedback */}
-      <DragOverlay>
-        {activeTask && (
-          <div className="p-2 rounded bg-card border border-primary shadow-lg opacity-90">
-            <span className="text-sm">{activeTask.title}</span>
+      {!collapsed && (
+        <ScrollArea className="max-h-[250px]">
+          <div className="px-4 pb-4 space-y-2">
+            {filteredTasks.map(task => (
+              <InboxTaskItem
+                key={task.id}
+                task={task}
+                onSchedule={handleScheduleTask}
+                onEnergyChange={handleEnergyChange}
+              />
+            ))}
           </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+        </ScrollArea>
+      )}
+    </div>
   );
 };
 
