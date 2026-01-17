@@ -8,22 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
 import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
-import ScheduleConfirmDialog from '@/components/tasks/ScheduleConfirmDialog';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragOverlay,
-  useDroppable,
-} from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
@@ -37,13 +25,14 @@ interface DayViewProps {
 
 interface TimeSlotDropZoneProps {
   hour: number;
+  date: Date;
   children: React.ReactNode;
 }
 
-const TimeSlotDropZone = ({ hour, children }: TimeSlotDropZoneProps) => {
+const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `time-slot-${hour}`,
-    data: { hour, type: 'time-slot' },
+    data: { hour, type: 'time-slot', date },
   });
 
   return (
@@ -65,9 +54,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
   const [isDraggingToCreate, setIsDraggingToCreate] = useState(false);
   const [dragStartHour, setDragStartHour] = useState<number | null>(null);
   const [dragEndHour, setDragEndHour] = useState<number | null>(null);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [taskToSchedule, setTaskToSchedule] = useState<Task | null>(null);
-  const [scheduleHour, setScheduleHour] = useState<number | undefined>();
   const timeGridRef = useRef<HTMLDivElement>(null);
   
   // State for drag-to-create immediate task creation
@@ -86,17 +72,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
     singleDate: dateStr,
     includeShared: true,
   });
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   // Handle mouse events for drag-to-create
   const handleMouseDown = (hour: number, e: React.MouseEvent) => {
@@ -150,38 +125,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDraggingToCreate, handleMouseMove, handleMouseUp]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over) return;
-    
-    // Check if dragging an inbox task to a time slot
-    if (active.data.current?.type === 'inbox-task' && over.data.current?.type === 'time-slot') {
-      const task = active.data.current.task as Task;
-      const hour = over.data.current.hour as number;
-      
-      setTaskToSchedule(task);
-      setScheduleHour(hour);
-      setConfirmDialogOpen(true);
-    }
-  };
-
-  const handleConfirmSchedule = async (
-    taskId: string,
-    dueDate: string,
-    startTime?: string,
-    endTime?: string
-  ) => {
-    await supabase
-      .from('tasks')
-      .update({
-        due_date: dueDate,
-        start_time: startTime,
-        end_time: endTime,
-      })
-      .eq('id', taskId);
-  };
 
   const handleQuickAdd = async (task: {
     title: string;
@@ -254,115 +197,103 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
       <div className="flex gap-6">
         {/* Time grid */}
         <div className="flex-1">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <div ref={timeGridRef} className="border-l border-border select-none">
-              {hours.map(hour => {
-                const isInSelection = selectionStart !== null && 
-                  selectionEnd !== null && 
-                  hour >= selectionStart && 
-                  hour <= selectionEnd;
+          <div ref={timeGridRef} className="border-l border-border select-none">
+            {hours.map(hour => {
+              const isInSelection = selectionStart !== null && 
+                selectionEnd !== null && 
+                hour >= selectionStart && 
+                hour <= selectionEnd;
 
-                const timeStr = format(addHours(startOfDay(date), hour), 'h a');
-                const hourTasks = filteredTasks.filter(t => {
-                  if (!t.start_time) return false;
-                  const taskHour = parseInt(t.start_time.split(':')[0]);
-                  return taskHour === hour;
-                });
+              const timeStr = format(addHours(startOfDay(date), hour), 'h a');
+              const hourTasks = filteredTasks.filter(t => {
+                if (!t.start_time) return false;
+                const taskHour = parseInt(t.start_time.split(':')[0]);
+                return taskHour === hour;
+              });
 
-                return (
-                  <TimeSlotDropZone key={hour} hour={hour}>
-                    <div
-                      className={cn(
-                        "group relative h-20 border-b border-border/50 transition-all cursor-crosshair",
-                        isInSelection && "bg-primary/20 ring-1 ring-primary/50"
-                      )}
-                      onMouseDown={(e) => handleMouseDown(hour, e)}
-                    >
-                      {/* Time label */}
-                      <div className="absolute left-0 top-0 w-16 text-xs text-foreground-muted py-1 pointer-events-none">
-                        {timeStr}
-                      </div>
-
-                      {/* Content area */}
-                      <div className="ml-20 h-full relative">
-                        {/* Existing tasks */}
-                        <SortableContext
-                          items={hourTasks.map(t => t.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-1 py-1">
-                            {hourTasks.map(task => (
-                              <div key={task.id} className="task-item">
-                                <DraggableTask
-                                  task={task}
-                                  onUpdate={(updates) => updateTask(task.id, updates)}
-                                  onDelete={() => deleteTask(task.id)}
-                                  isShared={task.user_id !== userId}
-                                  compact
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </SortableContext>
-
-                        {/* Add task inline */}
-                        {addingAtHour === hour ? (
-                          <div className="absolute top-1 left-0 right-4 z-10">
-                            <QuickAddTask
-                              onAdd={handleQuickAdd}
-                              defaultEnergy={currentEnergy}
-                              defaultDate={date}
-                              defaultTime={`${hour.toString().padStart(2, '0')}:00`}
-                              compact
-                            />
-                          </div>
-                        ) : (
-                          /* Show selection indicator or hover prompt */
-                          !isDraggingToCreate && hourTasks.length === 0 && (
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                              <div className="flex items-center gap-1 text-xs text-foreground-muted">
-                                <Plus className="w-3 h-3" />
-                                Drag to create task
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
+              return (
+                <TimeSlotDropZone key={hour} hour={hour} date={date}>
+                  <div
+                    className={cn(
+                      "group relative h-20 border-b border-border/50 transition-all cursor-crosshair",
+                      isInSelection && "bg-primary/20 ring-1 ring-primary/50"
+                    )}
+                    onMouseDown={(e) => handleMouseDown(hour, e)}
+                  >
+                    {/* Time label */}
+                    <div className="absolute left-0 top-0 w-16 text-xs text-foreground-muted py-1 pointer-events-none">
+                      {timeStr}
                     </div>
-                  </TimeSlotDropZone>
-                );
-              })}
-            </div>
-          </DndContext>
+
+                    {/* Content area */}
+                    <div className="ml-20 h-full relative">
+                      {/* Existing tasks */}
+                      <SortableContext
+                        items={hourTasks.map(t => t.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-1 py-1">
+                          {hourTasks.map(task => (
+                            <div key={task.id} className="task-item">
+                              <DraggableTask
+                                task={task}
+                                onUpdate={(updates) => updateTask(task.id, updates)}
+                                onDelete={() => deleteTask(task.id)}
+                                isShared={task.user_id !== userId}
+                                compact
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </SortableContext>
+
+                      {/* Add task inline */}
+                      {addingAtHour === hour ? (
+                        <div className="absolute top-1 left-0 right-4 z-10">
+                          <QuickAddTask
+                            onAdd={handleQuickAdd}
+                            defaultEnergy={currentEnergy}
+                            defaultDate={date}
+                            defaultTime={`${hour.toString().padStart(2, '0')}:00`}
+                            compact
+                          />
+                        </div>
+                      ) : (
+                        /* Show selection indicator or hover prompt */
+                        !isDraggingToCreate && hourTasks.length === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <div className="flex items-center gap-1 text-xs text-foreground-muted">
+                              <Plus className="w-3 h-3" />
+                              Drag to create task
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </TimeSlotDropZone>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Untimed tasks sidebar - inside DndContext for drop support */}
+        {/* Untimed tasks sidebar */}
         <div className="w-64 shrink-0">
           <h3 className="text-sm font-medium text-foreground-muted mb-3">
             Untimed Tasks
-            <span className="ml-2 text-xs opacity-60">Drag to calendar</span>
+            <span className="ml-2 text-xs opacity-60">Drag to schedule</span>
           </h3>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="space-y-2">
-              {untimedTasks.map(task => (
-                <DraggableUntimedTask
-                  key={task.id}
-                  task={task}
-                  onUpdate={(updates) => updateTask(task.id, updates)}
-                  onDelete={() => deleteTask(task.id)}
-                  isShared={task.user_id !== userId}
-                />
-              ))}
-            </div>
-          </DndContext>
+          <div className="space-y-2">
+            {untimedTasks.map(task => (
+              <DraggableUntimedTask
+                key={task.id}
+                task={task}
+                onUpdate={(updates) => updateTask(task.id, updates)}
+                onDelete={() => deleteTask(task.id)}
+                isShared={task.user_id !== userId}
+              />
+            ))}
+          </div>
           <div className="mt-3">
             <QuickAddTask
               onAdd={handleQuickAdd}
@@ -373,16 +304,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
           </div>
         </div>
       </div>
-
-      {/* Schedule confirmation dialog */}
-      <ScheduleConfirmDialog
-        open={confirmDialogOpen}
-        onOpenChange={setConfirmDialogOpen}
-        task={taskToSchedule}
-        targetDate={date}
-        targetHour={scheduleHour}
-        onConfirm={handleConfirmSchedule}
-      />
 
       {/* Create task dialog for drag-to-create */}
       <CreateTaskDialog
