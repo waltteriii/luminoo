@@ -5,6 +5,7 @@ import TimelineView from './TimelineView';
 import MonthDetailView from './MonthDetailView';
 import WeekView from './WeekView';
 import DayView from './DayView';
+import ViewSelector from './ViewSelector';
 
 interface PlannerViewProps {
   viewMode: ViewMode;
@@ -17,6 +18,7 @@ interface PlannerViewProps {
   onDayClick: (date: Date) => void;
   onWeekClick: (date: Date) => void;
   onZoomOut: () => void;
+  onZoomLevelChange: (level: ZoomLevel) => void;
 }
 
 const PlannerView = ({
@@ -30,28 +32,17 @@ const PlannerView = ({
   onDayClick,
   onWeekClick,
   onZoomOut,
+  onZoomLevelChange,
 }: PlannerViewProps) => {
   const currentYear = new Date().getFullYear();
-
-  // Hour view (same as day view but focused on hours)
-  if (zoomLevel === 'hour' && focusedDate) {
-    return (
-      <div className="h-full p-6 lg:p-8">
-        <DayView
-          date={focusedDate}
-          currentEnergy={currentEnergy}
-          energyFilter={energyFilter}
-          onBack={onZoomOut}
-          showHourFocus
-        />
-      </div>
-    );
-  }
 
   // Day view
   if (zoomLevel === 'day' && focusedDate) {
     return (
       <div className="h-full p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-4">
+          <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
+        </div>
         <DayView
           date={focusedDate}
           currentEnergy={currentEnergy}
@@ -66,6 +57,9 @@ const PlannerView = ({
   if (zoomLevel === 'week' && focusedDate) {
     return (
       <div className="h-full p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-4">
+          <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
+        </div>
         <WeekView
           startDate={focusedDate}
           currentEnergy={currentEnergy}
@@ -81,6 +75,9 @@ const PlannerView = ({
   if (zoomLevel === 'month' && focusedMonth !== null) {
     return (
       <div className="h-full p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-4">
+          <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
+        </div>
         <MonthDetailView
           month={focusedMonth}
           year={currentYear}
@@ -105,6 +102,9 @@ const PlannerView = ({
 
   return (
     <div className="h-full p-6 lg:p-8">
+      <div className="flex items-center justify-between mb-4">
+        <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
+      </div>
       {viewMode === 'grid' && <YearGridView {...commonProps} />}
       {viewMode === 'circular' && <CircularView {...commonProps} />}
       {viewMode === 'timeline' && <TimelineView {...commonProps} />}

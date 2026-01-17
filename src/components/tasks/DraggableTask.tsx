@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 
 interface DraggableTaskProps {
   task: Task;
@@ -27,7 +28,7 @@ interface DraggableTaskProps {
   onDelete?: () => void;
   isShared?: boolean;
   compact?: boolean;
-  enableFullDrag?: boolean; // Allow dragging from entire element
+  enableFullDrag?: boolean;
 }
 
 const energyColors: Record<EnergyLevel, string> = {
@@ -40,11 +41,13 @@ const energyColors: Record<EnergyLevel, string> = {
 const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFullDrag = false }: DraggableTaskProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditing(true);
-    setEditTitle(task.title);
+    e.preventDefault();
+    // Open edit dialog on double-click
+    setEditDialogOpen(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -262,6 +265,15 @@ const DraggableTask = ({ task, onUpdate, onDelete, isShared, compact, enableFull
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Edit Task Dialog */}
+      <EditTaskDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        task={task}
+        onSave={(taskId, updates) => onUpdate(updates)}
+        onDelete={onDelete ? () => onDelete() : undefined}
+      />
     </div>
   );
 };

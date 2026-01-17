@@ -104,10 +104,21 @@ const Index = () => {
     setZoomLevel('week');
   };
 
+  const handleZoomLevelChange = (level: ZoomLevel) => {
+    setZoomLevel(level);
+    // Set appropriate focus when changing zoom levels
+    if (level === 'year') {
+      setFocusedMonth(null);
+      setFocusedDate(null);
+    } else if (level === 'month' && focusedMonth === null) {
+      setFocusedMonth(new Date().getMonth());
+    } else if ((level === 'week' || level === 'day') && focusedDate === null) {
+      setFocusedDate(new Date());
+    }
+  };
+
   const handleZoomOut = () => {
-    if (zoomLevel === 'hour') {
-      setZoomLevel('day');
-    } else if (zoomLevel === 'day') {
+    if (zoomLevel === 'day') {
       setZoomLevel('week');
     } else if (zoomLevel === 'week') {
       setZoomLevel('month');
@@ -213,8 +224,6 @@ const Index = () => {
             open={sidebarOpen}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
-            zoomLevel={zoomLevel}
-            onZoomLevelChange={setZoomLevel}
             onBrainDumpClick={() => setBrainDumpOpen(true)}
             onTrendingClick={() => setTrendingOpen(true)}
             onFriendsClick={() => setFriendsOpen(true)}
@@ -240,6 +249,7 @@ const Index = () => {
                 onDayClick={handleDayClick}
                 onWeekClick={handleWeekClick}
                 onZoomOut={handleZoomOut}
+                onZoomLevelChange={handleZoomLevelChange}
               />
             </div>
           </main>

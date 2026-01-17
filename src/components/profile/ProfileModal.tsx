@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { User, Loader2, Save, Camera, ChevronDown, ChevronUp, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, X } from 'lucide-react';
+import { User, Loader2, Save, Camera, ChevronDown, ChevronUp, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform } from '@/types';
@@ -41,19 +41,57 @@ const platformOptions: { value: Platform; label: string }[] = [
   { value: 'podcast', label: 'Podcast' },
 ];
 
-const COMMON_TIMEZONES = [
-  { value: 'UTC', label: 'UTC' },
-  { value: 'America/New_York', label: 'Eastern Time (US)' },
-  { value: 'America/Chicago', label: 'Central Time (US)' },
-  { value: 'America/Denver', label: 'Mountain Time (US)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (US)' },
-  { value: 'Europe/London', label: 'London' },
-  { value: 'Europe/Paris', label: 'Paris/Berlin' },
-  { value: 'Europe/Helsinki', label: 'Helsinki' },
-  { value: 'Asia/Tokyo', label: 'Tokyo' },
-  { value: 'Asia/Shanghai', label: 'Shanghai' },
-  { value: 'Asia/Dubai', label: 'Dubai' },
-  { value: 'Australia/Sydney', label: 'Sydney' },
+// Comprehensive timezone list with search keywords
+const ALL_TIMEZONES = [
+  { value: 'UTC', label: 'UTC', keywords: ['utc', 'coordinated universal time'] },
+  { value: 'America/New_York', label: 'New York (EST)', keywords: ['usa', 'us', 'eastern', 'new york', 'america'] },
+  { value: 'America/Chicago', label: 'Chicago (CST)', keywords: ['usa', 'us', 'central', 'chicago', 'america'] },
+  { value: 'America/Denver', label: 'Denver (MST)', keywords: ['usa', 'us', 'mountain', 'denver', 'america'] },
+  { value: 'America/Los_Angeles', label: 'Los Angeles (PST)', keywords: ['usa', 'us', 'pacific', 'los angeles', 'california', 'america'] },
+  { value: 'America/Anchorage', label: 'Anchorage (AKST)', keywords: ['usa', 'us', 'alaska', 'america'] },
+  { value: 'Pacific/Honolulu', label: 'Honolulu (HST)', keywords: ['usa', 'us', 'hawaii', 'pacific'] },
+  { value: 'America/Toronto', label: 'Toronto', keywords: ['canada', 'toronto'] },
+  { value: 'America/Vancouver', label: 'Vancouver', keywords: ['canada', 'vancouver'] },
+  { value: 'America/Mexico_City', label: 'Mexico City', keywords: ['mexico'] },
+  { value: 'America/Sao_Paulo', label: 'São Paulo', keywords: ['brazil', 'brasil', 'sao paulo'] },
+  { value: 'America/Buenos_Aires', label: 'Buenos Aires', keywords: ['argentina'] },
+  { value: 'Europe/London', label: 'London (GMT)', keywords: ['uk', 'england', 'britain', 'london'] },
+  { value: 'Europe/Paris', label: 'Paris (CET)', keywords: ['france', 'paris', 'europe'] },
+  { value: 'Europe/Berlin', label: 'Berlin (CET)', keywords: ['germany', 'berlin', 'europe'] },
+  { value: 'Europe/Amsterdam', label: 'Amsterdam', keywords: ['netherlands', 'amsterdam', 'europe'] },
+  { value: 'Europe/Brussels', label: 'Brussels', keywords: ['belgium', 'brussels', 'europe'] },
+  { value: 'Europe/Rome', label: 'Rome', keywords: ['italy', 'rome', 'europe'] },
+  { value: 'Europe/Madrid', label: 'Madrid', keywords: ['spain', 'madrid', 'europe'] },
+  { value: 'Europe/Zurich', label: 'Zurich', keywords: ['switzerland', 'zurich', 'europe'] },
+  { value: 'Europe/Vienna', label: 'Vienna', keywords: ['austria', 'vienna', 'europe'] },
+  { value: 'Europe/Stockholm', label: 'Stockholm', keywords: ['sweden', 'stockholm', 'europe'] },
+  { value: 'Europe/Oslo', label: 'Oslo', keywords: ['norway', 'oslo', 'europe'] },
+  { value: 'Europe/Copenhagen', label: 'Copenhagen', keywords: ['denmark', 'copenhagen', 'europe'] },
+  { value: 'Europe/Helsinki', label: 'Helsinki (EET)', keywords: ['finland', 'helsinki', 'europe'] },
+  { value: 'Europe/Warsaw', label: 'Warsaw', keywords: ['poland', 'warsaw', 'europe'] },
+  { value: 'Europe/Prague', label: 'Prague', keywords: ['czech', 'prague', 'europe'] },
+  { value: 'Europe/Athens', label: 'Athens', keywords: ['greece', 'athens', 'europe'] },
+  { value: 'Europe/Moscow', label: 'Moscow', keywords: ['russia', 'moscow', 'europe'] },
+  { value: 'Europe/Istanbul', label: 'Istanbul', keywords: ['turkey', 'istanbul'] },
+  { value: 'Asia/Dubai', label: 'Dubai', keywords: ['uae', 'emirates', 'dubai', 'middle east'] },
+  { value: 'Asia/Riyadh', label: 'Riyadh', keywords: ['saudi', 'arabia', 'riyadh', 'middle east'] },
+  { value: 'Asia/Jerusalem', label: 'Jerusalem', keywords: ['israel', 'jerusalem', 'middle east'] },
+  { value: 'Asia/Kolkata', label: 'Mumbai/Delhi (IST)', keywords: ['india', 'mumbai', 'delhi', 'kolkata'] },
+  { value: 'Asia/Bangkok', label: 'Bangkok', keywords: ['thailand', 'bangkok'] },
+  { value: 'Asia/Singapore', label: 'Singapore', keywords: ['singapore'] },
+  { value: 'Asia/Hong_Kong', label: 'Hong Kong', keywords: ['hong kong', 'china'] },
+  { value: 'Asia/Shanghai', label: 'Shanghai/Beijing', keywords: ['china', 'shanghai', 'beijing'] },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)', keywords: ['japan', 'tokyo'] },
+  { value: 'Asia/Seoul', label: 'Seoul', keywords: ['korea', 'seoul'] },
+  { value: 'Asia/Manila', label: 'Manila', keywords: ['philippines', 'manila'] },
+  { value: 'Asia/Jakarta', label: 'Jakarta', keywords: ['indonesia', 'jakarta'] },
+  { value: 'Australia/Perth', label: 'Perth', keywords: ['australia', 'perth'] },
+  { value: 'Australia/Sydney', label: 'Sydney (AEDT)', keywords: ['australia', 'sydney'] },
+  { value: 'Australia/Melbourne', label: 'Melbourne', keywords: ['australia', 'melbourne'] },
+  { value: 'Pacific/Auckland', label: 'Auckland', keywords: ['new zealand', 'auckland'] },
+  { value: 'Africa/Cairo', label: 'Cairo', keywords: ['egypt', 'cairo', 'africa'] },
+  { value: 'Africa/Lagos', label: 'Lagos', keywords: ['nigeria', 'lagos', 'africa'] },
+  { value: 'Africa/Johannesburg', label: 'Johannesburg', keywords: ['south africa', 'johannesburg', 'africa'] },
 ];
 
 const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
@@ -70,8 +108,41 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   const [favoriteCreators, setFavoriteCreators] = useState('');
   const [timezone, setTimezone] = useState('UTC');
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+  const [timezoneSearch, setTimezoneSearch] = useState('');
+  const [timezonePopoverOpen, setTimezonePopoverOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Current time based on selected timezone
+  const currentTime = useMemo(() => {
+    try {
+      return new Date().toLocaleTimeString('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  }, [timezone]);
+
+  // Filter timezones based on search
+  const filteredTimezones = useMemo(() => {
+    const search = timezoneSearch.toLowerCase();
+    if (!search) return ALL_TIMEZONES;
+    return ALL_TIMEZONES.filter(tz => 
+      tz.label.toLowerCase().includes(search) ||
+      tz.value.toLowerCase().includes(search) ||
+      tz.keywords.some(k => k.includes(search))
+    );
+  }, [timezoneSearch]);
+
+  const selectedTimezoneLabel = ALL_TIMEZONES.find(tz => tz.value === timezone)?.label || timezone;
 
   useEffect(() => {
     if (open && userId) {
@@ -215,6 +286,12 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
     );
   };
 
+  const handleTimezoneSelect = (tz: string) => {
+    setTimezone(tz);
+    setTimezonePopoverOpen(false);
+    setTimezoneSearch('');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
@@ -232,6 +309,58 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
         ) : (
           <ScrollArea className="flex-1 -mx-6 px-6">
             <div className="space-y-5 pb-4">
+              {/* Clock and Timezone - Compact header */}
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl font-light text-foreground">{currentTime}</div>
+                </div>
+                <Popover open={timezonePopoverOpen} onOpenChange={setTimezonePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1.5 text-sm text-foreground-muted hover:text-foreground transition-colors">
+                      <Clock className="w-4 h-4" />
+                      <span className="truncate max-w-[120px]">{selectedTimezoneLabel}</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0" align="end">
+                    <div className="p-2 border-b border-border">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
+                        <Input
+                          value={timezoneSearch}
+                          onChange={(e) => setTimezoneSearch(e.target.value)}
+                          placeholder="Search city or country..."
+                          className="pl-8 h-9"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <ScrollArea className="h-64">
+                      <div className="p-1">
+                        {filteredTimezones.map(tz => (
+                          <button
+                            key={tz.value}
+                            onClick={() => handleTimezoneSelect(tz.value)}
+                            className={cn(
+                              "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
+                              timezone === tz.value
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-secondary"
+                            )}
+                          >
+                            {tz.label}
+                          </button>
+                        ))}
+                        {filteredTimezones.length === 0 && (
+                          <div className="px-3 py-4 text-sm text-foreground-muted text-center">
+                            No timezones found
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               {/* Avatar */}
               <div className="flex items-center gap-4">
                 <div 
@@ -335,23 +464,6 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                   placeholder="e.g., indie music, watercolor, self-help"
                 />
                 <p className="text-2xs text-foreground-muted">Comma-separated keywords for better AI suggestions</p>
-              </div>
-
-              {/* Timezone */}
-              <div className="space-y-2">
-                <Label>Timezone</Label>
-                <Select value={timezone} onValueChange={setTimezone}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMMON_TIMEZONES.map(tz => (
-                      <SelectItem key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* More About You - Collapsible */}
