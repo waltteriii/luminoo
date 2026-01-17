@@ -23,6 +23,7 @@ import {
 interface InboxTaskItemProps {
   task: Task;
   onSchedule: (taskId: string, date: string, startTime?: string, endTime?: string) => void;
+  onEnergyChange?: (taskId: string, energy: EnergyLevel) => void;
 }
 
 const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
@@ -31,7 +32,14 @@ const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 });
 
-const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
+const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
+  { value: 'high', label: 'High Focus' },
+  { value: 'medium', label: 'Steady' },
+  { value: 'low', label: 'Low Energy' },
+  { value: 'recovery', label: 'Recovery' },
+];
+
+const InboxTaskItem = ({ task, onSchedule, onEnergyChange }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -85,34 +93,68 @@ const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "group flex items-center gap-2 p-2 rounded bg-card border border-border transition-all",
-        isDragging && "opacity-70 shadow-lg ring-2 ring-primary cursor-grabbing"
+        "group flex items-center gap-2 p-2 rounded bg-card border border-border transition-all cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-70 shadow-lg ring-2 ring-primary"
       )}
     >
-      {/* Drag handle */}
-      <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing"
-      >
-        <GripVertical className="w-4 h-4 text-foreground-muted" />
-      </button>
+      {/* Drag handle icon - visual indicator */}
+      <GripVertical className="w-4 h-4 text-foreground-muted flex-shrink-0" />
 
       {/* Task title and energy */}
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <span className="text-sm truncate">{task.title}</span>
-        <EnergyPill energy={task.energy_level} />
+        
+        {/* Clickable energy pill to change energy */}
+        <Popover>
+          <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <button className="cursor-pointer hover:opacity-80">
+              <EnergyPill energy={task.energy_level} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-36 p-1" align="start" onClick={(e) => e.stopPropagation()}>
+            {ENERGY_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEnergyChange?.(task.id, option.value);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-secondary transition-colors",
+                  task.energy_level === option.value && "bg-secondary"
+                )}
+              >
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    option.value === 'high' && "bg-energy-high",
+                    option.value === 'medium' && "bg-energy-medium",
+                    option.value === 'low' && "bg-energy-low",
+                    option.value === 'recovery' && "bg-energy-recovery"
+                  )}
+                />
+                {option.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+        
         {task.is_shared && <Users className="w-3 h-3 text-primary" />}
       </div>
 
       {/* Quick schedule buttons */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs"
-          onClick={() => handleQuickSchedule(0)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleQuickSchedule(0);
+          }}
         >
           Today
         </Button>
@@ -120,15 +162,21 @@ const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs"
-          onClick={() => handleQuickSchedule(1)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleQuickSchedule(1);
+          }}
         >
-          Tmrw
+          Tomorrow
         </Button>
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs"
-          onClick={() => onSchedule(task.id, format(nextMonday, 'yyyy-MM-dd'))}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSchedule(task.id, format(nextMonday, 'yyyy-MM-dd'));
+          }}
         >
           Mon
         </Button>
@@ -136,17 +184,23 @@ const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
         {/* Full date/time picker */}
         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Calendar className="w-3 h-3" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
+          <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
             <div className="p-3 space-y-3">
               <CalendarPicker
                 mode="single"
                 selected={selectedDate}
                 onSelect={handleDateSelect}
                 initialFocus
+                className="pointer-events-auto"
               />
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -159,7 +213,7 @@ const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
                       <SelectValue placeholder="Start time" />
                     </SelectTrigger>
                     <SelectContent className="max-h-48">
-                      <SelectItem value="">No time</SelectItem>
+                      <SelectItem value="none">No time</SelectItem>
                       {TIME_OPTIONS.map((time) => (
                         <SelectItem key={time} value={time}>
                           {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
@@ -175,8 +229,8 @@ const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
                       <SelectValue placeholder="End time" />
                     </SelectTrigger>
                     <SelectContent className="max-h-48">
-                      <SelectItem value="">No time</SelectItem>
-                      {TIME_OPTIONS.filter(t => !selectedStartTime || t > selectedStartTime).map((time) => (
+                      <SelectItem value="none">No time</SelectItem>
+                      {TIME_OPTIONS.filter(t => !selectedStartTime || selectedStartTime === 'none' || t > selectedStartTime).map((time) => (
                         <SelectItem key={time} value={time}>
                           {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
                         </SelectItem>
@@ -192,7 +246,7 @@ const InboxTaskItem = ({ task, onSchedule }: InboxTaskItemProps) => {
                 size="sm"
               >
                 Schedule {selectedDate && `for ${format(selectedDate, 'MMM d')}`}
-                {selectedStartTime && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
+                {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
               </Button>
             </div>
           </PopoverContent>

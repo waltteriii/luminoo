@@ -82,8 +82,8 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
         .from('tasks')
         .update({
           due_date: dueDate,
-          start_time: startTime,
-          end_time: endTime,
+          start_time: startTime === 'none' ? null : startTime,
+          end_time: endTime === 'none' ? null : endTime,
         })
         .eq('id', taskId);
 
@@ -93,6 +93,24 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
       setTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
       console.error('Schedule task error:', err);
+    }
+  };
+
+  const handleEnergyChange = async (taskId: string, energy: EnergyLevel) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ energy_level: energy })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, energy_level: energy } : t
+      ));
+    } catch (err) {
+      console.error('Update energy error:', err);
     }
   };
 
@@ -150,6 +168,7 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
                   key={task.id}
                   task={task}
                   onSchedule={handleScheduleTask}
+                  onEnergyChange={handleEnergyChange}
                 />
               ))}
             </div>

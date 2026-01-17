@@ -11,6 +11,7 @@ import ProfileModal from '@/components/profile/ProfileModal';
 import TrendingTopicsModal from '@/components/trends/TrendingTopicsModal';
 import FriendsModal from '@/components/friends/FriendsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
+import QuickAddTaskDialog from '@/components/tasks/QuickAddTaskDialog';
 
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
 
@@ -41,6 +42,7 @@ const Index = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [trendingOpen, setTrendingOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -199,6 +201,8 @@ const Index = () => {
         onViewInbox={handleViewEnergyInbox}
         activeFilters={energyFilter}
         avatarUrl={userProfile?.avatarUrl}
+        onAddTask={() => setQuickAddOpen(true)}
+        onBrainDump={() => setBrainDumpOpen(true)}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar 
@@ -261,6 +265,15 @@ const Index = () => {
         onOpenChange={setFriendsOpen}
         userId={user.id}
       />
+
+      {user && (
+        <QuickAddTaskDialog
+          open={quickAddOpen}
+          onOpenChange={setQuickAddOpen}
+          userId={user.id}
+          defaultEnergy={currentEnergy}
+        />
+      )}
     </div>
   );
 };

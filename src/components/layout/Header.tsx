@@ -33,6 +33,8 @@ interface HeaderProps {
   onViewInbox?: (energy: EnergyLevel) => void;
   activeFilters?: EnergyLevel[];
   avatarUrl?: string | null;
+  onAddTask?: () => void;
+  onBrainDump?: () => void;
 }
 
 const Header = ({ 
@@ -45,7 +47,9 @@ const Header = ({
   onClearFilters,
   onViewInbox,
   activeFilters = [],
-  avatarUrl
+  avatarUrl,
+  onAddTask,
+  onBrainDump
 }: HeaderProps) => {
   const { toast } = useToast();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -107,6 +111,8 @@ const Header = ({
           activeFilters={activeFilters}
           onShowAll={onClearFilters}
           onViewInbox={onViewInbox}
+          onAddTask={onAddTask}
+          onBrainDump={onBrainDump}
         />
       </div>
 
