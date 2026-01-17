@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { format, startOfWeek, addDays, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
@@ -133,6 +133,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const [userId, setUserId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentStartDate, setCurrentStartDate] = useState(startDate);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -140,7 +141,12 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     });
   }, []);
 
-  const weekStart = startOfWeek(startDate, { weekStartsOn: 1 });
+  // Sync with prop changes
+  useEffect(() => {
+    setCurrentStartDate(startDate);
+  }, [startDate]);
+
+  const weekStart = startOfWeek(currentStartDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
@@ -161,6 +167,14 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     }
     
     return dayTasks;
+  };
+
+  const handlePrevWeek = () => {
+    setCurrentStartDate(prev => addWeeks(prev, -1));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentStartDate(prev => addWeeks(prev, 1));
   };
 
   const handleAddTask = async (date: Date, title: string, energy: EnergyLevel) => {
@@ -196,6 +210,14 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             </h2>
             <p className="text-foreground-muted">{format(weekStart, 'yyyy')}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrevWeek}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleNextWeek}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 

@@ -146,19 +146,19 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: Inbo
       <div className="flex-1 min-w-0 flex items-center gap-2">
         {isEditing ? (
           <div className="flex-1 flex items-center gap-1">
-            <Input
+            <input
               ref={inputRef}
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSaveTitle}
-              className="h-7 text-sm"
+              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground focus:ring-0 focus:outline-none p-0"
               onClick={(e) => e.stopPropagation()}
             />
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0"
+              className="h-6 w-6 p-0"
               onClick={(e) => {
                 e.stopPropagation();
                 handleSaveTitle();
@@ -169,7 +169,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: Inbo
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0"
+              className="h-6 w-6 p-0"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCancelEdit();
@@ -180,7 +180,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: Inbo
           </div>
         ) : (
           <span 
-            className="text-sm truncate cursor-text hover:text-primary transition-colors" 
+            className="text-sm truncate cursor-text" 
             onDoubleClick={handleDoubleClick}
             title="Double-click to edit"
           >

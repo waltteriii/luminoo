@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, getWeek } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, getWeek, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useDroppable } from '@dnd-kit/core';
@@ -97,6 +97,8 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const [userId, setUserId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(month);
+  const [currentYear, setCurrentYear] = useState(year);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -104,7 +106,13 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     });
   }, []);
 
-  const monthDate = new Date(year, month, 1);
+  // Sync with prop changes
+  useEffect(() => {
+    setCurrentMonth(month);
+    setCurrentYear(year);
+  }, [month, year]);
+
+  const monthDate = new Date(currentYear, currentMonth, 1);
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -142,6 +150,18 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     setEditingTask(null);
   };
 
+  const handlePrevMonth = () => {
+    const newDate = addMonths(monthDate, -1);
+    setCurrentMonth(newDate.getMonth());
+    setCurrentYear(newDate.getFullYear());
+  };
+
+  const handleNextMonth = () => {
+    const newDate = addMonths(monthDate, 1);
+    setCurrentMonth(newDate.getMonth());
+    setCurrentYear(newDate.getFullYear());
+  };
+
   // Group days by week
   const weeks: Date[][] = [];
   for (let i = 0; i < calendarDays.length; i += 7) {
@@ -159,6 +179,14 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
           <h2 className="text-2xl font-light text-foreground">
             {format(monthDate, 'MMMM yyyy')}
           </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrevMonth}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleNextMonth}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
