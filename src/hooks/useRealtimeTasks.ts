@@ -145,7 +145,21 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
       return null;
     }
 
-    return data as Task;
+    const inserted = data as Task;
+
+    // Optimistic add so the task appears immediately (no view switching required)
+    const due = inserted.due_date;
+    const include = options.singleDate
+      ? due === options.singleDate
+      : options.dateRange
+        ? !!due && due >= options.dateRange.start && due <= options.dateRange.end
+        : true;
+
+    if (include) {
+      setTasks(prev => (prev.some(t => t.id === inserted.id) ? prev : [...prev, inserted]));
+    }
+
+    return inserted;
   };
 
   const updateTask = async (taskId: string, updates: Partial<Task>) => {

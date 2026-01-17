@@ -2,14 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, Plus, Edit } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
 import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
-import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import { useDroppable } from '@dnd-kit/core';
 import {
@@ -43,8 +42,8 @@ const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
     <div
       ref={setNodeRef}
       className={cn(
-        "h-full transition-colors",
-        isOver && "bg-primary/10 ring-1 ring-primary/30"
+        'h-full transition-colors',
+        isOver && 'bg-primary/10 ring-1 ring-primary/30'
       )}
     >
       {children}
@@ -58,18 +57,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [isDraggingToCreate, setIsDraggingToCreate] = useState(false);
   const [dragStartHour, setDragStartHour] = useState<number | null>(null);
   const [dragEndHour, setDragEndHour] = useState<number | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(date);
   const timeGridRef = useRef<HTMLDivElement>(null);
-  
+
   // State for drag-to-create immediate task creation
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
-  
-  // State for inline editing
-  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
-  const [inlineEditTitle, setInlineEditTitle] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -93,7 +86,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const handleMouseDown = (hour: number, e: React.MouseEvent) => {
     // Only start drag if clicking on empty area (not on a task)
     if ((e.target as HTMLElement).closest('.task-item')) return;
-    
+
     setIsDraggingToCreate(true);
     setDragStartHour(hour);
     setDragEndHour(hour);
@@ -107,7 +100,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     const hourHeight = 80; // Height of each hour slot
     const hour = Math.floor(relativeY / hourHeight) + 6; // 6 AM start
     const clampedHour = Math.max(6, Math.min(22, hour));
-    
+
     setDragEndHour(clampedHour);
   }, [isDraggingToCreate]);
 
@@ -115,7 +108,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     if (isDraggingToCreate && dragStartHour !== null && dragEndHour !== null) {
       const startHour = Math.min(dragStartHour, dragEndHour);
       const endHour = Math.max(dragStartHour, dragEndHour) + 1;
-      
+
       // Immediately show the create dialog with pre-filled time range
       const timeRange = {
         start: `${startHour.toString().padStart(2, '0')}:00`,
@@ -124,7 +117,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       setCreateTimeRange(timeRange);
       setShowCreateDialog(true);
     }
-    
+
     setIsDraggingToCreate(false);
     setDragStartHour(null);
     setDragEndHour(null);
@@ -135,7 +128,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -178,41 +171,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     setCreateTimeRange(null);
   };
 
-  const handleDoubleClick = (e: React.MouseEvent, task: Task) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setEditingTask(task);
-    setEditDialogOpen(true);
-  };
-
-  const handleSaveTask = (taskId: string, updates: Partial<Task>) => {
-    updateTask(taskId, updates);
-    setEditDialogOpen(false);
-    setEditingTask(null);
-  };
-
   const handlePrevDay = () => {
     setCurrentDate(prev => addDays(prev, -1));
   };
 
   const handleNextDay = () => {
     setCurrentDate(prev => addDays(prev, 1));
-  };
-
-  // Inline editing handlers
-  const handleTitleDoubleClick = (e: React.MouseEvent, task: Task) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setInlineEditingTaskId(task.id);
-    setInlineEditTitle(task.title);
-  };
-
-  const handleInlineTitleSave = (taskId: string) => {
-    if (inlineEditTitle.trim()) {
-      updateTask(taskId, { title: inlineEditTitle.trim() });
-    }
-    setInlineEditingTaskId(null);
-    setInlineEditTitle('');
   };
 
   const filteredTasks = energyFilter.length > 0
@@ -262,11 +226,14 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         <div className="flex-1">
           <div ref={timeGridRef} className="border-l border-border select-none relative">
             {/* Current time indicator - only show for today */}
-            {isToday(currentDate) && <CurrentTimeIndicator startHour={6} hourHeight={80} timezone={timezone} />}
+            {isToday(currentDate) && (
+              <CurrentTimeIndicator startHour={6} hourHeight={80} timezone={timezone} />
+            )}
+
             {hours.map(hour => {
-              const isInSelection = selectionStart !== null && 
-                selectionEnd !== null && 
-                hour >= selectionStart && 
+              const isInSelection = selectionStart !== null &&
+                selectionEnd !== null &&
+                hour >= selectionStart &&
                 hour <= selectionEnd;
 
               const timeStr = format(addHours(startOfDay(currentDate), hour), 'h a');
@@ -280,8 +247,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
                   <div
                     className={cn(
-                      "group relative h-20 border-b border-border/50 transition-all cursor-crosshair",
-                      isInSelection && "bg-primary/20 ring-1 ring-primary/50"
+                      'group relative h-20 border-b border-border/50 transition-all cursor-crosshair',
+                      isInSelection && 'bg-primary/20 ring-1 ring-primary/50'
                     )}
                     onMouseDown={(e) => handleMouseDown(hour, e)}
                   >
@@ -292,24 +259,23 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
                     {/* Content area */}
                     <div className="ml-20 h-full relative">
-                      {/* Existing tasks */}
                       <SortableContext
                         items={hourTasks.map(t => t.id)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-1 py-1">
                           {hourTasks.map(task => (
-                            <div 
-                              key={task.id} 
-                              className="task-item cursor-pointer"
-                              onDoubleClick={(e) => handleDoubleClick(e, task)}
-                            >
+                            <div key={task.id} className="task-item">
                               <DraggableTask
                                 task={task}
                                 onUpdate={(updates) => updateTask(task.id, updates)}
                                 onDelete={() => deleteTask(task.id)}
                                 isShared={task.user_id !== userId}
                                 compact
+                                showDetailsButton
+                                enableInlineTitleEdit
+                                disableDoubleClickEdit
+                                dndData={{ hour, date: currentDate }}
                               />
                             </div>
                           ))}
@@ -328,7 +294,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                           />
                         </div>
                       ) : (
-                        /* Show selection indicator or hover prompt */
                         !isDraggingToCreate && hourTasks.length === 0 && (
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                             <div className="flex items-center gap-1 text-xs text-foreground-muted">
@@ -384,21 +349,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         defaultEnergy={currentEnergy}
         onConfirm={handleCreateFromDrag}
       />
-
-      {/* Edit task dialog for double-click editing */}
-      <EditTaskDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        task={editingTask}
-        onSave={handleSaveTask}
-        onDelete={editingTask ? () => {
-          deleteTask(editingTask.id);
-          setEditDialogOpen(false);
-          setEditingTask(null);
-        } : undefined}
-      />
     </div>
   );
 };
 
 export default DayView;
+
