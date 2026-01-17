@@ -382,17 +382,17 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
 
             <ScrollArea className="flex-1 min-h-0">
               {/* Profile Tab */}
-              <TabsContent value="profile" className="p-6 space-y-6 mt-0">
+              <TabsContent value="profile" className="px-6 py-8 space-y-8 mt-0">
                 {/* Avatar and Name - FIRST */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-5">
                   <div 
-                    className="relative w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"
+                    className="relative w-20 h-20 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {avatarUrl ? (
                       <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="w-8 h-8 text-foreground-muted" />
+                      <User className="w-10 h-10 text-foreground-muted" />
                     )}
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       {uploadingAvatar ? (
@@ -403,11 +403,12 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                     </div>
                   </div>
                   <div className="flex-1">
+                    <Label className="text-xs text-foreground-muted mb-1.5 block">Display Name</Label>
                     <Input
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="Your name"
-                      className="font-medium"
+                      className="font-medium h-11"
                     />
                   </div>
                   <input
@@ -420,13 +421,13 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </div>
 
                 {/* Clock and Timezone - Compact, secondary */}
-                <div className="flex items-center justify-between px-3 py-2 bg-secondary/30 rounded-lg">
+                <div className="flex items-center justify-between px-4 py-3 bg-secondary/30 rounded-lg">
                   <div className="text-sm font-medium text-foreground tabular-nums">{currentTime}</div>
                   <Popover open={timezonePopoverOpen} onOpenChange={setTimezonePopoverOpen}>
                     <PopoverTrigger asChild>
                       <button className="flex items-center gap-1.5 text-xs text-foreground-muted hover:text-foreground transition-colors">
-                        <Clock className="w-3 h-3" />
-                        <span className="truncate max-w-[100px]">{selectedTimezoneLabel}</span>
+                        <Clock className="w-3.5 h-3.5" />
+                        <span className="truncate max-w-[120px]">{selectedTimezoneLabel}</span>
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-72 p-0" align="end">
@@ -470,15 +471,15 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </div>
 
                 {/* Creator Type */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Creator Type</Label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-3">
                     {creatorTypes.slice(0, 4).map(type => (
                       <button
                         key={type.value}
                         onClick={() => setCreatorType(type.value)}
                         className={cn(
-                          "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
+                          "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
                           creatorType === type.value
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border hover:border-primary/50 text-foreground-muted"
@@ -489,13 +490,13 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                       </button>
                     ))}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-3">
                     {creatorTypes.slice(4).map(type => (
                       <button
                         key={type.value}
                         onClick={() => setCreatorType(type.value)}
                         className={cn(
-                          "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
+                          "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
                           creatorType === type.value
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border hover:border-primary/50 text-foreground-muted"
@@ -509,14 +510,14 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </div>
 
                 {/* Platforms - Dynamic */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Platforms</Label>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {platforms.map(platform => (
                       <Badge 
                         key={platform} 
                         variant="secondary"
-                        className="gap-1 pr-1"
+                        className="gap-1.5 pr-1.5 py-1"
                       >
                         {platform}
                         <button
@@ -535,36 +536,36 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                         variant="outline"
                         size="sm"
                         onClick={() => addPlatform(platform)}
-                        className="text-xs h-7"
+                        className="text-xs h-8"
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         {platform}
                       </Button>
                     ))}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Input
                       value={newPlatform}
                       onChange={(e) => setNewPlatform(e.target.value)}
                       placeholder="Add custom platform"
-                      className="flex-1 h-8 text-sm"
+                      className="flex-1 h-10 text-sm"
                       onKeyDown={(e) => e.key === 'Enter' && addPlatform(newPlatform)}
                     />
-                    <Button size="sm" variant="secondary" onClick={() => addPlatform(newPlatform)} className="h-8">
+                    <Button size="sm" variant="secondary" onClick={() => addPlatform(newPlatform)} className="h-10">
                       Add
                     </Button>
                   </div>
                 </div>
 
                 {/* Niche Keywords - Dynamic */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Niche Keywords</Label>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {nicheKeywords.map(keyword => (
                       <Badge 
                         key={keyword} 
                         variant="outline"
-                        className="gap-1 pr-1"
+                        className="gap-1.5 pr-1.5 py-1"
                       >
                         {keyword}
                         <button
@@ -576,51 +577,63 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                       </Badge>
                     ))}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Input
                       value={newKeyword}
                       onChange={(e) => setNewKeyword(e.target.value)}
                       placeholder="Add keyword (e.g., indie music, watercolor)"
-                      className="flex-1 h-8 text-sm"
+                      className="flex-1 h-10 text-sm"
                       onKeyDown={(e) => e.key === 'Enter' && addKeyword()}
                     />
-                    <Button size="sm" variant="secondary" onClick={addKeyword} className="h-8">
+                    <Button size="sm" variant="secondary" onClick={addKeyword} className="h-10">
                       Add
                     </Button>
                   </div>
-                  <p className="text-2xs text-foreground-muted">Keywords help AI provide better suggestions</p>
+                  <p className="text-xs text-foreground-muted">Keywords help AI provide better suggestions</p>
                 </div>
 
                 {/* About Audience */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="audienceDescription">About Your Audience</Label>
                   <Textarea
                     id="audienceDescription"
                     value={audienceDescription}
                     onChange={(e) => setAudienceDescription(e.target.value)}
                     placeholder="Who is your audience? What do they care about?"
-                    className="min-h-[80px]"
+                    className="min-h-[100px] resize-none"
                   />
                 </div>
 
-                {/* More About You */}
-                <div className="space-y-2">
-                  <Label htmlFor="moreAboutYou">More About You</Label>
+                {/* More About You - Enhanced AI personalization */}
+                <div className="space-y-3 p-4 bg-secondary/20 rounded-lg border border-border/50">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor="moreAboutYou" className="text-sm font-medium">Tell AI More About You</Label>
+                      <p className="text-xs text-foreground-muted mt-0.5">
+                        Share your creative journey, interests, inspirations, and goals. This helps AI suggest better trends and content ideas.
+                      </p>
+                    </div>
+                  </div>
                   <Textarea
                     id="moreAboutYou"
                     value={moreAboutYou}
                     onChange={(e) => setMoreAboutYou(e.target.value)}
-                    placeholder="Share your interests, inspirations, favorite creators... This helps AI understand your style."
-                    className="min-h-[100px]"
+                    placeholder="Example: I'm a visual artist exploring the intersection of traditional watercolor and digital art. I'm inspired by nature, Japanese aesthetics, and mid-century design. My goal is to build a sustainable creative practice and connect with collectors who appreciate handmade work..."
+                    className="min-h-[140px] resize-none"
                   />
-                  <p className="text-2xs text-foreground-muted">This information helps personalize AI suggestions</p>
+                  <p className="text-xs text-foreground-muted">
+                    ✨ The more detail you share, the better AI can personalize suggestions for you
+                  </p>
                 </div>
               </TabsContent>
 
               {/* Sharing Tab */}
-              <TabsContent value="sharing" className="p-6 space-y-6 mt-0">
+              <TabsContent value="sharing" className="px-6 py-8 space-y-6 mt-0">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Users className="w-4 h-4" />
                       Shared Access
@@ -631,13 +644,13 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                   </CardHeader>
                   <CardContent>
                     {sharedCalendars.length === 0 ? (
-                      <p className="text-sm text-foreground-muted py-4 text-center">
+                      <p className="text-sm text-foreground-muted py-6 text-center">
                         You haven't shared your calendar with anyone yet
                       </p>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {sharedCalendars.map(share => (
-                          <div key={share.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                          <div key={share.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
                             <div>
                               <p className="text-sm font-medium">
                                 {share.shared_with_profile?.display_name || share.shared_with_profile?.email || 'User'}
@@ -662,7 +675,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </Card>
 
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Share2 className="w-4 h-4" />
                       Shared Tasks
@@ -672,7 +685,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-foreground-muted">
+                    <p className="text-sm text-foreground-muted py-4">
                       Enable sharing on individual tasks to collaborate with others
                     </p>
                   </CardContent>
@@ -680,9 +693,9 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
               </TabsContent>
 
               {/* Account Tab */}
-              <TabsContent value="account" className="p-6 space-y-6 mt-0">
+              <TabsContent value="account" className="px-6 py-8 space-y-6 mt-0">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Key className="w-4 h-4" />
                       Password & Security
@@ -692,11 +705,11 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start h-11">
                       Change Password
                     </Button>
                     <Separator />
-                    <div className="text-sm text-foreground-muted">
+                    <div className="text-sm text-foreground-muted py-2">
                       <p className="mb-2">Account created with email authentication</p>
                       <p className="text-xs">Two-factor authentication coming soon</p>
                     </div>
@@ -704,7 +717,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </Card>
 
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
                     <CardDescription>
                       Irreversible account actions
@@ -719,16 +732,16 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
               </TabsContent>
 
               {/* Billing Tab */}
-              <TabsContent value="billing" className="p-6 space-y-6 mt-0">
+              <TabsContent value="billing" className="px-6 py-8 space-y-6 mt-0">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <CreditCard className="w-4 h-4" />
                       Current Plan
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between p-4 bg-primary/10 rounded-lg">
+                    <div className="flex items-center justify-between p-5 bg-primary/10 rounded-lg">
                       <div>
                         <p className="font-medium">Free Plan</p>
                         <p className="text-sm text-foreground-muted">Basic features included</p>
@@ -741,14 +754,14 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </Card>
 
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base">Payment Methods</CardTitle>
                     <CardDescription>
                       Add or manage payment methods
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start h-11">
                       <Plus className="w-4 h-4 mr-2" />
                       Add Payment Method
                     </Button>
@@ -756,11 +769,11 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                 </Card>
 
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base">Billing History</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-foreground-muted py-4 text-center">
+                    <p className="text-sm text-foreground-muted py-6 text-center">
                       No billing history yet
                     </p>
                   </CardContent>
