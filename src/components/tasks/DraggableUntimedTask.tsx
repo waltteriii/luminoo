@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { Users } from 'lucide-react';
+import { Users, GripVertical } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 
@@ -67,6 +67,9 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
       )}
       onDoubleClick={handleDoubleClick}
     >
+      {/* Drag handle icon - visual indicator only */}
+      <GripVertical className="w-3 h-3 text-foreground-muted flex-shrink-0" />
+      
       {isEditing ? (
         <Input
           value={editTitle}
