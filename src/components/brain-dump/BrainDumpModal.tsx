@@ -233,15 +233,15 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             </div>
           </div>
         ) : step === 'review' ? (
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
             {summary && (
-              <div className="p-3 bg-primary/10 rounded-lg text-sm text-foreground-muted">
+              <div className="p-3 bg-primary/10 rounded-lg text-sm text-foreground-muted shrink-0">
                 <span className="font-medium text-foreground">Summary:</span> {summary}
               </div>
             )}
 
-            <ScrollArea className="flex-1 pr-2">
-              <div className="space-y-3">
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="space-y-3 pr-4 pb-2">
                 {parsedItems.map((item, index) => (
                   <ParsedItemCard
                     key={index}
@@ -253,7 +253,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               </div>
             </ScrollArea>
 
-            <div className="flex justify-between items-center pt-2 border-t border-border">
+            <div className="flex justify-between items-center pt-2 border-t border-border shrink-0">
               <Button variant="ghost" onClick={() => setStep('input')}>
                 ← Back to edit
               </Button>

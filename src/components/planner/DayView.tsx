@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { format, startOfDay, addHours, isToday } from 'date-fns';
+import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
@@ -60,11 +60,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [dragEndHour, setDragEndHour] = useState<number | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(date);
   const timeGridRef = useRef<HTMLDivElement>(null);
   
   // State for drag-to-create immediate task creation
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
+  
+  // State for inline editing
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
+  const [inlineEditTitle, setInlineEditTitle] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -72,7 +77,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     });
   }, []);
 
-  const dateStr = format(date, 'yyyy-MM-dd');
+  // Sync with prop changes
+  useEffect(() => {
+    setCurrentDate(date);
+  }, [date]);
+
+  const dateStr = format(currentDate, 'yyyy-MM-dd');
   const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
     userId: userId || undefined,
     singleDate: dateStr,
@@ -181,6 +191,30 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     setEditingTask(null);
   };
 
+  const handlePrevDay = () => {
+    setCurrentDate(prev => addDays(prev, -1));
+  };
+
+  const handleNextDay = () => {
+    setCurrentDate(prev => addDays(prev, 1));
+  };
+
+  // Inline editing handlers
+  const handleTitleDoubleClick = (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setInlineEditingTaskId(task.id);
+    setInlineEditTitle(task.title);
+  };
+
+  const handleInlineTitleSave = (taskId: string) => {
+    if (inlineEditTitle.trim()) {
+      updateTask(taskId, { title: inlineEditTitle.trim() });
+    }
+    setInlineEditingTaskId(null);
+    setInlineEditTitle('');
+  };
+
   const filteredTasks = energyFilter.length > 0
     ? tasks.filter(t => energyFilter.includes(t.energy_level))
     : tasks;
@@ -200,16 +234,26 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
-          <ChevronLeft className="w-4 h-4" />
-          Back
-        </Button>
-        <div>
-          <h2 className="text-2xl font-light text-foreground">
-            {format(date, 'EEEE')}
-          </h2>
-          <p className="text-foreground-muted">{format(date, 'MMMM d, yyyy')}</p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </Button>
+          <div>
+            <h2 className="text-2xl font-light text-foreground">
+              {format(currentDate, 'EEEE')}
+            </h2>
+            <p className="text-foreground-muted">{format(currentDate, 'MMMM d, yyyy')}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrevDay}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleNextDay}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -218,14 +262,14 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         <div className="flex-1">
           <div ref={timeGridRef} className="border-l border-border select-none relative">
             {/* Current time indicator - only show for today */}
-            {isToday(date) && <CurrentTimeIndicator startHour={6} hourHeight={80} timezone={timezone} />}
+            {isToday(currentDate) && <CurrentTimeIndicator startHour={6} hourHeight={80} timezone={timezone} />}
             {hours.map(hour => {
               const isInSelection = selectionStart !== null && 
                 selectionEnd !== null && 
                 hour >= selectionStart && 
                 hour <= selectionEnd;
 
-              const timeStr = format(addHours(startOfDay(date), hour), 'h a');
+              const timeStr = format(addHours(startOfDay(currentDate), hour), 'h a');
               const hourTasks = filteredTasks.filter(t => {
                 if (!t.start_time) return false;
                 const taskHour = parseInt(t.start_time.split(':')[0]);
@@ -233,7 +277,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               });
 
               return (
-                <TimeSlotDropZone key={hour} hour={hour} date={date}>
+                <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
                   <div
                     className={cn(
                       "group relative h-20 border-b border-border/50 transition-all cursor-crosshair",
@@ -278,7 +322,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                           <QuickAddTask
                             onAdd={handleQuickAdd}
                             defaultEnergy={currentEnergy}
-                            defaultDate={date}
+                            defaultDate={currentDate}
                             defaultTime={`${hour.toString().padStart(2, '0')}:00`}
                             compact
                           />
@@ -323,7 +367,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
             <QuickAddTask
               onAdd={handleQuickAdd}
               defaultEnergy={currentEnergy}
-              defaultDate={date}
+              defaultDate={currentDate}
               compact
             />
           </div>
@@ -334,7 +378,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       <CreateTaskDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        targetDate={date}
+        targetDate={currentDate}
         startTime={createTimeRange?.start}
         endTime={createTimeRange?.end}
         defaultEnergy={currentEnergy}

@@ -468,40 +468,6 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="relative w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer group"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-8 h-8 text-foreground-muted" />
-                    )}
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      {uploadingAvatar ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-white" />
-                      ) : (
-                        <Camera className="w-5 h-5 text-white" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Your name"
-                      className="font-medium"
-                    />
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                </div>
 
                 {/* Creator Type */}
                 <div className="space-y-2">
