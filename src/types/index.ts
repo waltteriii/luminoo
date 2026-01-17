@@ -103,6 +103,7 @@ export interface Task {
   detected_from_brain_dump: boolean;
   is_shared: boolean;
   shared_with: string[];
+  location: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -173,7 +174,7 @@ export interface TrendCache {
 
 // View Types
 export type ViewMode = 'grid' | 'circular' | 'timeline';
-export type ZoomLevel = 'year' | 'quarter' | 'month' | 'week' | 'day';
+export type ZoomLevel = 'year' | 'quarter' | 'month' | 'week' | 'day' | 'hour';
 
 // App State
 export interface AppState {

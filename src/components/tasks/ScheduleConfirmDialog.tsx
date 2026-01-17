@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Task, EnergyLevel } from '@/types';
 import {
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -17,8 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users } from 'lucide-react';
 import EnergyPill from '@/components/shared/EnergyPill';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 interface ScheduleConfirmDialogProps {
   open: boolean;
@@ -26,7 +35,13 @@ interface ScheduleConfirmDialogProps {
   task: Task | null;
   targetDate: Date | null;
   targetHour?: number;
-  onConfirm: (taskId: string, date: string, startTime?: string, endTime?: string) => void;
+  onConfirm: (
+    taskId: string,
+    date: string,
+    startTime?: string,
+    endTime?: string,
+    updates?: { title?: string; energy_level?: EnergyLevel; location?: string; is_shared?: boolean }
+  ) => void;
 }
 
 const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
@@ -43,31 +58,46 @@ const ScheduleConfirmDialog = ({
   targetHour,
   onConfirm,
 }: ScheduleConfirmDialogProps) => {
-  const defaultStartTime = targetHour !== undefined 
-    ? `${targetHour.toString().padStart(2, '0')}:00` 
-    : '';
-  const defaultEndTime = targetHour !== undefined 
-    ? `${(targetHour + 1).toString().padStart(2, '0')}:00` 
-    : '';
+  const [startTime, setStartTime] = useState('none');
+  const [endTime, setEndTime] = useState('none');
+  const [title, setTitle] = useState('');
+  const [energy, setEnergy] = useState<EnergyLevel>('medium');
+  const [location, setLocation] = useState('');
+  const [isShared, setIsShared] = useState(false);
 
-  const [startTime, setStartTime] = useState(defaultStartTime);
-  const [endTime, setEndTime] = useState(defaultEndTime);
-
-  // Reset times when dialog opens with new values
-  useState(() => {
-    if (open && targetHour !== undefined) {
-      setStartTime(`${targetHour.toString().padStart(2, '0')}:00`);
-      setEndTime(`${(targetHour + 1).toString().padStart(2, '0')}:00`);
+  // Reset state when dialog opens with new task/values
+  useEffect(() => {
+    if (open && task) {
+      setTitle(task.title);
+      setEnergy(task.energy_level);
+      setLocation(task.location || '');
+      setIsShared(task.is_shared || false);
+      
+      if (targetHour !== undefined) {
+        setStartTime(`${targetHour.toString().padStart(2, '0')}:00`);
+        setEndTime(`${(targetHour + 1).toString().padStart(2, '0')}:00`);
+      } else {
+        setStartTime('none');
+        setEndTime('none');
+      }
     }
-  });
+  }, [open, task, targetHour]);
 
   const handleConfirm = () => {
     if (task && targetDate) {
+      const updates: { title?: string; energy_level?: EnergyLevel; location?: string; is_shared?: boolean } = {};
+      
+      if (title !== task.title) updates.title = title;
+      if (energy !== task.energy_level) updates.energy_level = energy;
+      if (location !== (task.location || '')) updates.location = location || undefined;
+      if (isShared !== task.is_shared) updates.is_shared = isShared;
+      
       onConfirm(
         task.id,
         format(targetDate, 'yyyy-MM-dd'),
         startTime && startTime !== 'none' ? startTime : undefined,
-        endTime && endTime !== 'none' ? endTime : undefined
+        endTime && endTime !== 'none' ? endTime : undefined,
+        Object.keys(updates).length > 0 ? updates : undefined
       );
       onOpenChange(false);
     }
@@ -89,10 +119,31 @@ const ScheduleConfirmDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Task preview */}
-          <div className="p-3 rounded-lg bg-secondary flex items-center gap-3">
-            <span className="flex-1 font-medium">{task.title}</span>
-            <EnergyPill energy={task.energy_level} />
+          {/* Editable task title */}
+          <div className="space-y-2">
+            <Label htmlFor="task-title">Task</Label>
+            <Input
+              id="task-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Task title"
+            />
+          </div>
+
+          {/* Energy level selector */}
+          <div className="space-y-2">
+            <Label>Energy Level</Label>
+            <div className="flex gap-2">
+              {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((e) => (
+                <button
+                  key={e}
+                  onClick={() => setEnergy(e)}
+                  className={`transition-all ${energy === e ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-full' : 'opacity-60 hover:opacity-100'}`}
+                >
+                  <EnergyPill energy={e} />
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Time selection */}
@@ -135,13 +186,40 @@ const ScheduleConfirmDialog = ({
               </Select>
             </div>
           </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <Label htmlFor="task-location" className="flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              Location
+            </Label>
+            <Input
+              id="task-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Add a location (optional)"
+            />
+          </div>
+
+          {/* Share toggle */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="share-task" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Share this task
+            </Label>
+            <Switch
+              id="share-task"
+              checked={isShared}
+              onCheckedChange={setIsShared}
+            />
+          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
+          <Button onClick={handleConfirm} disabled={!title.trim()}>
             Schedule Task
           </Button>
         </DialogFooter>

@@ -33,6 +33,21 @@ const PlannerView = ({
 }: PlannerViewProps) => {
   const currentYear = new Date().getFullYear();
 
+  // Hour view (same as day view but focused on hours)
+  if (zoomLevel === 'hour' && focusedDate) {
+    return (
+      <div className="h-full p-6 lg:p-8">
+        <DayView
+          date={focusedDate}
+          currentEnergy={currentEnergy}
+          energyFilter={energyFilter}
+          onBack={onZoomOut}
+          showHourFocus
+        />
+      </div>
+    );
+  }
+
   // Day view
   if (zoomLevel === 'day' && focusedDate) {
     return (

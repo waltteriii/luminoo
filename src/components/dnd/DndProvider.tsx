@@ -107,16 +107,27 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
     taskId: string,
     dueDate: string,
     startTime?: string,
-    endTime?: string
+    endTime?: string,
+    updates?: { title?: string; energy_level?: EnergyLevel; location?: string; is_shared?: boolean }
   ) => {
     try {
+      const updateData: Record<string, unknown> = {
+        due_date: dueDate,
+        start_time: startTime && startTime !== 'none' ? startTime : null,
+        end_time: endTime && endTime !== 'none' ? endTime : null,
+      };
+      
+      // Merge additional updates
+      if (updates) {
+        if (updates.title) updateData.title = updates.title;
+        if (updates.energy_level) updateData.energy_level = updates.energy_level;
+        if (updates.location !== undefined) updateData.location = updates.location || null;
+        if (updates.is_shared !== undefined) updateData.is_shared = updates.is_shared;
+      }
+      
       await supabase
         .from('tasks')
-        .update({
-          due_date: dueDate,
-          start_time: startTime && startTime !== 'none' ? startTime : null,
-          end_time: endTime && endTime !== 'none' ? endTime : null,
-        })
+        .update(updateData)
         .eq('id', taskId);
       
       onTaskScheduled?.();

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ViewMode, ZoomLevel } from '@/types';
+import ZoomControls from '@/components/planner/ZoomControls';
 
 interface SidebarProps {
   open: boolean;
@@ -38,13 +39,6 @@ const Sidebar = ({
     { value: 'grid', icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
     { value: 'circular', icon: <Circle className="w-4 h-4" />, label: 'Circular' },
     { value: 'timeline', icon: <LayoutList className="w-4 h-4" />, label: 'Timeline' },
-  ];
-
-  const zoomLevels: { value: ZoomLevel; label: string }[] = [
-    { value: 'year', label: 'Year' },
-    { value: 'month', label: 'Month' },
-    { value: 'week', label: 'Week' },
-    { value: 'day', label: 'Day' },
   ];
 
   return (
@@ -77,25 +71,13 @@ const Sidebar = ({
           </div>
         </div>
 
-        {/* Zoom Level */}
+        {/* Zoom Controls - New +/- design */}
         <div className="space-y-2">
           <span className="caption">Zoom</span>
-          <div className="grid grid-cols-2 gap-1 bg-secondary rounded-lg p-1">
-            {zoomLevels.map((level) => (
-              <Button
-                key={level.value}
-                variant="ghost"
-                size="sm"
-                onClick={() => onZoomLevelChange(level.value)}
-                className={cn(
-                  "text-xs text-foreground-muted hover:text-foreground",
-                  zoomLevel === level.value && "bg-background text-foreground shadow-sm"
-                )}
-              >
-                {level.label}
-              </Button>
-            ))}
-          </div>
+          <ZoomControls 
+            zoomLevel={zoomLevel} 
+            onZoomLevelChange={onZoomLevelChange} 
+          />
         </div>
 
         {/* Quick Actions */}

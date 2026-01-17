@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { format, startOfDay, addHours } from 'date-fns';
+import { format, startOfDay, addHours, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft, Plus } from 'lucide-react';
@@ -9,6 +9,7 @@ import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
 import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
+import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -21,6 +22,7 @@ interface DayViewProps {
   currentEnergy: EnergyLevel;
   energyFilter?: EnergyLevel[];
   onBack: () => void;
+  showHourFocus?: boolean;
 }
 
 interface TimeSlotDropZoneProps {
@@ -48,7 +50,7 @@ const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
   );
 };
 
-const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProps) => {
+const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus = false }: DayViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [addingAtHour, setAddingAtHour] = useState<number | null>(null);
   const [isDraggingToCreate, setIsDraggingToCreate] = useState(false);
@@ -197,7 +199,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack }: DayViewProp
       <div className="flex gap-6">
         {/* Time grid */}
         <div className="flex-1">
-          <div ref={timeGridRef} className="border-l border-border select-none">
+          <div ref={timeGridRef} className="border-l border-border select-none relative">
+            {/* Current time indicator */}
+            {isToday(date) && <CurrentTimeIndicator startHour={6} hourHeight={80} />}
             {hours.map(hour => {
               const isInSelection = selectionStart !== null && 
                 selectionEnd !== null && 
