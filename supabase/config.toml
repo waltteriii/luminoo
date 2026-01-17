@@ -1,1 +1,7 @@
 project_id = "hzpljvedsohxlispmilw"
+
+[functions.parse-brain-dump]
+verify_jwt = false
+
+[functions.get-trending-topics]
+verify_jwt = false
