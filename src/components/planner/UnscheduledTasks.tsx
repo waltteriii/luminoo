@@ -98,6 +98,24 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
     }
   };
 
+  const handleTitleChange = async (taskId: string, title: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ title })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, title } : t
+      ));
+    } catch (err) {
+      console.error('Update title error:', err);
+    }
+  };
+
   // Filter by energy if filter is active
   const filteredTasks = energyFilter.length > 0
     ? tasks.filter(t => energyFilter.includes(t.energy_level))
@@ -118,7 +136,7 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
             {filteredTasks.length} unscheduled
           </span>
           <span className="text-xs text-foreground-muted opacity-60 hidden sm:inline">
-            • Drag tasks to calendar
+            • Drag tasks to calendar or double-click to edit
           </span>
         </div>
         {collapsed ? (
@@ -137,6 +155,7 @@ const UnscheduledTasks = ({ energyFilter, onScheduleTask }: UnscheduledTasksProp
                 task={task}
                 onSchedule={handleScheduleTask}
                 onEnergyChange={handleEnergyChange}
+                onTitleChange={handleTitleChange}
               />
             ))}
           </div>

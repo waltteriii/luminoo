@@ -1,8 +1,9 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { GripVertical, Calendar, Clock, Users } from 'lucide-react';
+import { GripVertical, Calendar, Clock, Users, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -10,7 +11,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import EnergyPill from '@/components/shared/EnergyPill';
 import {
   Select,
@@ -24,6 +25,7 @@ interface InboxTaskItemProps {
   task: Task;
   onSchedule: (taskId: string, date: string, startTime?: string, endTime?: string) => void;
   onEnergyChange?: (taskId: string, energy: EnergyLevel) => void;
+  onTitleChange?: (taskId: string, title: string) => void;
 }
 
 const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
@@ -39,11 +41,14 @@ const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
   { value: 'recovery', label: 'Recovery' },
 ];
 
-const InboxTaskItem = ({ task, onSchedule, onEnergyChange }: InboxTaskItemProps) => {
+const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
     attributes,
@@ -62,6 +67,40 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange }: InboxTaskItemProps)
         zIndex: isDragging ? 1000 : undefined,
       }
     : undefined;
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditTitle(task.title);
+    setIsEditing(true);
+  };
+
+  const handleSaveTitle = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== task.title && onTitleChange) {
+      onTitleChange(task.id, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditTitle(task.title);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
 
   const handleQuickSchedule = (daysFromNow: number) => {
     const date = addDays(new Date(), daysFromNow);
@@ -105,153 +144,199 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange }: InboxTaskItemProps)
 
       {/* Task title and energy */}
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        <span className="text-sm truncate">{task.title}</span>
+        {isEditing ? (
+          <div className="flex-1 flex items-center gap-1">
+            <Input
+              ref={inputRef}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleSaveTitle}
+              className="h-7 text-sm"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSaveTitle();
+              }}
+            >
+              <Check className="w-3 h-3 text-green-500" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCancelEdit();
+              }}
+            >
+              <X className="w-3 h-3 text-destructive" />
+            </Button>
+          </div>
+        ) : (
+          <span 
+            className="text-sm truncate cursor-text hover:text-primary transition-colors" 
+            onDoubleClick={handleDoubleClick}
+            title="Double-click to edit"
+          >
+            {task.title}
+          </span>
+        )}
         
         {/* Clickable energy pill to change energy */}
-        <Popover>
-          <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <button className="cursor-pointer hover:opacity-80">
-              <EnergyPill energy={task.energy_level} />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-36 p-1" align="start" onClick={(e) => e.stopPropagation()}>
-            {ENERGY_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEnergyChange?.(task.id, option.value);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-secondary transition-colors",
-                  task.energy_level === option.value && "bg-secondary"
-                )}
-              >
-                <span
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    option.value === 'high' && "bg-energy-high",
-                    option.value === 'medium' && "bg-energy-medium",
-                    option.value === 'low' && "bg-energy-low",
-                    option.value === 'recovery' && "bg-energy-recovery"
-                  )}
-                />
-                {option.label}
+        {!isEditing && (
+          <Popover>
+            <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <button className="cursor-pointer hover:opacity-80">
+                <EnergyPill energy={task.energy_level} />
               </button>
-            ))}
-          </PopoverContent>
-        </Popover>
+            </PopoverTrigger>
+            <PopoverContent className="w-36 p-1" align="start" onClick={(e) => e.stopPropagation()}>
+              {ENERGY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEnergyChange?.(task.id, option.value);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-secondary transition-colors",
+                    task.energy_level === option.value && "bg-secondary"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full",
+                      option.value === 'high' && "bg-energy-high",
+                      option.value === 'medium' && "bg-energy-medium",
+                      option.value === 'low' && "bg-energy-low",
+                      option.value === 'recovery' && "bg-energy-recovery"
+                    )}
+                  />
+                  {option.label}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        )}
         
         {task.is_shared && <Users className="w-3 h-3 text-primary" />}
       </div>
 
       {/* Quick schedule buttons */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleQuickSchedule(0);
-          }}
-        >
-          Today
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleQuickSchedule(1);
-          }}
-        >
-          Tomorrow
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSchedule(task.id, format(nextMonday, 'yyyy-MM-dd'));
-          }}
-        >
-          Mon
-        </Button>
+      {!isEditing && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickSchedule(0);
+            }}
+          >
+            Today
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickSchedule(1);
+            }}
+          >
+            Tomorrow
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSchedule(task.id, format(nextMonday, 'yyyy-MM-dd'));
+            }}
+          >
+            Mon
+          </Button>
 
-        {/* Full date/time picker */}
-        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Calendar className="w-3 h-3" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
-            <div className="p-3 space-y-3">
-              <CalendarPicker
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-                className="pointer-events-auto"
-              />
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="text-xs text-foreground-muted mb-1 block">
-                    <Clock className="w-3 h-3 inline mr-1" />
-                    Start
-                  </label>
-                  <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Start time" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-48">
-                      <SelectItem value="none">No time</SelectItem>
-                      {TIME_OPTIONS.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-foreground-muted mb-1 block">End</label>
-                  <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="End time" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-48">
-                      <SelectItem value="none">No time</SelectItem>
-                      {TIME_OPTIONS.filter(t => !selectedStartTime || selectedStartTime === 'none' || t > selectedStartTime).map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button
-                onClick={handleConfirmSchedule}
-                disabled={!selectedDate}
-                className="w-full"
-                size="sm"
+          {/* Full date/time picker */}
+          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0"
+                onClick={(e) => e.stopPropagation()}
               >
-                Schedule {selectedDate && `for ${format(selectedDate, 'MMM d')}`}
-                {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
+                <Calendar className="w-3 h-3" />
               </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
+              <div className="p-3 space-y-3">
+                <CalendarPicker
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-foreground-muted mb-1 block">
+                      <Clock className="w-3 h-3 inline mr-1" />
+                      Start
+                    </label>
+                    <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Start time" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-48">
+                        <SelectItem value="none">No time</SelectItem>
+                        {TIME_OPTIONS.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-foreground-muted mb-1 block">End</label>
+                    <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="End time" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-48">
+                        <SelectItem value="none">No time</SelectItem>
+                        {TIME_OPTIONS.filter(t => !selectedStartTime || selectedStartTime === 'none' || t > selectedStartTime).map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleConfirmSchedule}
+                  disabled={!selectedDate}
+                  className="w-full"
+                  size="sm"
+                >
+                  Schedule {selectedDate && `for ${format(selectedDate, 'MMM d')}`}
+                  {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
     </div>
   );
 };
