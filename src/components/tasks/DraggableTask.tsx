@@ -172,7 +172,13 @@ const DraggableTask = ({
               setEditDialogOpen(true);
             }}
             onMouseDown={(e) => {
-              // Prevent drag-to-create from triggering
+              // Prevent DayView drag-to-create from starting
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onPointerDown={(e) => {
+              // Extra safety for PointerEvents
+              e.preventDefault();
               e.stopPropagation();
             }}
             title="Edit task details"

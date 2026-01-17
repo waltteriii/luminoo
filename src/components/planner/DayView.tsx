@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
@@ -84,56 +84,72 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   // Handle mouse events for drag-to-create
   const handleMouseDown = (hour: number, e: React.MouseEvent) => {
-    // Only start drag if clicking on empty area (not on a task)
-    if ((e.target as HTMLElement).closest('.task-item')) return;
+    if (isDraggingToCreate) return;
+
+    const target = e.target as HTMLElement;
+
+    // Never start drag-to-create when interacting with tasks or controls
+    if (target.closest('.task-item')) return;
+    if (target.closest('button, a, input, textarea, select, [role="button"], [data-no-drag-create]')) return;
+
+    // left click only
+    if ((e as unknown as MouseEvent).button !== 0) return;
+
+    e.preventDefault();
+
+    const startHour = hour;
+    let endHour = hour;
+    let moved = false;
 
     setIsDraggingToCreate(true);
-    setDragStartHour(hour);
-    setDragEndHour(hour);
-  };
+    setDragStartHour(startHour);
+    setDragEndHour(endHour);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingToCreate || !timeGridRef.current) return;
+    const onMove = (ev: MouseEvent) => {
+      if (!timeGridRef.current) return;
 
-    const rect = timeGridRef.current.getBoundingClientRect();
-    const relativeY = e.clientY - rect.top;
-    const hourHeight = 80; // Height of each hour slot
-    const hour = Math.floor(relativeY / hourHeight) + 6; // 6 AM start
-    const clampedHour = Math.max(6, Math.min(22, hour));
+      moved = true;
 
-    setDragEndHour(clampedHour);
-  }, [isDraggingToCreate]);
+      const rect = timeGridRef.current.getBoundingClientRect();
+      const relativeY = ev.clientY - rect.top;
+      const hourHeight = 80; // Height of each hour slot
+      const hoveredHour = Math.floor(relativeY / hourHeight) + 6; // 6 AM start
+      const clampedHour = Math.max(6, Math.min(22, hoveredHour));
 
-  const handleMouseUp = useCallback(() => {
-    if (isDraggingToCreate && dragStartHour !== null && dragEndHour !== null) {
-      const startHour = Math.min(dragStartHour, dragEndHour);
-      const endHour = Math.max(dragStartHour, dragEndHour) + 1;
+      endHour = clampedHour;
+      setDragEndHour(clampedHour);
+    };
 
-      // Immediately show the create dialog with pre-filled time range
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+
+      // If it was a simple click (no drag), do nothing.
+      if (!moved) {
+        setIsDraggingToCreate(false);
+        setDragStartHour(null);
+        setDragEndHour(null);
+        return;
+      }
+
+      const rangeStart = Math.min(startHour, endHour);
+      const rangeEnd = Math.max(startHour, endHour) + 1;
+
       const timeRange = {
-        start: `${startHour.toString().padStart(2, '0')}:00`,
-        end: `${endHour.toString().padStart(2, '0')}:00`,
+        start: `${rangeStart.toString().padStart(2, '0')}:00`,
+        end: `${rangeEnd.toString().padStart(2, '0')}:00`,
       };
+
       setCreateTimeRange(timeRange);
       setShowCreateDialog(true);
-    }
 
-    setIsDraggingToCreate(false);
-    setDragStartHour(null);
-    setDragEndHour(null);
-  }, [isDraggingToCreate, dragStartHour, dragEndHour]);
-
-  useEffect(() => {
-    if (isDraggingToCreate) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      setIsDraggingToCreate(false);
+      setDragStartHour(null);
+      setDragEndHour(null);
     };
-  }, [isDraggingToCreate, handleMouseMove, handleMouseUp]);
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp, { once: true });
+  };
 
   const handleQuickAdd = async (task: {
     title: string;
@@ -265,7 +281,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       >
                         <div className="space-y-1 py-1">
                           {hourTasks.map(task => (
-                            <div key={task.id} className="task-item">
+                            <div
+                              key={task.id}
+                              className="task-item"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
                               <DraggableTask
                                 task={task}
                                 onUpdate={(updates) => updateTask(task.id, updates)}
