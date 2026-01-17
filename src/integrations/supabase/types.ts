@@ -357,10 +357,13 @@ export type Database = {
           detected_from_brain_dump: boolean | null
           due_date: string | null
           emotional_note: string | null
+          end_date: string | null
+          end_time: string | null
           energy_level: Database["public"]["Enums"]["energy_level"] | null
           id: string
           is_shared: boolean | null
           shared_with: string[] | null
+          start_time: string | null
           suggested_timeframe: string | null
           time_model: Database["public"]["Enums"]["time_model"] | null
           title: string
@@ -376,10 +379,13 @@ export type Database = {
           detected_from_brain_dump?: boolean | null
           due_date?: string | null
           emotional_note?: string | null
+          end_date?: string | null
+          end_time?: string | null
           energy_level?: Database["public"]["Enums"]["energy_level"] | null
           id?: string
           is_shared?: boolean | null
           shared_with?: string[] | null
+          start_time?: string | null
           suggested_timeframe?: string | null
           time_model?: Database["public"]["Enums"]["time_model"] | null
           title: string
@@ -395,10 +401,13 @@ export type Database = {
           detected_from_brain_dump?: boolean | null
           due_date?: string | null
           emotional_note?: string | null
+          end_date?: string | null
+          end_time?: string | null
           energy_level?: Database["public"]["Enums"]["energy_level"] | null
           id?: string
           is_shared?: boolean | null
           shared_with?: string[] | null
+          start_time?: string | null
           suggested_timeframe?: string | null
           time_model?: Database["public"]["Enums"]["time_model"] | null
           title?: string

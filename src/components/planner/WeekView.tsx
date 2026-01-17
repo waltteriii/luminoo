@@ -5,7 +5,7 @@ import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import AddTaskButton from '@/components/tasks/AddTaskButton';
+import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
 import {
   DndContext,
@@ -112,9 +112,13 @@ const DroppableDay = ({
               +{tasks.length - 5} more
             </button>
           )}
-          <AddTaskButton
-            onAdd={(title, energy) => onAddTask(date, title, energy)}
+          <QuickAddTask
+            onAdd={async (task) => {
+              await onAddTask(date, task.title, task.energy);
+            }}
             defaultEnergy={currentEnergy}
+            defaultDate={date}
+            compact
           />
         </div>
       </SortableContext>
