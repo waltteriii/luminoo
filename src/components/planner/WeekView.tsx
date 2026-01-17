@@ -93,7 +93,7 @@ const DroppableDay = ({
         <div className="space-y-2">
           {tasks.slice(0, 5).map(task => (
             <div 
-              key={task.id} 
+              key={task.id}
               onDoubleClick={(e) => handleDoubleClick(e, task)}
               className="cursor-pointer"
             >
@@ -103,7 +103,7 @@ const DroppableDay = ({
                 onDelete={() => onDeleteTask(task.id)}
                 isShared={task.user_id !== userId}
                 compact
-                enableFullDrag
+                disableDoubleClickEdit
               />
             </div>
           ))}

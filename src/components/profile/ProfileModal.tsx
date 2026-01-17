@@ -360,7 +360,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
             <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
           </div>
         ) : (
-          <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
+          <Tabs defaultValue="profile" className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <TabsList className="mx-6 mt-4 grid grid-cols-4 w-auto">
               <TabsTrigger value="profile" className="text-xs gap-1">
                 <User className="w-3 h-3" />
@@ -380,7 +380,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               {/* Profile Tab */}
               <TabsContent value="profile" className="p-6 space-y-6 mt-0">
                 {/* Avatar and Name - FIRST */}
