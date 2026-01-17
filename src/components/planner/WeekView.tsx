@@ -11,6 +11,7 @@ import AddTaskButton from '@/components/tasks/AddTaskButton';
 interface WeekViewProps {
   startDate: Date;
   currentEnergy: EnergyLevel;
+  energyFilter?: EnergyLevel[];
   onDayClick: (date: Date) => void;
   onBack: () => void;
 }

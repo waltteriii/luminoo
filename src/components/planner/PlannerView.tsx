@@ -12,6 +12,7 @@ interface PlannerViewProps {
   focusedMonth: number | null;
   focusedDate: Date | null;
   currentEnergy: EnergyLevel;
+  energyFilter: EnergyLevel[];
   onMonthClick: (month: number) => void;
   onDayClick: (date: Date) => void;
   onWeekClick: (date: Date) => void;
@@ -24,6 +25,7 @@ const PlannerView = ({
   focusedMonth,
   focusedDate,
   currentEnergy,
+  energyFilter,
   onMonthClick,
   onDayClick,
   onWeekClick,
@@ -38,6 +40,7 @@ const PlannerView = ({
         <DayView
           date={focusedDate}
           currentEnergy={currentEnergy}
+          energyFilter={energyFilter}
           onBack={onZoomOut}
         />
       </div>
@@ -51,6 +54,7 @@ const PlannerView = ({
         <WeekView
           startDate={focusedDate}
           currentEnergy={currentEnergy}
+          energyFilter={energyFilter}
           onDayClick={onDayClick}
           onBack={onZoomOut}
         />
@@ -66,6 +70,7 @@ const PlannerView = ({
           month={focusedMonth}
           year={currentYear}
           currentEnergy={currentEnergy}
+          energyFilter={energyFilter}
           onDayClick={onDayClick}
           onWeekClick={onWeekClick}
           onBack={onZoomOut}
@@ -78,6 +83,7 @@ const PlannerView = ({
     zoomLevel,
     focusedMonth,
     currentEnergy,
+    energyFilter,
     onMonthClick,
     onZoomOut,
   };

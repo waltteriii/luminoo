@@ -11,6 +11,7 @@ interface MonthDetailViewProps {
   month: number; // 0-indexed
   year: number;
   currentEnergy: EnergyLevel;
+  energyFilter?: EnergyLevel[];
   onDayClick: (date: Date) => void;
   onWeekClick: (date: Date) => void;
   onBack: () => void;

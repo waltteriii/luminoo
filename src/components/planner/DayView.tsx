@@ -11,6 +11,7 @@ import AddTaskButton from '@/components/tasks/AddTaskButton';
 interface DayViewProps {
   date: Date;
   currentEnergy: EnergyLevel;
+  energyFilter?: EnergyLevel[];
   onBack: () => void;
 }
 
