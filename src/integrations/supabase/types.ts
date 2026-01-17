@@ -14,7 +14,328 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      brain_dumps: {
+        Row: {
+          ai_parsed_result: Json | null
+          created_at: string
+          id: string
+          items_added_to_planner: string[] | null
+          raw_text: string
+          user_highlights: Json | null
+          user_id: string
+        }
+        Insert: {
+          ai_parsed_result?: Json | null
+          created_at?: string
+          id?: string
+          items_added_to_planner?: string[] | null
+          raw_text: string
+          user_highlights?: Json | null
+          user_id: string
+        }
+        Update: {
+          ai_parsed_result?: Json | null
+          created_at?: string
+          id?: string
+          items_added_to_planner?: string[] | null
+          raw_text?: string
+          user_highlights?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_dumps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          description: string | null
+          energy_level: Database["public"]["Enums"]["energy_level"] | null
+          id: string
+          month: number
+          name: string
+          phase_id: string | null
+          status: Database["public"]["Enums"]["campaign_status"] | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+          week: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          energy_level?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          month: number
+          name: string
+          phase_id?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"] | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+          week?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          energy_level?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          month?: number
+          name?: string
+          phase_id?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"] | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+          week?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_suggestions: {
+        Row: {
+          confidence: number | null
+          content_type: string | null
+          created_at: string
+          description: string
+          energy_level: Database["public"]["Enums"]["energy_level"] | null
+          id: string
+          platform: string | null
+          reason: string | null
+          related_campaign_id: string | null
+          status: Database["public"]["Enums"]["suggestion_status"] | null
+          suggested_date: string | null
+          title: string
+          trend_source: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          content_type?: string | null
+          created_at?: string
+          description: string
+          energy_level?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          platform?: string | null
+          reason?: string | null
+          related_campaign_id?: string | null
+          status?: Database["public"]["Enums"]["suggestion_status"] | null
+          suggested_date?: string | null
+          title: string
+          trend_source?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          content_type?: string | null
+          created_at?: string
+          description?: string
+          energy_level?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          platform?: string | null
+          reason?: string | null
+          related_campaign_id?: string | null
+          status?: Database["public"]["Enums"]["suggestion_status"] | null
+          suggested_date?: string | null
+          title?: string
+          trend_source?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_suggestions_related_campaign_id_fkey"
+            columns: ["related_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phases: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          end_month: number
+          id: string
+          name: string
+          start_month: number
+          type: Database["public"]["Enums"]["phase_type"]
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_month: number
+          id?: string
+          name: string
+          start_month: number
+          type: Database["public"]["Enums"]["phase_type"]
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_month?: number
+          id?: string
+          name?: string
+          start_month?: number
+          type?: Database["public"]["Enums"]["phase_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          ai_profile_summary: string | null
+          audience_description: string | null
+          avatar_url: string | null
+          created_at: string
+          creator_type: Database["public"]["Enums"]["creator_type"] | null
+          display_name: string | null
+          email: string | null
+          id: string
+          niche_keywords: string[] | null
+          onboarding_completed: boolean | null
+          platforms: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          ai_profile_summary?: string | null
+          audience_description?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          creator_type?: Database["public"]["Enums"]["creator_type"] | null
+          display_name?: string | null
+          email?: string | null
+          id: string
+          niche_keywords?: string[] | null
+          onboarding_completed?: boolean | null
+          platforms?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          ai_profile_summary?: string | null
+          audience_description?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          creator_type?: Database["public"]["Enums"]["creator_type"] | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          niche_keywords?: string[] | null
+          onboarding_completed?: boolean | null
+          platforms?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          campaign_id: string | null
+          completed: boolean | null
+          created_at: string
+          description: string | null
+          detected_from_brain_dump: boolean | null
+          due_date: string | null
+          emotional_note: string | null
+          energy_level: Database["public"]["Enums"]["energy_level"] | null
+          id: string
+          suggested_timeframe: string | null
+          time_model: Database["public"]["Enums"]["time_model"] | null
+          title: string
+          updated_at: string
+          urgency: Database["public"]["Enums"]["urgency_level"] | null
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          completed?: boolean | null
+          created_at?: string
+          description?: string | null
+          detected_from_brain_dump?: boolean | null
+          due_date?: string | null
+          emotional_note?: string | null
+          energy_level?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          suggested_timeframe?: string | null
+          time_model?: Database["public"]["Enums"]["time_model"] | null
+          title: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"] | null
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          completed?: boolean | null
+          created_at?: string
+          description?: string | null
+          detected_from_brain_dump?: boolean | null
+          due_date?: string | null
+          emotional_note?: string | null
+          energy_level?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          suggested_timeframe?: string | null
+          time_model?: Database["public"]["Enums"]["time_model"] | null
+          title?: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +344,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      campaign_status: "planned" | "active" | "completed" | "paused"
+      creator_type:
+        | "musician"
+        | "visual_artist"
+        | "writer"
+        | "coach"
+        | "content_creator"
+        | "entrepreneur"
+        | "other"
+      energy_level: "high" | "medium" | "low" | "recovery"
+      phase_type: "planning" | "creation" | "launch" | "reflection"
+      suggestion_status: "pending" | "accepted" | "dismissed" | "scheduled"
+      time_model: "event-based" | "state-based"
+      urgency_level: "low" | "normal" | "high" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +484,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      campaign_status: ["planned", "active", "completed", "paused"],
+      creator_type: [
+        "musician",
+        "visual_artist",
+        "writer",
+        "coach",
+        "content_creator",
+        "entrepreneur",
+        "other",
+      ],
+      energy_level: ["high", "medium", "low", "recovery"],
+      phase_type: ["planning", "creation", "launch", "reflection"],
+      suggestion_status: ["pending", "accepted", "dismissed", "scheduled"],
+      time_model: ["event-based", "state-based"],
+      urgency_level: ["low", "normal", "high", "critical"],
+    },
   },
 } as const
