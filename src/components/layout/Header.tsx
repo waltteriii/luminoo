@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel } from '@/types';
-import EnergySelector from '@/components/planner/EnergySelector';
+import EnergySelector from '@/components/planner/NewEnergySelector';
 import { useState, useEffect } from 'react';
 
 interface HeaderProps {
@@ -34,7 +34,6 @@ const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar }: Header
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
-    // Check if light theme is set
     const isLight = document.documentElement.classList.contains('light');
     setTheme(isLight ? 'light' : 'dark');
   }, []);
@@ -65,7 +64,6 @@ const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar }: Header
 
   return (
     <header className="h-14 border-b border-border bg-background-elevated flex items-center justify-between px-4">
-      {/* Left section */}
       <div className="flex items-center gap-3">
         <Button 
           variant="ghost" 
@@ -84,7 +82,6 @@ const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar }: Header
         </div>
       </div>
 
-      {/* Center section - Energy selector */}
       <div className="flex items-center">
         <EnergySelector 
           value={currentEnergy} 
@@ -92,7 +89,6 @@ const Header = ({ user, currentEnergy, onEnergyChange, onToggleSidebar }: Header
         />
       </div>
 
-      {/* Right section */}
       <div className="flex items-center gap-2">
         <Button 
           variant="ghost" 
