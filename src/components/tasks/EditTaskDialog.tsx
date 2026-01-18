@@ -238,23 +238,25 @@ const EditTaskDialog = ({
               )}
             </div>
 
-            {/* Time selection toggle */}
-            <div className="flex items-center justify-between py-1">
-              <Label className="text-foreground-muted">Schedule specific time</Label>
-              <Switch
-                checked={useTime}
-                onCheckedChange={(checked) => {
-                  setUseTime(checked);
-                  if (!checked) {
-                    setStartTime('09:00');
-                    setEndTime('10:00');
-                  }
-                }}
-              />
-            </div>
+            {/* Time selection toggle - only show when not multi-day */}
+            {!isMultiDay && (
+              <div className="flex items-center justify-between py-1">
+                <Label className="text-foreground-muted">Schedule specific time</Label>
+                <Switch
+                  checked={useTime}
+                  onCheckedChange={(checked) => {
+                    setUseTime(checked);
+                    if (!checked) {
+                      setStartTime('09:00');
+                      setEndTime('10:00');
+                    }
+                  }}
+                />
+              </div>
+            )}
 
-            {/* Time slider with clickable times */}
-            {useTime && (
+            {/* Time slider - only for single-day tasks with time enabled */}
+            {!isMultiDay && useTime && (
               <div className="rounded-xl border border-border/50 p-4 bg-secondary/20">
                 <TaskTimeSelector
                   startTime={startTime}
@@ -262,6 +264,35 @@ const EditTaskDialog = ({
                   onStartTimeChange={setStartTime}
                   onEndTimeChange={setEndTime}
                 />
+              </div>
+            )}
+
+            {/* Multi-day time pickers */}
+            {isMultiDay && (
+              <div className="space-y-4 rounded-xl border border-border/50 p-4 bg-secondary/20">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-foreground-muted">Start Time</Label>
+                    <Input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-foreground-muted">End Time</Label>
+                    <Input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-foreground-muted text-center">
+                  Times apply to start and end dates respectively
+                </p>
               </div>
             )}
 
