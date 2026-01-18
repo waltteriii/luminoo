@@ -218,7 +218,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[85vh] min-h-0 overflow-hidden flex flex-col"> 
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               </div>
             )}
 
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea className="flex-1 min-h-0" type="always">
               <div className="space-y-2 pr-4 pb-2">
                 {parsedItems.map((item, index) => (
                   <ParsedItemCard
@@ -329,7 +329,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               </span>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1" type="always">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin text-foreground-muted" />
