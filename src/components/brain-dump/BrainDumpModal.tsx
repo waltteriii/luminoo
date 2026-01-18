@@ -65,23 +65,63 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
   };
 
   const handleParse = async () => {
-    if (!text.trim()) return;
-    
+    if (!text.trim() || parsing) return;
+
     setParsing(true);
+
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    const isRetryable = (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      return msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network');
+    };
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data, error } = await supabase.functions.invoke('parse-brain-dump', {
-        body: { text }
-      });
 
-      if (error) throw error;
-      
-      if (data.error) {
+      let data: any = null;
+      let invokeError: any = null;
+
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const res = await supabase.functions.invoke('parse-brain-dump', {
+          body: { text },
+        });
+
+        data = res.data;
+        invokeError = res.error;
+
+        if (!invokeError) break;
+
+        if (attempt < 2 && isRetryable(invokeError)) {
+          await sleep(500 * attempt);
+          continue;
+        }
+      }
+
+      if (invokeError) {
+        const msg = invokeError?.message || 'Could not analyze your brain dump.';
         toast({
-          title: "AI Error",
+          title: 'Failed to parse',
+          description: msg,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data?.error) {
+        toast({
+          title: 'AI Error',
           description: data.error,
-          variant: "destructive"
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!data?.items || !Array.isArray(data.items)) {
+        toast({
+          title: 'AI Error',
+          description: 'Invalid response from AI. Please try again.',
+          variant: 'destructive',
         });
         return;
       }
@@ -89,28 +129,28 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
       const items = data.items.map((item: ParsedItem) => ({
         ...item,
         user_override_energy: null,
-        // Clear due_date by default - user must explicitly schedule
-        due_date: null
+        // Default to Inbox; user can schedule via the calendar chip
+        due_date: null,
       }));
-      
+
       setParsedItems(items);
       setSummary(data.summary);
       setStep('review');
 
-      // Save brain dump to history
+      // Save brain dump to history (non-blocking)
       if (user) {
-        await supabase.from('brain_dumps').insert({
+        supabase.from('brain_dumps').insert({
           user_id: user.id,
           raw_text: text,
-          ai_parsed_result: data
+          ai_parsed_result: data,
         });
       }
     } catch (err) {
       console.error('Parse error:', err);
       toast({
-        title: "Failed to parse",
-        description: "Could not analyze your brain dump. Please try again.",
-        variant: "destructive"
+        title: 'Failed to parse',
+        description: err instanceof Error ? err.message : 'Could not analyze your brain dump. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setParsing(false);

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { InboxIcon, ChevronRight, ChevronDown, Plus } from 'lucide-react';
+import { InboxIcon, ChevronRight, ChevronDown, Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 
 interface UnscheduledTasksProps {
@@ -13,6 +15,7 @@ interface UnscheduledTasksProps {
 const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
   // Always-visible new task input
@@ -169,8 +172,17 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
 
   return (
     <div className="border-b border-border bg-secondary/30">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
         onClick={() => setCollapsed(!collapsed)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setCollapsed((v) => !v);
+          }
+        }}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
       >
         <div className="flex items-center gap-2">
@@ -185,12 +197,31 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             • Drag tasks to calendar or double-click to edit
           </span>
         </div>
-        {collapsed ? (
-          <ChevronRight className="w-4 h-4 text-foreground-muted" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-foreground-muted" />
-        )}
-      </button>
+
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!userId) return;
+              setRefreshing(true);
+              await loadTasks(userId);
+              setRefreshing(false);
+            }}
+            title="Refresh inbox"
+          >
+            <RefreshCw className={cn("w-4 h-4 text-foreground-muted", refreshing && "animate-spin")} />
+          </Button>
+
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4 text-foreground-muted" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-foreground-muted" />
+          )}
+        </div>
+      </div>
 
       {!collapsed && (
         <ScrollArea className="max-h-[280px]">
