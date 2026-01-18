@@ -169,6 +169,12 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
     ));
   };
 
+  const handleTextChange = (index: number, text: string) => {
+    setParsedItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, text } : item
+    ));
+  };
+
   const handleRemoveItem = (index: number) => {
     setParsedItems(prev => prev.filter((_, i) => i !== index));
   };
@@ -297,6 +303,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                     onEnergyChange={(energy) => handleEnergyChange(index, energy)}
                     onRemove={() => handleRemoveItem(index)}
                     onDateChange={(date) => handleDateChange(index, date)}
+                    onTextChange={(text) => handleTextChange(index, text)}
                   />
                 ))}
               </div>
