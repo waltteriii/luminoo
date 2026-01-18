@@ -299,16 +299,16 @@ const CalendarTask = ({
                 )}
               </div>
 
-              {/* Reorder buttons - left and right for precise control */}
+              {/* Reorder buttons - centered vertically for better visibility */}
               {(canMoveLeft || canMoveRight) && (
                 <div className={cn(
-                  'absolute top-1 left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity'
+                  'absolute left-1 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10'
                 )}>
                   {canMoveLeft && (
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="h-6 w-6 bg-background/95 hover:bg-primary hover:text-primary-foreground shadow-md transition-all"
+                      className="h-5 w-5 bg-background/95 hover:bg-primary hover:text-primary-foreground shadow-md transition-all"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
@@ -318,14 +318,14 @@ const CalendarTask = ({
                       onPointerDown={(e) => e.stopPropagation()}
                       title="Move left"
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <ChevronLeft className="w-3 h-3" />
                     </Button>
                   )}
                   {canMoveRight && (
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="h-6 w-6 bg-background/95 hover:bg-primary hover:text-primary-foreground shadow-md transition-all"
+                      className="h-5 w-5 bg-background/95 hover:bg-primary hover:text-primary-foreground shadow-md transition-all"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
@@ -335,7 +335,7 @@ const CalendarTask = ({
                       onPointerDown={(e) => e.stopPropagation()}
                       title="Move right"
                     >
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3 h-3" />
                     </Button>
                   )}
                 </div>

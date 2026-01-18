@@ -152,6 +152,13 @@ const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonth
       }
     : undefined;
 
+  // Handle click vs double-click
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Single click does nothing - let the day click bubble (but we stopped it)
+    // Double click opens edit
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -161,6 +168,7 @@ const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonth
             style={style}
             {...attributes}
             {...listeners}
+            onClick={handleClick}
             onDoubleClick={onDoubleClick}
             className={cn(
               "text-[8px] sm:text-[9px] lg:text-[10px] px-1 py-0.5 rounded cursor-grab active:cursor-grabbing overflow-hidden touch-none",
