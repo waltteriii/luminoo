@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useDensity, UIDensity, ViewType } from '@/contexts/DensityContext';
 import { Switch } from '@/components/ui/switch';
+import TimeRangeSettingsSection from '@/components/profile/TimeRangeSettingsSection';
 
 interface ProfileModalProps {
   open: boolean;
@@ -984,12 +985,8 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
 
                 <Separator className="my-1" />
 
-                {/* Coming Soon */}
-                <div className="py-4 px-3 bg-secondary/40 rounded-lg border border-border/50 text-center">
-                  <p className="text-xs text-foreground-muted">
-                    More accessibility and focus settings coming soon
-                  </p>
-                </div>
+                {/* Time Range Settings */}
+                <TimeRangeSettingsSection />
               </TabsContent>
 
               {/* Sharing Tab */}
