@@ -16,6 +16,7 @@ interface TrendingTopicsModalProps {
     platforms: Platform[];
     nicheKeywords: string[];
     audienceDescription: string | null;
+    aiProfileSummary?: string | null;
   } | null;
   onAddTask: (title: string, energy: EnergyLevel) => void;
 }

@@ -27,6 +27,7 @@ interface UserProfile {
   platforms: Platform[];
   nicheKeywords: string[];
   audienceDescription: string | null;
+  aiProfileSummary: string | null;
   avatarUrl: string | null;
   defaultView: ZoomLevel | null;
   highlightColor: string | null;
@@ -81,6 +82,7 @@ const Index = () => {
     platforms: [],
     nicheKeywords: [],
     audienceDescription: null,
+    aiProfileSummary: null,
     avatarUrl: null,
     defaultView: null,
     highlightColor: cachedHighlight,
@@ -151,7 +153,7 @@ const Index = () => {
   const loadUserProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('creator_type, platforms, niche_keywords, audience_description, avatar_url, default_view, highlight_color')
+      .select('creator_type, platforms, niche_keywords, audience_description, ai_profile_summary, avatar_url, default_view, highlight_color')
       .eq('id', userId)
       .maybeSingle();
 
@@ -163,6 +165,7 @@ const Index = () => {
         platforms: (data.platforms || []) as Platform[],
         nicheKeywords: data.niche_keywords || [],
         audienceDescription: data.audience_description,
+        aiProfileSummary: data.ai_profile_summary,
         avatarUrl: data.avatar_url,
         defaultView: ((data as any).default_view as ZoomLevel) || null,
         highlightColor,

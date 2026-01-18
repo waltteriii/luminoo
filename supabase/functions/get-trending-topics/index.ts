@@ -39,7 +39,7 @@ serve(async (req) => {
     const body = await req.json();
     const { userProfile } = body;
     
-    // Input validation
+    // Input validation - allow null values for all optional fields
     if (userProfile !== undefined && userProfile !== null) {
       if (typeof userProfile !== 'object' || Array.isArray(userProfile)) {
         return new Response(JSON.stringify({ error: 'userProfile must be an object if provided' }), {
@@ -48,29 +48,46 @@ serve(async (req) => {
         });
       }
       
-      if (userProfile.platforms !== undefined && !Array.isArray(userProfile.platforms)) {
+      // Allow null, undefined, or array for platforms
+      if (userProfile.platforms !== undefined && userProfile.platforms !== null && 
+          !Array.isArray(userProfile.platforms)) {
         return new Response(JSON.stringify({ error: 'platforms must be an array if provided' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      if (userProfile.nicheKeywords !== undefined && !Array.isArray(userProfile.nicheKeywords)) {
+      // Allow null, undefined, or array for nicheKeywords
+      if (userProfile.nicheKeywords !== undefined && userProfile.nicheKeywords !== null &&
+          !Array.isArray(userProfile.nicheKeywords)) {
         return new Response(JSON.stringify({ error: 'nicheKeywords must be an array if provided' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      if (userProfile.creatorType !== undefined && typeof userProfile.creatorType !== 'string') {
+      // Allow null, undefined, or string for creatorType
+      if (userProfile.creatorType !== undefined && userProfile.creatorType !== null &&
+          typeof userProfile.creatorType !== 'string') {
         return new Response(JSON.stringify({ error: 'creatorType must be a string if provided' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      if (userProfile.audienceDescription !== undefined && typeof userProfile.audienceDescription !== 'string') {
+      // Allow null, undefined, or string for audienceDescription
+      if (userProfile.audienceDescription !== undefined && userProfile.audienceDescription !== null &&
+          typeof userProfile.audienceDescription !== 'string') {
         return new Response(JSON.stringify({ error: 'audienceDescription must be a string if provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // Allow null, undefined, or string for aiProfileSummary
+      if (userProfile.aiProfileSummary !== undefined && userProfile.aiProfileSummary !== null &&
+          typeof userProfile.aiProfileSummary !== 'string') {
+        return new Response(JSON.stringify({ error: 'aiProfileSummary must be a string if provided' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -82,6 +99,7 @@ serve(async (req) => {
     const sanitizedPlatforms = (userProfile?.platforms || ['social media']).slice(0, 10).map((p: string) => String(p).slice(0, 50));
     const sanitizedKeywords = (userProfile?.nicheKeywords || ['general']).slice(0, 20).map((k: string) => String(k).slice(0, 50));
     const sanitizedAudience = (userProfile?.audienceDescription || 'General audience').slice(0, 500);
+    const sanitizedAiSummary = (userProfile?.aiProfileSummary || '').slice(0, 1000);
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
@@ -101,7 +119,7 @@ User Profile:
 - Creator Type: ${sanitizedCreatorType}
 - Platforms: ${sanitizedPlatforms.join(', ')}
 - Niche Keywords: ${sanitizedKeywords.join(', ')}
-- About: ${sanitizedAudience}
+- Target Audience: ${sanitizedAudience}${sanitizedAiSummary ? `\n- Additional Context About Creator: ${sanitizedAiSummary}` : ''}
 
 Consider:
 1. Current events and seasonal trends relevant to their niche
@@ -110,6 +128,7 @@ Consider:
 4. Evergreen content opportunities
 5. Timely opportunities (holidays, awareness days, etc.)
 
+Tailor suggestions specifically to the creator's unique voice, expertise, and target audience based on their profile.
 Be specific and actionable. Include why each trend is relevant NOW.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
