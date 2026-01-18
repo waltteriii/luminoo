@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, isBefore, differenceInDays } from 'date-fns';
 import { Task, EnergyLevel } from '@/types';
 import {
@@ -48,30 +48,39 @@ const EditTaskDialog = ({
   const [isShared, setIsShared] = useState(false);
   const [useTime, setUseTime] = useState(false);
   const [isMultiDay, setIsMultiDay] = useState(false);
+  const loadedTaskIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (open && task) {
-      setTitle(task.title);
-      setDescription(task.description || '');
-      setEnergy(task.energy_level);
-      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
-      setEndDate(task.end_date ? new Date(task.end_date) : undefined);
-      setLocation(task.location || '');
-      setIsShared(task.is_shared || false);
-      setIsMultiDay(!!task.end_date);
-      
-      const hasTime = !!(task.start_time && task.start_time !== 'none');
-      setUseTime(hasTime);
-      
-      if (hasTime) {
-        setStartTime(task.start_time?.slice(0, 5) || '09:00');
-        setEndTime(task.end_time?.slice(0, 5) || '10:00');
-      } else {
-        setStartTime('09:00');
-        setEndTime('10:00');
-      }
+    if (!open || !task) {
+      loadedTaskIdRef.current = null;
+      return;
     }
-  }, [open, task]);
+
+    // IMPORTANT: Don't reset local edits just because the parent re-rendered
+    // with a new object reference for the same task.
+    if (loadedTaskIdRef.current === task.id) return;
+    loadedTaskIdRef.current = task.id;
+
+    setTitle(task.title);
+    setDescription(task.description || '');
+    setEnergy(task.energy_level);
+    setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+    setEndDate(task.end_date ? new Date(task.end_date) : undefined);
+    setLocation(task.location || '');
+    setIsShared(task.is_shared || false);
+    setIsMultiDay(!!task.end_date);
+
+    const hasTime = !!(task.start_time && task.start_time !== 'none');
+    setUseTime(hasTime);
+
+    if (hasTime) {
+      setStartTime(task.start_time?.slice(0, 5) || '09:00');
+      setEndTime(task.end_time?.slice(0, 5) || '10:00');
+    } else {
+      setStartTime('09:00');
+      setEndTime('10:00');
+    }
+  }, [open, task?.id]);
 
   const handleSave = () => {
     if (!task || !title.trim()) return;
@@ -82,8 +91,8 @@ const EditTaskDialog = ({
       energy_level: energy,
       due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
       end_date: isMultiDay && endDate ? format(endDate, 'yyyy-MM-dd') : null,
-      start_time: useTime ? startTime : null,
-      end_time: useTime ? endTime : null,
+      start_time: (useTime || isMultiDay) ? startTime : null,
+      end_time: (useTime || isMultiDay) ? endTime : null,
       location: location.trim() || null,
       is_shared: isShared,
     };

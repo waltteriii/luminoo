@@ -148,20 +148,26 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       setDragType(null);
       dragStateRef.current = null;
 
-      // Commit final times to parent state
-      onStartTimeChange(draftStartTime);
-      onEndTimeChange(draftEndTime);
-
-      // Prevent the trailing click event from "jumping" the slider after a drag
-      window.setTimeout(() => {
-        suppressClickRef.current = false;
-      }, 0);
+      // Flush any pending RAF update so we commit the latest values
+      const final = pendingRef.current ?? { start: draftStartTime, end: draftEndTime };
 
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
       pendingRef.current = null;
+
+      setDraftStartTime(final.start);
+      setDraftEndTime(final.end);
+
+      // Commit final times to parent state
+      onStartTimeChange(final.start);
+      onEndTimeChange(final.end);
+
+      // Prevent the trailing click event from "jumping" the slider after a drag
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
     };
 
     const startDrag = (type: DragType) => (e: React.PointerEvent) => {
