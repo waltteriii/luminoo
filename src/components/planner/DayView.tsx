@@ -3,7 +3,7 @@ import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { parseTimeToHours } from '@/lib/timeUtils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, Plus, ArrowLeftRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import CalendarTask from '@/components/tasks/CalendarTask';
@@ -14,6 +14,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
+import { useDndContext } from '@/components/dnd/DndProvider';
 import {
   Tooltip,
   TooltipContent,
@@ -57,6 +58,51 @@ const TimeSlotDropZone = memo(({ hour, date, children }: TimeSlotDropZoneProps) 
 
 TimeSlotDropZone.displayName = 'TimeSlotDropZone';
 
+// Reorder drop zone component for task column reordering
+interface ReorderDropZoneProps {
+  groupIdx: number;
+  columnIndex: number;
+  groupTasks: Task[];
+  groupTop: number;
+  groupHeight: number;
+  columnWidth: number;
+}
+
+const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, groupHeight, columnWidth }: ReorderDropZoneProps) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `reorder-zone-${groupIdx}-${columnIndex}`,
+    data: { 
+      type: 'reorder-zone', 
+      columnIndex, 
+      groupTasks,
+      groupTop,
+      groupHeight,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'absolute pointer-events-auto z-40 transition-all',
+        isOver && 'bg-primary/20'
+      )}
+      style={{
+        top: `${groupTop}px`,
+        height: `${groupHeight}px`,
+        left: `calc(${columnIndex * columnWidth}% - 8px)`,
+        width: '16px',
+      }}
+    >
+      {isOver && (
+        <div className="absolute left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-primary rounded-full" />
+      )}
+    </div>
+  );
+});
+
+ReorderDropZone.displayName = 'ReorderDropZone';
+
 const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus = false, timezone = 'UTC' }: DayViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [addingAtHour, setAddingAtHour] = useState<number | null>(null);
@@ -66,6 +112,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [currentDate, setCurrentDate] = useState(date);
   const timeGridRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { activeTask, dragOverInfo } = useDndContext();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
@@ -379,62 +426,105 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               {overlappingGroups.map((group, groupIdx) => {
                 const columnWidth = 100 / group.length;
                 const isMultiTask = group.length > 1;
+                
+                // Calculate group bounds for drop indicator
+                const groupPositions = group.map(t => getTaskPosition(t)).filter(Boolean);
+                const groupTop = Math.min(...groupPositions.map(p => p!.top));
+                const groupBottom = Math.max(...groupPositions.map(p => p!.top + p!.height));
+                const groupHeight = groupBottom - groupTop;
 
-                return group.map((task, columnIdx) => {
-                  const pos = getTaskPosition(task);
-                  if (!pos) return null;
+                // Check if this group is the target for drop indicator
+                const isTargetGroup = dragOverInfo && 
+                  dragOverInfo.groupTasks.length === group.length &&
+                  dragOverInfo.groupTasks.every((t, i) => t.id === group[i]?.id);
 
-                  const taskHeight = Math.max(pos.height - 2, 22);
-                  
-                  // Reorder handlers - use sequential indices for clear ordering
-                  const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
-                    // Swap positions by exchanging display_order values
-                    const leftTask = group[columnIdx - 1];
-                    // Use columnIdx as base to ensure distinct values
-                    const newLeftOrder = columnIdx * 10;
-                    const newCurrentOrder = (columnIdx - 1) * 10;
-                    updateTask(task.id, { display_order: newCurrentOrder });
-                    updateTask(leftTask.id, { display_order: newLeftOrder });
-                  } : undefined;
-                  
-                  const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
-                    // Swap positions by exchanging display_order values
-                    const rightTask = group[columnIdx + 1];
-                    // Use columnIdx as base to ensure distinct values
-                    const newRightOrder = columnIdx * 10;
-                    const newCurrentOrder = (columnIdx + 1) * 10;
-                    updateTask(task.id, { display_order: newCurrentOrder });
-                    updateTask(rightTask.id, { display_order: newRightOrder });
-                  } : undefined;
+                return (
+                  <div key={`group-${groupIdx}`}>
+                    {/* Drop indicator line */}
+                    {isTargetGroup && activeTask && (
+                      <div
+                        className="absolute z-50 pointer-events-none"
+                        style={{
+                          top: `${groupTop}px`,
+                          height: `${groupHeight}px`,
+                          left: `calc(${dragOverInfo.targetColumnIndex * columnWidth}% + 2px)`,
+                          width: '3px',
+                        }}
+                      >
+                        <div className="w-full h-full bg-primary rounded-full animate-pulse" />
+                      </div>
+                    )}
+                    
+                    {/* Reorder drop zones - invisible areas between columns */}
+                    {isMultiTask && activeTask && group.some(t => t.id === activeTask.id) && (
+                      <>
+                        {Array.from({ length: group.length + 1 }).map((_, zoneIdx) => (
+                          <ReorderDropZone
+                            key={`zone-${groupIdx}-${zoneIdx}`}
+                            groupIdx={groupIdx}
+                            columnIndex={zoneIdx}
+                            groupTasks={group}
+                            groupTop={groupTop}
+                            groupHeight={groupHeight}
+                            columnWidth={columnWidth}
+                          />
+                        ))}
+                      </>
+                    )}
+                    
+                    {group.map((task, columnIdx) => {
+                      const pos = getTaskPosition(task);
+                      if (!pos) return null;
 
-                  return (
-                    <div
-                      key={task.id}
-                      className="absolute task-item pointer-events-auto group/task"
-                      style={{
-                        top: `${pos.top + 1}px`,
-                        height: `${taskHeight}px`,
-                        left: `calc(${columnIdx * columnWidth}% + 4px)`,
-                        width: `calc(${columnWidth}% - 8px)`,
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <CalendarTask
-                        task={task}
-                        onUpdate={(updates) => updateTask(task.id, updates)}
-                        onDelete={() => deleteTask(task.id)}
-                        isShared={task.user_id !== userId}
-                        showTimeRange={pos.duration >= 1}
-                        height={taskHeight}
-                        canMoveLeft={!!handleMoveLeft}
-                        canMoveRight={!!handleMoveRight}
-                        onMoveLeft={handleMoveLeft}
-                        onMoveRight={handleMoveRight}
-                      />
-                    </div>
-                  );
-                });
+                      const taskHeight = Math.max(pos.height - 2, 22);
+                      
+                      // Reorder handlers - use sequential indices for clear ordering
+                      const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
+                        const leftTask = group[columnIdx - 1];
+                        const newLeftOrder = columnIdx * 10;
+                        const newCurrentOrder = (columnIdx - 1) * 10;
+                        updateTask(task.id, { display_order: newCurrentOrder });
+                        updateTask(leftTask.id, { display_order: newLeftOrder });
+                      } : undefined;
+                      
+                      const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
+                        const rightTask = group[columnIdx + 1];
+                        const newRightOrder = columnIdx * 10;
+                        const newCurrentOrder = (columnIdx + 1) * 10;
+                        updateTask(task.id, { display_order: newCurrentOrder });
+                        updateTask(rightTask.id, { display_order: newRightOrder });
+                      } : undefined;
+
+                      return (
+                        <div
+                          key={task.id}
+                          className="absolute task-item pointer-events-auto group/task"
+                          style={{
+                            top: `${pos.top + 1}px`,
+                            height: `${taskHeight}px`,
+                            left: `calc(${columnIdx * columnWidth}% + 4px)`,
+                            width: `calc(${columnWidth}% - 8px)`,
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
+                          <CalendarTask
+                            task={task}
+                            onUpdate={(updates) => updateTask(task.id, updates)}
+                            onDelete={() => deleteTask(task.id)}
+                            isShared={task.user_id !== userId}
+                            showTimeRange={pos.duration >= 1}
+                            height={taskHeight}
+                            canMoveLeft={!!handleMoveLeft}
+                            canMoveRight={!!handleMoveRight}
+                            onMoveLeft={handleMoveLeft}
+                            onMoveRight={handleMoveRight}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
               })}
             </div>
           </div>
