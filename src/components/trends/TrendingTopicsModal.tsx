@@ -109,6 +109,7 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
           }
         }}
       >
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
             Trending Topics
