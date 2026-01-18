@@ -313,60 +313,55 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
           )}
 
           {/* Task grid with new task input in first column slot */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-            {/* New task input - same width as task items */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/50 hover:border-primary/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all min-h-[44px]">
-              <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
-              <input
-                ref={newTaskInputRef}
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') createNewTask();
-                  if (e.key === 'Escape') {
-                    setNewTaskTitle('');
-                    newTaskInputRef.current?.blur();
-                  }
-                }}
-                placeholder="New task…"
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
-              />
+          <div className="relative">
+            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+              {/* New task input - same width as task items */}
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card/50 border border-border/50 hover:border-primary/50 focus-within:border-primary focus-within:bg-card/80 transition-all min-h-[44px] group">
+                <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-primary flex-shrink-0 transition-colors" />
+                <input
+                  ref={newTaskInputRef}
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') createNewTask();
+                    if (e.key === 'Escape') {
+                      setNewTaskTitle('');
+                      newTaskInputRef.current?.blur();
+                    }
+                  }}
+                  placeholder="New task…"
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
+                />
+              </div>
+              
+              {/* Task list */}
+              {visibleTasks.map(task => (
+                <InboxTaskItem
+                  key={task.id}
+                  task={task}
+                  onSchedule={handleScheduleTask}
+                  onEnergyChange={handleEnergyChange}
+                  onTitleChange={handleTitleChange}
+                  onDelete={handleDeleteTask}
+                />
+              ))}
             </div>
             
-            {/* Task list with fade effect on last item if overflow */}
-            {visibleTasks.map((task, index) => {
-              const isLastVisible = index === visibleTasks.length - 1;
-              const shouldFade = isLastVisible && isOverflowing && !expanded;
-              
-              return (
-                <div 
-                  key={task.id} 
-                  className={cn(
-                    "relative",
-                    shouldFade && "after:absolute after:inset-0 after:bg-gradient-to-t after:from-background after:via-background/60 after:to-transparent after:pointer-events-none after:rounded-lg"
-                  )}
-                >
-                  <InboxTaskItem
-                    task={task}
-                    onSchedule={handleScheduleTask}
-                    onEnergyChange={handleEnergyChange}
-                    onTitleChange={handleTitleChange}
-                    onDelete={handleDeleteTask}
-                  />
-                </div>
-              );
-            })}
+            {/* Elegant fade overlay for overflow - spans full width of last row */}
+            {isOverflowing && !expanded && (
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+            )}
           </div>
 
-          {/* Overflow indicator - simpler, cleaner */}
+          {/* Overflow indicator - minimal, elegant */}
           {isOverflowing && (
             <button
               onClick={() => setExpanded(v => !v)}
               className={cn(
-                "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[40px]",
+                "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all",
                 expanded
-                  ? "text-foreground-muted hover:text-foreground hover:bg-secondary/50"
-                  : "bg-highlight-muted/50 text-highlight-foreground hover:bg-highlight-muted"
+                  ? "text-foreground-muted hover:text-foreground"
+                  : "text-primary hover:text-primary/80"
               )}
             >
               {expanded ? (
@@ -376,7 +371,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 </>
               ) : (
                 <>
-                  +{hiddenCount} more
+                  <span className="opacity-70">+{hiddenCount} more</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </>
               )}
