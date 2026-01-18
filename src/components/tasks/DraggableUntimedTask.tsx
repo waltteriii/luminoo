@@ -2,7 +2,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
 import { Users } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 
 interface DraggableUntimedTaskProps {
@@ -10,6 +10,7 @@ interface DraggableUntimedTaskProps {
   onUpdate: (updates: Partial<Task>) => void;
   onDelete?: () => void;
   isShared?: boolean;
+  isNew?: boolean; // Flag to trigger glow animation
 }
 
 const energyColors: Record<EnergyLevel, string> = {
@@ -19,9 +20,11 @@ const energyColors: Record<EnergyLevel, string> = {
   recovery: 'border-l-energy-recovery',
 };
 
-const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableUntimedTaskProps) => {
+const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared, isNew }: DraggableUntimedTaskProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
+  const [showGlow, setShowGlow] = useState(isNew);
+  const hasAnimated = useRef(false);
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `untimed-${task.id}`,
@@ -31,6 +34,16 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
   useEffect(() => {
     setEditTitle(task.title);
   }, [task.title]);
+
+  // Trigger glow animation for new tasks
+  useEffect(() => {
+    if (isNew && !hasAnimated.current) {
+      hasAnimated.current = true;
+      setShowGlow(true);
+      const timer = setTimeout(() => setShowGlow(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isNew]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -63,7 +76,8 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
         energyColors[task.energy_level],
         isDragging && "opacity-50 shadow-lg ring-2 ring-highlight",
         task.completed && "opacity-60",
-        !isEditing && "cursor-grab active:cursor-grabbing hover:shadow-md hover:bg-secondary/80 transition-all"
+        !isEditing && "cursor-grab active:cursor-grabbing hover:shadow-md hover:bg-secondary/80 transition-all",
+        showGlow && "animate-glow-highlight"
       )}
       onDoubleClick={handleDoubleClick}
     >

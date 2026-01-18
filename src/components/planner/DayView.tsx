@@ -23,6 +23,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+// Track recently added task IDs for glow animation
+const recentlyAddedTasks = new Set<string>();
+
 interface DayViewProps {
   date: Date;
   currentEnergy: EnergyLevel;
@@ -408,6 +411,30 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const untimedTasks = useMemo(() => filteredTasks.filter(t => !t.start_time), [filteredTasks]);
   const timedTasks = useMemo(() => filteredTasks.filter(t => t.start_time), [filteredTasks]);
 
+  // Track new untimed tasks for glow animation
+  const prevUntimedTaskIds = useRef<Set<string>>(new Set());
+  const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
+  
+  useEffect(() => {
+    const currentIds = new Set(untimedTasks.map(t => t.id));
+    const newIds = new Set<string>();
+    
+    currentIds.forEach(id => {
+      if (!prevUntimedTaskIds.current.has(id)) {
+        newIds.add(id);
+      }
+    });
+    
+    if (newIds.size > 0) {
+      setNewTaskIds(newIds);
+      // Clear after animation
+      const timer = setTimeout(() => setNewTaskIds(new Set()), 1600);
+      return () => clearTimeout(timer);
+    }
+    
+    prevUntimedTaskIds.current = currentIds;
+  }, [untimedTasks]);
+
   const hours = useMemo(() => Array.from({ length: 17 }, (_, i) => i + 6), []);
   const HOUR_HEIGHT = isMobile ? 60 : 48;
 
@@ -752,8 +779,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
         {/* Untimed tasks */}
         <div className={cn(
-          "shrink-0",
-          isMobile ? "order-1 w-full" : "w-80"
+          "shrink-0 relative",
+          isMobile ? "order-1 w-full" : "w-80",
+          newTaskIds.size > 0 && "animate-underline-glow"
         )}>
           <h3 className="text-sm font-semibold text-foreground mb-3">
             Untimed Tasks
@@ -770,6 +798,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 onUpdate={(updates) => updateTask(task.id, updates)}
                 onDelete={() => deleteTask(task.id)}
                 isShared={task.user_id !== userId}
+                isNew={newTaskIds.has(task.id)}
               />
             ))}
           </div>
