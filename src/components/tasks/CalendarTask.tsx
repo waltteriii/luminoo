@@ -70,6 +70,8 @@ const CalendarTask = ({
   // Determine layout based on height
   const isCompact = height < 40;
   const showDetails = height >= 60;
+  const contentPadding = isCompact ? 'py-0.5' : showDetails ? 'py-2' : 'py-1.5';
+  const contentJustify = showDetails ? 'justify-start' : 'justify-center';
 
   return (
     <>
@@ -79,29 +81,35 @@ const CalendarTask = ({
         {...attributes}
         {...listeners}
         className={cn(
-          'group relative h-full rounded-r border-l-2 cursor-grab active:cursor-grabbing transition-all overflow-hidden',
+          'group relative h-full rounded-md border-l-2 ring-1 ring-border/40 shadow-sm cursor-grab active:cursor-grabbing transition-[box-shadow,opacity] overflow-hidden',
+          'hover:shadow-md',
           energyBorderColors[task.energy_level],
           energyBgColors[task.energy_level],
           isDragging && 'opacity-60 shadow-lg ring-1 ring-highlight',
-          task.completed && 'opacity-50 line-through'
+          task.completed && 'opacity-50'
         )}
       >
-        <div className={cn(
-          'h-full flex flex-col justify-center px-2',
-          isCompact ? 'py-0.5' : 'py-1.5'
-        )}>
-          {/* Title */}
-          <div className={cn(
-            'font-medium truncate',
-            isCompact ? 'text-xs' : 'text-sm',
+        <div
+          className={cn(
+            'h-full flex flex-col px-2 leading-snug',
+            contentJustify,
+            contentPadding,
             task.completed && 'line-through'
-          )}>
+          )}
+        >
+          {/* Title */}
+          <div
+            className={cn(
+              'font-medium truncate tracking-tight',
+              isCompact ? 'text-[12px]' : 'text-[13px]'
+            )}
+          >
             {task.title}
           </div>
 
           {/* Time range - show if enough space */}
           {showDetails && showTimeRange && task.start_time && (
-            <div className="text-xs text-foreground-muted mt-0.5 truncate">
+            <div className="mt-1 text-[11px] tabular-nums text-foreground-muted truncate">
               {getTimeRange()}
             </div>
           )}
