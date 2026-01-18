@@ -686,6 +686,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               hourHeight={HOUR_HEIGHT}
               isExpanded={nightBeforeExpanded}
               onToggleExpand={() => setNightBeforeExpanded(!nightBeforeExpanded)}
+              onTaskUpdate={(taskId, updates) => updateTask(taskId, updates)}
+              onTaskDelete={(taskId) => deleteTask(taskId)}
             />
           )}
           
@@ -965,6 +967,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               hourHeight={HOUR_HEIGHT}
               isExpanded={nightAfterExpanded}
               onToggleExpand={() => setNightAfterExpanded(!nightAfterExpanded)}
+              onTaskUpdate={(taskId, updates) => updateTask(taskId, updates)}
+              onTaskDelete={(taskId) => deleteTask(taskId)}
             />
           )}
         </div>
