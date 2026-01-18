@@ -59,6 +59,28 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
     const overData = over.data.current;
     const overId = over.id as string;
 
+    // Handle drop to memory panel
+    if (overId === 'memory-panel' || overData?.type === 'memory') {
+      const task = activeData?.task as Task;
+      if (task && (activeData?.type === 'inbox-task' || activeData?.type === 'calendar-task')) {
+        try {
+          await supabase
+            .from('tasks')
+            .update({ 
+              location: 'memory',
+              due_date: null,
+              start_time: null,
+              end_time: null
+            })
+            .eq('id', task.id);
+          onTaskScheduled?.();
+        } catch (err) {
+          console.error('Move to memory error:', err);
+        }
+        return;
+      }
+    }
+
     // Inbox task being dragged (unscheduled) => confirmation dialog
     if (activeData?.type === 'inbox-task') {
       const task = activeData.task as Task;

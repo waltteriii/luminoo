@@ -4,7 +4,8 @@ import {
   Calendar,
   Brain,
   TrendingUp,
-  Users
+  Users,
+  Archive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ViewMode } from '@/types';
@@ -17,6 +18,8 @@ interface SidebarProps {
   onTrendingClick: () => void;
   onFriendsClick: () => void;
   onJumpToToday: () => void;
+  memoryOpen?: boolean;
+  onMemoryClick?: () => void;
 }
 
 // Layout modes - currently only 'grid' is enabled
@@ -33,7 +36,9 @@ const Sidebar = ({
   onBrainDumpClick,
   onTrendingClick,
   onFriendsClick,
-  onJumpToToday
+  onJumpToToday,
+  memoryOpen,
+  onMemoryClick
 }: SidebarProps) => {
   // Only show enabled layouts - filter maintains proper typing
   const viewModes = [
@@ -105,6 +110,25 @@ const Sidebar = ({
             >
               <Users className="w-4 h-4" />
               Friends & Sharing
+            </Button>
+          </div>
+        </div>
+
+        {/* Storage */}
+        <div className="space-y-2">
+          <span className="caption">Storage</span>
+          <div className="space-y-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMemoryClick}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground-muted hover:text-foreground",
+                memoryOpen && "bg-secondary text-foreground"
+              )}
+            >
+              <Archive className="w-4 h-4" />
+              Memory
             </Button>
           </div>
         </div>
