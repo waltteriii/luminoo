@@ -42,6 +42,9 @@ interface CalendarTaskProps {
   // Selection management - parent controls which task is selected
   isSelected?: boolean;
   onSelect?: () => void;
+  // Time bounds for resize (defaults to 0-24 for full range)
+  minTimeHour?: number;
+  maxTimeHour?: number;
 }
 
 const energyBorderColors: Record<EnergyLevel, string> = {
@@ -83,6 +86,8 @@ const CalendarTask = ({
   showTooltip = true,
   isSelected: isSelectedProp,
   onSelect,
+  minTimeHour = 0,
+  maxTimeHour = 24,
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -204,10 +209,11 @@ const CalendarTask = ({
     const endH = Math.floor(endTotalMins / 60);
     const endM = Math.round(endTotalMins % 60);
 
-    if (endH >= 22) return '22:00';
+    // Clamp to max time bound (use prop, default to 24)
+    if (endH >= maxTimeHour) return formatHoursToTime(maxTimeHour);
 
     return formatHoursToTime(endH + endM / 60);
-  }, [task.start_time, hourHeight]);
+  }, [task.start_time, hourHeight, maxTimeHour]);
 
   // Calculate new start time from height change (resize top)
   const calculateNewStartTime = useCallback((heightDelta: number) => {
@@ -233,11 +239,11 @@ const CalendarTask = ({
     const startH = Math.floor(startTotalMins / 60);
     const startM = Math.round(startTotalMins % 60);
 
-    // Clamp to 6:00 min
-    if (startH < 6) return '06:00';
+    // Clamp to min time bound (use prop, default to 0)
+    if (startH < minTimeHour) return formatHoursToTime(minTimeHour);
 
     return formatHoursToTime(startH + startM / 60);
-  }, [task.end_time, hourHeight]);
+  }, [task.end_time, hourHeight, minTimeHour]);
 
   // Handle bottom resize (changes end time)
   const handleResizeBottomStart = useCallback((e: React.PointerEvent) => {

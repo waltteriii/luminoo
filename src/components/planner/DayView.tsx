@@ -40,13 +40,14 @@ interface DayViewProps {
 
 interface TimeSlotDropZoneProps {
   hour: number;
+  slotIndex: number; // Unique index for the slot (to handle Night mode where hours repeat)
   date: Date;
   children: React.ReactNode;
 }
 
-const TimeSlotDropZone = memo(({ hour, date, children }: TimeSlotDropZoneProps) => {
+const TimeSlotDropZone = memo(({ hour, slotIndex, date, children }: TimeSlotDropZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({
-    id: `time-slot-${hour}`,
+    id: `time-slot-${slotIndex}-${hour}`,
     data: { hour, type: 'time-slot', date },
   });
 
@@ -746,7 +747,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               const showNightIndicator = displayMode === 'BOTH' && effectiveSettings.dayTimeRangeMode === 'FOCUS' && isNight;
 
               return (
-                <TimeSlotDropZone key={`${hour}-${hourIndex}`} hour={hour} date={currentDate}>
+                <TimeSlotDropZone key={`${hour}-${hourIndex}`} hour={hour} slotIndex={hourIndex} date={currentDate}>
                   <div
                     className={cn(
                       'group relative border-b border-border/50 transition-all',
@@ -993,6 +994,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               showTooltip={isTooltipEnabledForView('day')}
                               isSelected={selectedTaskId === task.id}
                               onSelect={() => setSelectedTaskId(task.id)}
+                              minTimeHour={rangeStartHour}
+                              maxTimeHour={isCrossingMidnight ? 24 : rangeEndHour}
                             />
                           </div>
                         );
