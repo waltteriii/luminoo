@@ -64,16 +64,16 @@ const DroppableDay = ({
       ref={setNodeRef}
       className={cn(
         "rounded-lg border border-border bg-card px-1.5 py-1 transition-all flex flex-col",
-        today && "border-primary ring-1 ring-primary/20",
+        today && "border-highlight ring-1 ring-highlight/30",
         isOver && "ring-2 ring-highlight bg-highlight-muted",
-        !isOver && "hover:bg-highlight-muted/50 hover:border-highlight/30"
+        !isOver && !today && "hover:bg-highlight-muted/50 hover:border-highlight/30"
       )}
     >
       <button
         onClick={() => onDayClick(date)}
         className={cn(
-          "w-full text-left hover:text-primary transition-colors",
-          today && "text-primary"
+          "w-full text-left hover:text-highlight transition-colors",
+          today && "text-highlight"
         )}
       >
         <div className="text-[9px] text-foreground-muted uppercase leading-none">
@@ -81,7 +81,7 @@ const DroppableDay = ({
         </div>
         <div className={cn(
           "text-sm font-medium leading-tight",
-          today ? "text-primary" : "text-foreground"
+          today ? "text-highlight" : "text-foreground"
         )}>
           {format(date, 'd')}
         </div>
