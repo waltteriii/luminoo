@@ -64,8 +64,9 @@ const TimeRangeSlider = ({
     return Math.max(minHour, Math.min(maxHour, snapped));
   };
 
-  const handleMouseDown = (type: 'start' | 'end' | 'range') => (e: React.MouseEvent) => {
+  const handlePointerDown = (type: 'start' | 'end' | 'range') => (e: React.PointerEvent) => {
     e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDragging(type);
     
     if (type === 'range') {
@@ -74,49 +75,40 @@ const TimeRangeSlider = ({
     }
   };
 
-  useEffect(() => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const hour = getHourFromPosition(e.clientX);
+    
+    const hour = getHourFromPosition(e.clientX);
+    
+    if (isDragging === 'start') {
+      const newStart = Math.min(hour, endHour - 0.25);
+      onStartTimeChange(formatHour(newStart));
+    } else if (isDragging === 'end') {
+      const newEnd = Math.max(hour, startHour + 0.25);
+      onEndTimeChange(formatHour(newEnd));
+    } else if (isDragging === 'range') {
+      const duration = endHour - startHour;
+      let newStart = hour - dragOffset;
+      let newEnd = newStart + duration;
       
-      if (isDragging === 'start') {
-        const newStart = Math.min(hour, endHour - 0.25);
-        onStartTimeChange(formatHour(newStart));
-      } else if (isDragging === 'end') {
-        const newEnd = Math.max(hour, startHour + 0.25);
-        onEndTimeChange(formatHour(newEnd));
-      } else if (isDragging === 'range') {
-        const duration = endHour - startHour;
-        let newStart = hour - dragOffset;
-        let newEnd = newStart + duration;
-        
-        if (newStart < minHour) {
-          newStart = minHour;
-          newEnd = minHour + duration;
-        }
-        if (newEnd > maxHour) {
-          newEnd = maxHour;
-          newStart = maxHour - duration;
-        }
-        
-        onStartTimeChange(formatHour(newStart));
-        onEndTimeChange(formatHour(newEnd));
+      if (newStart < minHour) {
+        newStart = minHour;
+        newEnd = minHour + duration;
       }
-    };
+      if (newEnd > maxHour) {
+        newEnd = maxHour;
+        newStart = maxHour - duration;
+      }
+      
+      onStartTimeChange(formatHour(newStart));
+      onEndTimeChange(formatHour(newEnd));
+    }
+  };
 
-    const handleMouseUp = () => {
-      setIsDragging(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, startHour, endHour, dragOffset, minHour, maxHour, onStartTimeChange, onEndTimeChange]);
+  const handlePointerUp = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    setIsDragging(null);
+  };
 
   // Hour markers
   const hourMarkers = Array.from({ length: totalHours + 1 }, (_, i) => minHour + i);
@@ -163,7 +155,9 @@ const TimeRangeSlider = ({
         {/* Track */}
         <div
           ref={trackRef}
-          className="relative h-8 bg-secondary rounded-lg cursor-pointer"
+          className="relative h-10 bg-secondary rounded-lg cursor-pointer touch-none"
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
           onClick={(e) => {
             if (isDragging) return;
             const hour = getHourFromPosition(e.clientX);
@@ -180,34 +174,34 @@ const TimeRangeSlider = ({
           {/* Selected range */}
           <div
             className={cn(
-              "absolute top-0 bottom-0 bg-highlight/40 rounded cursor-grab active:cursor-grabbing transition-colors",
+              "absolute top-0 bottom-0 bg-highlight/40 rounded cursor-grab active:cursor-grabbing transition-colors touch-none",
               isDragging === 'range' && "bg-highlight/60"
             )}
             style={{
               left: `${startPercent}%`,
               width: `${rangeWidth}%`,
             }}
-            onMouseDown={handleMouseDown('range')}
+            onPointerDown={handlePointerDown('range')}
           />
 
           {/* Start handle */}
           <div
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 w-4 h-8 bg-highlight rounded-md cursor-ew-resize shadow-md transition-transform",
+              "absolute top-1/2 -translate-y-1/2 w-5 h-10 bg-highlight rounded-md cursor-ew-resize shadow-md transition-transform touch-none",
               isDragging === 'start' && "scale-110"
             )}
-            style={{ left: `calc(${startPercent}% - 8px)` }}
-            onMouseDown={handleMouseDown('start')}
+            style={{ left: `calc(${startPercent}% - 10px)` }}
+            onPointerDown={handlePointerDown('start')}
           />
 
           {/* End handle */}
           <div
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 w-4 h-8 bg-highlight rounded-md cursor-ew-resize shadow-md transition-transform",
+              "absolute top-1/2 -translate-y-1/2 w-5 h-10 bg-highlight rounded-md cursor-ew-resize shadow-md transition-transform touch-none",
               isDragging === 'end' && "scale-110"
             )}
-            style={{ left: `calc(${endPercent}% - 8px)` }}
-            onMouseDown={handleMouseDown('end')}
+            style={{ left: `calc(${endPercent}% - 10px)` }}
+            onPointerDown={handlePointerDown('end')}
           />
         </div>
       </div>

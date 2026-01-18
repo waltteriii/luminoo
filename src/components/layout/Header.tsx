@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { cn } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -87,21 +88,24 @@ const Header = memo(({
   const displayName = user.email?.split('@')[0] || 'User';
 
   return (
-    <header className="h-14 border-b border-border bg-background-elevated flex items-center justify-between px-2 sm:px-4 lg:px-6 gap-2">
+    <header className={cn(
+      "border-b border-border bg-background-elevated flex items-center justify-between gap-2",
+      isMobile ? "h-16 px-2" : "h-14 px-4 lg:px-6"
+    )}>
       {/* Left section - hamburger + logo */}
       <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onToggleSidebar}
-          className="text-foreground-muted hover:text-foreground h-10 w-10"
+          className="text-foreground-muted hover:text-foreground h-11 w-11"
         >
           <Menu className="w-5 h-5" />
         </Button>
         
         {/* Logo - hide text on mobile */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
           <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
@@ -109,7 +113,7 @@ const Header = memo(({
       </div>
 
       {/* Center section - Energy selector (takes remaining space) */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
+      <div className="flex-1 flex items-center justify-center min-w-0 overflow-x-auto">
         <EnergySelector 
           value={currentEnergy} 
           onChange={onEnergyChange}
@@ -123,17 +127,17 @@ const Header = memo(({
       </div>
 
       {/* Right section - theme + avatar */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-0.5 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="text-foreground-muted hover:text-foreground h-10 w-10"
+          className="text-foreground-muted hover:text-foreground h-11 w-11"
         >
           {theme === 'dark' ? (
-            <Sun className="w-4 h-4" />
+            <Sun className="w-5 h-5" />
           ) : (
-            <Moon className="w-4 h-4" />
+            <Moon className="w-5 h-5" />
           )}
         </Button>
 
