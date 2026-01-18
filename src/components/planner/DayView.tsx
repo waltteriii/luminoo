@@ -212,9 +212,15 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     });
   }, [copiedTask, addTask]);
 
-  // Handle paste keyboard shortcut
+  // Handle paste keyboard shortcut (but not when editing text in inputs/textareas)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is editing text in an input or textarea
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return; // Let native paste work
+      }
+      
       // Paste: Ctrl+V or Cmd+V
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedTask) {
         e.preventDefault();
