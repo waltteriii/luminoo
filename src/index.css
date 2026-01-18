@@ -214,6 +214,21 @@
     font-feature-settings: "ss01", "ss02", "cv01";
   }
 
+  /* Override default focus rings to use highlight color */
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--highlight) / 0.5);
+  }
+
+  /* Input/textarea focus styles */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--highlight) / 0.5);
+    box-shadow: 0 0 0 3px hsl(var(--highlight) / 0.15);
+  }
+
   /* Typography scale - Framer-inspired, clean */
   h1 {
     @apply text-4xl md:text-5xl font-light tracking-[-0.02em] leading-[1.1];
@@ -237,7 +252,7 @@
 
   /* Custom selection color */
   ::selection {
-    @apply bg-primary/30 text-foreground;
+    @apply bg-highlight/30 text-foreground;
   }
 }
 

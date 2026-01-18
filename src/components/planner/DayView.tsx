@@ -207,7 +207,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     direction: 'left' | 'right'
   ) => {
     const MIN_WIDTH = 15;
-    const MAX_WIDTH = 85; // Maximum 85% width (leaving 15% minimum visible)
+    const MAX_WIDTH = 100; // Can resize back to full width
     const currentWidth = taskWidths[taskId] ?? 100;
     const currentLeft = taskLefts[taskId] ?? 0;
     
@@ -220,8 +220,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       const potentialLeft = currentLeft + delta;
       const potentialWidth = currentWidth - delta;
       
-      // Clamp left position to 15% minimum and width to MAX_WIDTH
-      let newLeft = Math.max(15, Math.min(100 - MIN_WIDTH, potentialLeft));
+      // Clamp left position to 0 minimum and width to limits
+      let newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
       let newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, potentialWidth));
       
       // Ensure left + width <= 100
@@ -706,8 +706,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               height={taskHeight}
                               width={displayWidth}
                               baseWidth={100 / group.length}
-                              minWidth={isMultiTask ? 15 : 15}
-                              maxWidth={isMultiTask ? 100 - 15 * (group.length - 1) : 85}
+                              minWidth={15}
+                              maxWidth={100}
                               canResizeLeft={canResizeLeft}
                               canResizeRight={canResizeRight}
                               onResizeLeft={handleResizeLeft}

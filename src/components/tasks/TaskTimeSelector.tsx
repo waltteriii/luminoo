@@ -162,6 +162,9 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       e.preventDefault();
       e.stopPropagation();
 
+      const target = e.currentTarget as HTMLElement;
+      target.setPointerCapture(e.pointerId);
+
       const pointerId = e.pointerId;
       const pointerHour = getHourFromPosition(e.clientX);
 
@@ -181,6 +184,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       setDragType(type);
 
       const handleMove = (ev: PointerEvent) => {
+        ev.preventDefault(); // Prevent scroll on touch
         const state = dragStateRef.current;
         if (!state || state.pointerId !== pointerId) return;
 
@@ -216,13 +220,14 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       };
 
       const handleUp = (ev: PointerEvent) => {
+        target.releasePointerCapture(ev.pointerId);
         if (dragStateRef.current?.pointerId !== pointerId) return;
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleUp);
         endDrag();
       };
 
-      window.addEventListener('pointermove', handleMove);
+      window.addEventListener('pointermove', handleMove, { passive: false });
       window.addEventListener('pointerup', handleUp);
     };
 
