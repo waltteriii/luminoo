@@ -86,7 +86,10 @@ const Header = memo(({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onToggleSidebar}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSidebar();
+          }}
           className={cn(
             "text-foreground-muted hover:text-foreground",
             isMobile ? "h-10 w-10" : "h-11 w-11"
