@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, getWeek, addMonths, parseISO, isWithinInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -113,36 +113,12 @@ const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, user
 
       <div className="space-y-0.5">
         {tasks.slice(0, maxTasks).map(task => (
-          <TooltipProvider key={task.id} delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
-                  className={cn(
-                    "text-[8px] sm:text-[9px] lg:text-[10px] px-1 py-0.5 rounded cursor-pointer hover:ring-1 hover:ring-primary/30 overflow-hidden",
-                    task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
-                    task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
-                    task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
-                    task.energy_level === 'recovery' && "bg-energy-recovery/20 text-energy-recovery",
-                    task.completed && "line-through opacity-60"
-                  )}
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="truncate flex-1">{task.title}</span>
-                    {task.user_id !== userId && (
-                      <span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" />
-                    )}
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[180px]">
-                <p className="font-medium text-sm">{task.title}</p>
-                {task.start_time && (
-                  <p className="text-xs text-muted-foreground">{task.start_time} - {task.end_time || ''}</p>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <DraggableMonthTask
+            key={task.id}
+            task={task}
+            userId={userId}
+            onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
+          />
         ))}
         {tasks.length > maxTasks && (
           <div className="text-[8px] sm:text-[9px] lg:text-[10px] text-foreground-muted">
@@ -155,6 +131,69 @@ const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, user
 });
 
 DroppableDayCell.displayName = 'DroppableDayCell';
+
+// Draggable task component for month view
+interface DraggableMonthTaskProps {
+  task: Task;
+  userId: string | null;
+  onDoubleClick: (e: React.MouseEvent) => void;
+}
+
+const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonthTaskProps) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `month-task-${task.id}`,
+    data: { task, type: 'calendar-task' },
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: isDragging ? 1000 : undefined,
+      }
+    : undefined;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            onDoubleClick={onDoubleClick}
+            className={cn(
+              "text-[8px] sm:text-[9px] lg:text-[10px] px-1 py-0.5 rounded cursor-grab active:cursor-grabbing overflow-hidden touch-none",
+              "hover:ring-1 hover:ring-primary/30 transition-all",
+              task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
+              task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
+              task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
+              task.energy_level === 'recovery' && "bg-energy-recovery/20 text-energy-recovery",
+              task.completed && "line-through opacity-60",
+              isDragging && "opacity-50 shadow-lg ring-2 ring-primary"
+            )}
+          >
+            <div className="flex items-center gap-0.5">
+              <GripVertical className="w-2 h-2 text-current opacity-50 flex-shrink-0" />
+              <span className="truncate flex-1">{task.title}</span>
+              {task.user_id !== userId && (
+                <span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+              )}
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[180px]">
+          <p className="font-medium text-sm">{task.title}</p>
+          {task.start_time && (
+            <p className="text-xs text-muted-foreground">{task.start_time} - {task.end_time || ''}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
+
+DraggableMonthTask.displayName = 'DraggableMonthTask';
 
 const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayClick, onWeekClick, onBack }: MonthDetailViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);

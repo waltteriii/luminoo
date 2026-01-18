@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle } from 'lucide-react';
+import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
@@ -263,6 +263,21 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 placeholder="New task…"
                 className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
               />
+              {/* Approve button - visible when input has content */}
+              {newTaskTitle.trim() && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 p-0 text-primary hover:text-primary hover:bg-primary/10 flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    createNewTask();
+                  }}
+                  title="Add task (Enter)"
+                >
+                  <Check className="w-4 h-4" />
+                </Button>
+              )}
             </div>
             
             {/* Task list */}
