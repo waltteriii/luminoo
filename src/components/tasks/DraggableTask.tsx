@@ -2,7 +2,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { GripVertical, Check, MoreHorizontal, Pencil, Trash2, Users, MapPin } from 'lucide-react';
+import { GripVertical, Check, MoreHorizontal, Pencil, Trash2, Users, MapPin, Clock } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ interface DraggableTaskProps {
   showDetailsButton?: boolean;
   enableInlineTitleEdit?: boolean;
   disableDoubleClickEdit?: boolean;
+  showTime?: boolean;
   dndData?: Record<string, unknown>;
 }
 
@@ -51,11 +53,23 @@ const DraggableTask = ({
   showDetailsButton = false,
   enableInlineTitleEdit = false,
   disableDoubleClickEdit = false,
+  showTime = false,
   dndData,
 }: DraggableTaskProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  // Format time for display
+  const formatTime = (time: string | null | undefined) => {
+    if (!time) return null;
+    try {
+      const normalized = time.length === 5 ? time : time.slice(0, 5);
+      return format(new Date(`2000-01-01T${normalized}`), 'h:mm a');
+    } catch {
+      return null;
+    }
+  };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (disableDoubleClickEdit) return;
@@ -133,33 +147,44 @@ const DraggableTask = ({
           </button>
         )}
 
-        {isEditing ? (
-          <input
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onBlur={handleSaveEdit}
-            onKeyDown={handleKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            autoFocus
-            className="h-6 text-xs flex-1 bg-transparent border-none outline-none p-0 text-foreground"
-          />
-        ) : (
-          <span
-            className={cn('text-xs truncate flex-1 cursor-text', task.completed && 'line-through')}
-            onDoubleClick={
-              enableInlineTitleEdit
-                ? (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setEditTitle(task.title);
-                    setIsEditing(true);
-                  }
-                : undefined
-            }
-          >
-            {task.title}
-          </span>
-        )}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {isEditing ? (
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={handleSaveEdit}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+              className="h-6 text-xs flex-1 bg-transparent border-none outline-none p-0 text-foreground"
+            />
+          ) : (
+            <span
+              className={cn('text-xs truncate', task.completed && 'line-through')}
+              onDoubleClick={
+                enableInlineTitleEdit
+                  ? (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setEditTitle(task.title);
+                      setIsEditing(true);
+                    }
+                  : undefined
+              }
+            >
+              {task.title}
+            </span>
+          )}
+          
+          {/* Show time if enabled and task has time */}
+          {showTime && task.start_time && (
+            <span className="text-[9px] text-foreground-muted flex items-center gap-0.5 mt-0.5">
+              <Clock className="w-2 h-2" />
+              {formatTime(task.start_time)}
+              {task.end_time && ` - ${formatTime(task.end_time)}`}
+            </span>
+          )}
+        </div>
 
         {showDetailsButton && (
           <Button
