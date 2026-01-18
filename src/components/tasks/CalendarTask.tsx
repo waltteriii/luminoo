@@ -695,7 +695,12 @@ const CalendarTask = ({
                   <textarea
                     ref={titleInputRef as unknown as React.RefObject<HTMLTextAreaElement>}
                     value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
+                    onChange={(e) => {
+                      setEditTitle(e.target.value);
+                      // Auto-expand: reset height then set to scrollHeight
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, displayHeight - 20)}px`;
+                    }}
                     onBlur={handleTitleSave}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -709,13 +714,17 @@ const CalendarTask = ({
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
+                    onFocus={(e) => {
+                      // Set initial height on focus
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, displayHeight - 20)}px`;
+                    }}
                     className={cn(
                       "bg-transparent border-none outline-none font-medium leading-tight w-full p-0 focus:ring-0 resize-none overflow-hidden",
-                      isCompact ? 'text-[11px]' : 'text-[13px]',
-                      // Dynamic height based on available space
-                      isExtraLarge ? 'min-h-[48px] max-h-[72px]' : isLarge ? 'min-h-[32px] max-h-[48px]' : 'min-h-[20px] max-h-[32px]'
+                      isCompact ? 'text-[11px]' : 'text-[13px]'
                     )}
-                    rows={titleMaxLines}
+                    style={{ minHeight: '1.25em' }}
+                    rows={1}
                     autoFocus
                   />
                 ) : (
