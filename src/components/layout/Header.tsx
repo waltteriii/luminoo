@@ -87,28 +87,29 @@ const Header = memo(({
   const displayName = user.email?.split('@')[0] || 'User';
 
   return (
-    <header className="h-14 sm:h-14 lg:h-16 border-b border-border bg-background-elevated flex items-center justify-between px-3 sm:px-4 lg:px-6 gap-2 sm:gap-3">
-      {/* Left section */}
-      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+    <header className="h-14 border-b border-border bg-background-elevated flex items-center justify-between px-2 sm:px-4 lg:px-6 gap-2">
+      {/* Left section - hamburger + logo */}
+      <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onToggleSidebar}
-          className="text-foreground-muted hover:text-foreground min-w-[44px] min-h-[44px]"
+          className="text-foreground-muted hover:text-foreground h-10 w-10"
         >
           <Menu className="w-5 h-5" />
         </Button>
         
+        {/* Logo - hide text on mobile */}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-medium text-foreground text-sm lg:text-base hidden sm:block">Luminoo</span>
+          <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
         </div>
       </div>
 
-      {/* Center section - Energy selector */}
-      <div className="flex-1 flex items-center justify-center min-w-0 overflow-hidden">
+      {/* Center section - Energy selector (takes remaining space) */}
+      <div className="flex-1 flex items-center justify-center min-w-0">
         <EnergySelector 
           value={currentEnergy} 
           onChange={onEnergyChange}
@@ -121,13 +122,13 @@ const Header = memo(({
         />
       </div>
 
-      {/* Right section */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Right section - theme + avatar */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="text-foreground-muted hover:text-foreground min-w-[44px] min-h-[44px]"
+          className="text-foreground-muted hover:text-foreground h-10 w-10"
         >
           {theme === 'dark' ? (
             <Sun className="w-4 h-4" />
@@ -140,9 +141,9 @@ const Header = memo(({
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="flex items-center gap-2 text-foreground-muted hover:text-foreground min-h-[44px] px-2"
+              className="flex items-center gap-2 text-foreground-muted hover:text-foreground h-10 px-2"
             >
-              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -151,8 +152,8 @@ const Header = memo(({
               </div>
               {!isMobile && (
                 <>
-                  <span className="text-sm max-w-[100px] truncate">{displayName}</span>
-                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm max-w-[80px] truncate">{displayName}</span>
+                  <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
                 </>
               )}
             </Button>

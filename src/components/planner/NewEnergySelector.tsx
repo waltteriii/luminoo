@@ -65,9 +65,76 @@ const EnergySelector = memo(({
     }
   };
 
+  // Mobile: simplified layout with just essential elements
+  if (isMobile) {
+    return (
+      <div className="flex items-center gap-2">
+        {/* Quick actions */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
+          onClick={onAddTask}
+        >
+          <Plus className="w-5 h-5" />
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
+          onClick={onBrainDump}
+        >
+          <Sparkles className="w-5 h-5" />
+        </Button>
+
+        {/* Energy filter - compact dots only */}
+        <div className="flex items-center gap-1 bg-secondary rounded-full px-2 py-1.5">
+          <button
+            onClick={handleShowAll}
+            className={cn(
+              "px-2 py-1 rounded-full text-xs font-medium transition-all",
+              showAllActive
+                ? "bg-background text-foreground shadow-sm"
+                : "text-foreground-muted"
+            )}
+          >
+            All
+          </button>
+          
+          {energyOptions.map((option) => {
+            const isFiltered = activeFilters.includes(option.value);
+            
+            return (
+              <button
+                key={option.value}
+                onClick={() => handleClick(option.value)}
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                  isFiltered ? "bg-background shadow-sm" : "hover:bg-background/50"
+                )}
+              >
+                <span
+                  className={cn(
+                    "w-3 h-3 rounded-full transition-all",
+                    option.value === 'high' && "bg-energy-high",
+                    option.value === 'medium' && "bg-energy-medium",
+                    option.value === 'low' && "bg-energy-low",
+                    option.value === 'recovery' && "bg-energy-recovery"
+                  )}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: full layout with labels
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-2">
         {/* Quick action buttons */}
         <div className="flex items-center gap-1">
           <Tooltip>
@@ -75,7 +142,7 @@ const EnergySelector = memo(({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 sm:h-10 sm:w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
+                className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
                 onClick={onAddTask}
               >
                 <Plus className="w-5 h-5" />
@@ -91,7 +158,7 @@ const EnergySelector = memo(({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 sm:h-10 sm:w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
+                className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
                 onClick={onBrainDump}
               >
                 <Sparkles className="w-5 h-5" />
@@ -103,18 +170,17 @@ const EnergySelector = memo(({
           </Tooltip>
         </div>
 
-        <div className="w-px h-6 bg-border hidden sm:block" />
+        <div className="w-px h-6 bg-border" />
 
         {/* Energy filter buttons */}
         <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-1">
-          {/* Show All button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleShowAll}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-md transition-all duration-200 min-h-[36px] sm:min-h-[40px]",
-                  "text-xs sm:text-sm font-medium",
+                  "flex items-center gap-1.5 px-3 py-2 rounded-md transition-all duration-200 min-h-[40px]",
+                  "text-sm font-medium",
                   showAllActive
                     ? "bg-background text-foreground shadow-sm"
                     : "text-foreground-muted hover:text-foreground hover:bg-background/50"
@@ -139,8 +205,8 @@ const EnergySelector = memo(({
                     onClick={() => handleClick(option.value)}
                     onDoubleClick={() => handleDoubleClick(option.value)}
                     className={cn(
-                      "relative flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-md transition-all duration-200 min-h-[36px] sm:min-h-[40px]",
-                      "text-xs sm:text-sm font-medium min-w-[36px] sm:min-w-0 justify-center sm:justify-start",
+                      "relative flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200 min-h-[40px]",
+                      "text-sm font-medium",
                       isOnlyActive
                         ? "bg-background text-foreground shadow-sm"
                         : isFiltered
@@ -150,7 +216,7 @@ const EnergySelector = memo(({
                   >
                     <span
                       className={cn(
-                        "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all flex-shrink-0",
+                        "w-2.5 h-2.5 rounded-full transition-all flex-shrink-0",
                         isFiltered && "ring-2 ring-offset-1 ring-offset-secondary",
                         option.value === 'high' && "bg-energy-high",
                         option.value === 'medium' && "bg-energy-medium",
@@ -162,8 +228,7 @@ const EnergySelector = memo(({
                         option.value === 'recovery' && isFiltered && "ring-energy-recovery/50"
                       )}
                     />
-                    {/* Hide labels on mobile - only show dots */}
-                    <span className="hidden sm:inline">{option.label}</span>
+                    <span>{option.label}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
