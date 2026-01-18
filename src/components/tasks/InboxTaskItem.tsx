@@ -268,11 +268,13 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
             isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
           onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <Button
             variant="ghost"
             size="sm"
             className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs min-w-[36px] lg:min-w-[44px]"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               handleQuickSchedule(0);
@@ -285,6 +287,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
               variant="ghost"
               size="sm"
               className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 handleQuickSchedule(1);
