@@ -109,10 +109,10 @@ const DroppableDay = memo(({
                 {tasks.length} task{tasks.length !== 1 ? 's' : ''}
               </span>
               {timedTasks.length > 0 && (
-                <span className="text-[9px] text-foreground-muted flex items-center gap-0.5">
-                  <Clock className="w-2.5 h-2.5" />
-                  {timedTasks.length} scheduled
-                </span>
+                <div className="flex items-center gap-1 text-[9px] text-foreground-muted">
+                  <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                  <span>{timedTasks.length} scheduled</span>
+                </div>
               )}
             </div>
           )}
