@@ -5,6 +5,13 @@
 
 export type TimeRangeMode = 'FOCUS' | 'FULL_24H';
 export type OffHoursDisplay = 'COLLAPSED' | 'DENSE_EXPANDED';
+export type DayViewLayout = 'BOTH' | 'DAY_ONLY' | 'NIGHT_ONLY';
+
+// Per-day override for focus hours
+export interface DayTimeOverride {
+  focusStartTime: number;
+  focusEndTime: number;
+}
 
 export interface TimeRangeSettings {
   dayTimeRangeMode: TimeRangeMode;
@@ -13,6 +20,8 @@ export interface TimeRangeSettings {
   focusEndTime: number; // Hour (0-24), e.g., 23 for 23:00
   offHoursDisplay: OffHoursDisplay;
   offHoursDenseScaleFactor: number; // e.g., 0.35
+  dayViewLayout: DayViewLayout; // Controls which sections to show
+  perDayOverrides: Record<string, DayTimeOverride>; // Key is date string (YYYY-MM-DD)
 }
 
 export const defaultTimeRangeSettings: TimeRangeSettings = {
@@ -22,7 +31,47 @@ export const defaultTimeRangeSettings: TimeRangeSettings = {
   focusEndTime: 23, // 23:00
   offHoursDisplay: 'COLLAPSED',
   offHoursDenseScaleFactor: 0.35,
+  dayViewLayout: 'BOTH',
+  perDayOverrides: {},
 };
+
+/**
+ * Get effective focus times for a specific date (considering per-day overrides)
+ */
+export function getEffectiveFocusTimes(
+  settings: TimeRangeSettings,
+  dateStr: string
+): { focusStartTime: number; focusEndTime: number } {
+  const override = settings.perDayOverrides[dateStr];
+  if (override) {
+    return { focusStartTime: override.focusStartTime, focusEndTime: override.focusEndTime };
+  }
+  return { focusStartTime: settings.focusStartTime, focusEndTime: settings.focusEndTime };
+}
+
+/**
+ * Time options for selectors (30-minute increments)
+ */
+export function getTimeOptions(): { value: number; label: string }[] {
+  const options: { value: number; label: string }[] = [];
+  for (let h = 0; h < 24; h++) {
+    options.push({ value: h, label: formatHourLabel(h) });
+    options.push({ value: h + 0.5, label: formatHalfHourLabel(h) });
+  }
+  options.push({ value: 24, label: '12 AM (midnight end)' });
+  return options;
+}
+
+/**
+ * Format half-hour label (e.g., 8.5 -> "8:30 AM")
+ */
+function formatHalfHourLabel(hour: number): string {
+  const h = Math.floor(hour);
+  if (h === 0) return '12:30 AM';
+  if (h === 12) return '12:30 PM';
+  if (h < 12) return `${h}:30 AM`;
+  return `${h - 12}:30 PM`;
+}
 
 export interface TimeRangeConfig {
   startHour: number;

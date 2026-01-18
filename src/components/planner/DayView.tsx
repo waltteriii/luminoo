@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { parseTimeToHours } from '@/lib/timeUtils';
-import { getTimeRangeConfig, formatHourLabel, getTasksInOffHours } from '@/lib/timeRangeConfig';
+import { getTimeRangeConfig, formatHourLabel, getTasksInOffHours, getEffectiveFocusTimes } from '@/lib/timeRangeConfig';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import OffHoursSection from '@/components/planner/OffHoursSection';
+import DayViewTimeControls from '@/components/planner/DayViewTimeControls';
 import { useDroppable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -140,15 +141,30 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const { activeTask, dragOverInfo } = useDndContext();
   const { isTooltipEnabledForView, timeRangeSettings } = useDensity();
   
-  // Time range configuration from settings - define early for use in handlers
+  // Time range configuration from settings - with per-day overrides
   const BASE_HOUR_HEIGHT = isMobile ? 72 : 64;
   
+  // Apply per-day overrides to settings for this specific date
+  const effectiveSettings = useMemo(() => {
+    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+    const effectiveTimes = getEffectiveFocusTimes(timeRangeSettings, currentDateStr);
+    return {
+      ...timeRangeSettings,
+      focusStartTime: effectiveTimes.focusStartTime,
+      focusEndTime: effectiveTimes.focusEndTime,
+    };
+  }, [timeRangeSettings, currentDate]);
+  
   const timeRangeConfig = useMemo(() => 
-    getTimeRangeConfig(timeRangeSettings.dayTimeRangeMode, timeRangeSettings, BASE_HOUR_HEIGHT),
-    [timeRangeSettings, BASE_HOUR_HEIGHT]
+    getTimeRangeConfig(effectiveSettings.dayTimeRangeMode, effectiveSettings, BASE_HOUR_HEIGHT),
+    [effectiveSettings, BASE_HOUR_HEIGHT]
   );
   
   const { hours, hourHeight: HOUR_HEIGHT, startHour: rangeStartHour, endHour: rangeEndHour } = timeRangeConfig;
+  
+  // Determine which sections to show based on layout setting
+  const showDaySection = effectiveSettings.dayViewLayout !== 'NIGHT_ONLY';
+  const showNightSections = effectiveSettings.dayViewLayout !== 'DAY_ONLY';
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
@@ -547,24 +563,24 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   // Get tasks in off-hours (for Focus mode)
   const nightBeforeTasks = useMemo(() => {
-    if (timeRangeSettings.dayTimeRangeMode !== 'FOCUS' || !timeRangeConfig.hasNightBefore) return [];
-    return getTasksInOffHours(timedTasks, 'night-before', timeRangeSettings, parseTimeToHours);
-  }, [timedTasks, timeRangeSettings, timeRangeConfig.hasNightBefore]);
+    if (effectiveSettings.dayTimeRangeMode !== 'FOCUS' || !timeRangeConfig.hasNightBefore) return [];
+    return getTasksInOffHours(timedTasks, 'night-before', effectiveSettings, parseTimeToHours);
+  }, [timedTasks, effectiveSettings, timeRangeConfig.hasNightBefore]);
 
   const nightAfterTasks = useMemo(() => {
-    if (timeRangeSettings.dayTimeRangeMode !== 'FOCUS' || !timeRangeConfig.hasNightAfter) return [];
-    return getTasksInOffHours(timedTasks, 'night-after', timeRangeSettings, parseTimeToHours);
-  }, [timedTasks, timeRangeSettings, timeRangeConfig.hasNightAfter]);
+    if (effectiveSettings.dayTimeRangeMode !== 'FOCUS' || !timeRangeConfig.hasNightAfter) return [];
+    return getTasksInOffHours(timedTasks, 'night-after', effectiveSettings, parseTimeToHours);
+  }, [timedTasks, effectiveSettings, timeRangeConfig.hasNightAfter]);
 
   // Filter timed tasks to only those in the visible range (for Focus mode)
   const visibleTimedTasks = useMemo(() => {
-    if (timeRangeSettings.dayTimeRangeMode === 'FULL_24H') return timedTasks;
+    if (effectiveSettings.dayTimeRangeMode === 'FULL_24H') return timedTasks;
     return timedTasks.filter(task => {
       const startHour = parseTimeToHours(task.start_time);
       if (startHour === null) return false;
       return startHour >= rangeStartHour && startHour < rangeEndHour;
     });
-  }, [timedTasks, timeRangeSettings.dayTimeRangeMode, rangeStartHour, rangeEndHour]);
+  }, [timedTasks, effectiveSettings.dayTimeRangeMode, rangeStartHour, rangeEndHour]);
 
   const selectionStart = dragStartHour !== null && dragEndHour !== null
     ? Math.min(dragStartHour, dragEndHour)
@@ -647,6 +663,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
           </div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <DayViewTimeControls date={currentDate} />
           <Button variant="outline" size="sm" onClick={handlePrevDay} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -661,11 +678,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         {/* Time grid */}
         <div className={cn("flex-1", isMobile && "order-2")}>
           {/* Night Before Section (Focus Mode) */}
-          {timeRangeSettings.dayTimeRangeMode === 'FOCUS' && timeRangeConfig.hasNightBefore && (
+          {showNightSections && effectiveSettings.dayTimeRangeMode === 'FOCUS' && timeRangeConfig.hasNightBefore && (
             <OffHoursSection
               type="night-before"
               tasks={nightBeforeTasks}
-              settings={timeRangeSettings}
+              settings={effectiveSettings}
               hourHeight={HOUR_HEIGHT}
               isExpanded={nightBeforeExpanded}
               onToggleExpand={() => setNightBeforeExpanded(!nightBeforeExpanded)}
@@ -940,11 +957,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
           </div>
           
           {/* Night After Section (Focus Mode) */}
-          {timeRangeSettings.dayTimeRangeMode === 'FOCUS' && timeRangeConfig.hasNightAfter && (
+          {showNightSections && effectiveSettings.dayTimeRangeMode === 'FOCUS' && timeRangeConfig.hasNightAfter && (
             <OffHoursSection
               type="night-after"
               tasks={nightAfterTasks}
-              settings={timeRangeSettings}
+              settings={effectiveSettings}
               hourHeight={HOUR_HEIGHT}
               isExpanded={nightAfterExpanded}
               onToggleExpand={() => setNightAfterExpanded(!nightAfterExpanded)}
