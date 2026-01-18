@@ -118,9 +118,10 @@ const YearGridView = ({
   const gridClass = useMemo(() => {
     switch (zoomLevel) {
       case 'year':
-        return 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-6';
+        // Mobile: 2 cols for balance, tablet: 3 cols, desktop: 4 or 6
+        return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
       case 'quarter':
-        return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+        return 'grid-cols-1 md:grid-cols-3';
       case 'month':
         return 'grid-cols-1';
       default:
@@ -160,12 +161,12 @@ const YearGridView = ({
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6 animate-fade-in">
-      {/* Header */}
+    <div className="space-y-4 lg:space-y-6 animate-fade-in px-1">
+      {/* Header - cleaner on mobile */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-light text-foreground">{currentYear}</h1>
-          <p className="text-foreground-muted text-sm mt-0.5 lg:mt-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-light text-foreground">{currentYear}</h1>
+          <p className="text-foreground-muted text-xs sm:text-sm mt-0.5">
             {zoomLevel === 'year' && 'Annual Overview'}
             {zoomLevel === 'quarter' && focusedMonth !== null && `Q${Math.floor(focusedMonth / 3) + 1}`}
             {zoomLevel === 'month' && focusedMonth !== null && MONTHS[focusedMonth]}
@@ -175,15 +176,15 @@ const YearGridView = ({
         {zoomLevel !== 'year' && (
           <button
             onClick={onZoomOut}
-            className="text-sm text-foreground-muted hover:text-foreground transition-colors"
+            className="text-xs sm:text-sm text-foreground-muted hover:text-foreground transition-colors"
           >
-            ← Back to {zoomLevel === 'month' ? 'Quarter' : 'Year'}
+            ← Back
           </button>
         )}
       </div>
 
-      {/* Grid */}
-      <div className={cn('grid gap-2 lg:gap-4', gridClass)}>
+      {/* Grid - tighter gaps on mobile */}
+      <div className={cn('grid gap-2 sm:gap-3 lg:gap-4', gridClass)}>
         {visibleMonths.map((monthIndex) => (
           <DroppableMonthCard
             key={monthIndex}
@@ -197,10 +198,10 @@ const YearGridView = ({
         ))}
       </div>
 
-      {/* Empty state hint */}
+      {/* Hint - smaller on mobile */}
       {zoomLevel === 'year' && (
-        <p className="text-center text-foreground-subtle text-sm mt-8">
-          Click on a month to zoom in • Drag inbox tasks to schedule
+        <p className="text-center text-foreground-subtle text-[10px] sm:text-xs mt-4 sm:mt-6">
+          Tap a month to zoom in
         </p>
       )}
     </div>
