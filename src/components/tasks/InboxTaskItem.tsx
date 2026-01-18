@@ -208,29 +208,55 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
           </span>
         )}
 
-        {/* Energy dot - single click cycles through states */}
+        {/* Energy dot - click shows dropdown to select energy level */}
         {!isEditing && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const energyOrder: EnergyLevel[] = ['high', 'medium', 'low', 'recovery'];
-              const currentIndex = energyOrder.indexOf(task.energy_level);
-              const nextIndex = (currentIndex + 1) % energyOrder.length;
-              onEnergyChange?.(task.id, energyOrder[nextIndex]);
-            }}
-            className="cursor-pointer hover:scale-110 min-w-[32px] min-h-[32px] flex items-center justify-center transition-transform"
-            title={`Energy: ${task.energy_level.charAt(0).toUpperCase() + task.energy_level.slice(1)} (click to change)`}
-          >
-            <span
-              className={cn(
-                "w-3 h-3 rounded-full transition-colors",
-                task.energy_level === 'high' && "bg-energy-high",
-                task.energy_level === 'medium' && "bg-energy-medium",
-                task.energy_level === 'low' && "bg-energy-low",
-                task.energy_level === 'recovery' && "bg-energy-recovery"
-              )}
-            />
-          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="cursor-pointer hover:scale-110 min-w-[32px] min-h-[32px] flex items-center justify-center transition-transform"
+                title={`Energy: ${task.energy_level.charAt(0).toUpperCase() + task.energy_level.slice(1)} (click to change)`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span
+                  className={cn(
+                    "w-3 h-3 rounded-full transition-colors",
+                    task.energy_level === 'high' && "bg-energy-high",
+                    task.energy_level === 'medium' && "bg-energy-medium",
+                    task.energy_level === 'low' && "bg-energy-low",
+                    task.energy_level === 'recovery' && "bg-energy-recovery"
+                  )}
+                />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-40 p-1" align="end" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-0.5">
+                {([
+                  { value: 'high' as EnergyLevel, label: 'High Focus', color: 'bg-energy-high' },
+                  { value: 'medium' as EnergyLevel, label: 'Steady', color: 'bg-energy-medium' },
+                  { value: 'low' as EnergyLevel, label: 'Low Energy', color: 'bg-energy-low' },
+                  { value: 'recovery' as EnergyLevel, label: 'Recovery', color: 'bg-energy-recovery' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEnergyChange?.(task.id, option.value);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-secondary transition-colors",
+                      task.energy_level === option.value && "bg-secondary"
+                    )}
+                  >
+                    <span className={cn("w-3 h-3 rounded-full", option.color)} />
+                    <span>{option.label}</span>
+                    {task.energy_level === option.value && (
+                      <Check className="w-3 h-3 ml-auto text-primary" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         {task.is_shared && <Users className="w-3 h-3 text-primary flex-shrink-0" />}

@@ -692,16 +692,30 @@ const CalendarTask = ({
               >
                 {/* Title - click to edit inline (except for compact/small tasks) */}
                 {isEditingTitle ? (
-                  <input
-                    ref={titleInputRef}
+                  <textarea
+                    ref={titleInputRef as unknown as React.RefObject<HTMLTextAreaElement>}
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onBlur={handleTitleSave}
-                    onKeyDown={handleTitleKeyDown}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleTitleSave();
+                      } else if (e.key === 'Escape') {
+                        setEditTitle(task.title);
+                        setIsEditingTitle(false);
+                      }
+                    }}
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className="bg-transparent border-none outline-none text-[13px] font-medium leading-tight w-full p-0 focus:ring-0"
+                    className={cn(
+                      "bg-transparent border-none outline-none font-medium leading-tight w-full p-0 focus:ring-0 resize-none overflow-hidden",
+                      isCompact ? 'text-[11px]' : 'text-[13px]',
+                      // Dynamic height based on available space
+                      isExtraLarge ? 'min-h-[48px] max-h-[72px]' : isLarge ? 'min-h-[32px] max-h-[48px]' : 'min-h-[20px] max-h-[32px]'
+                    )}
+                    rows={titleMaxLines}
                     autoFocus
                   />
                 ) : (
