@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -20,7 +21,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel } from '@/types';
 import EnergySelector from '@/components/planner/NewEnergySelector';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HeaderProps {
   user: User;
@@ -37,7 +39,7 @@ interface HeaderProps {
   onBrainDump?: () => void;
 }
 
-const Header = ({ 
+const Header = memo(({ 
   user, 
   currentEnergy, 
   onEnergyChange, 
@@ -53,13 +55,14 @@ const Header = ({
 }: HeaderProps) => {
   const { toast } = useToast();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const isLight = document.documentElement.classList.contains('light');
     setTheme(isLight ? 'light' : 'dark');
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     
@@ -68,9 +71,9 @@ const Header = ({
     } else {
       document.documentElement.classList.remove('light');
     }
-  };
+  }, [theme]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({
@@ -79,31 +82,33 @@ const Header = ({
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
   const displayName = user.email?.split('@')[0] || 'User';
 
   return (
-    <header className="h-14 border-b border-border bg-background-elevated flex items-center justify-between px-4">
-      <div className="flex items-center gap-3">
+    <header className="h-14 border-b border-border bg-background-elevated flex items-center justify-between px-2 sm:px-4 gap-2">
+      {/* Left section */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onToggleSidebar}
-          className="text-foreground-muted hover:text-foreground"
+          className="text-foreground-muted hover:text-foreground min-w-[44px] min-h-[44px]"
         >
           <Menu className="w-5 h-5" />
         </Button>
         
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-medium text-foreground hidden sm:block">Luminoo</span>
+          <span className="font-medium text-foreground hidden md:block">Luminoo</span>
         </div>
       </div>
 
-      <div className="flex items-center">
+      {/* Center section - Energy selector */}
+      <div className="flex-1 flex items-center justify-center min-w-0 overflow-hidden">
         <EnergySelector 
           value={currentEnergy} 
           onChange={onEnergyChange}
@@ -116,12 +121,13 @@ const Header = ({
         />
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Right section */}
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="text-foreground-muted hover:text-foreground"
+          className="text-foreground-muted hover:text-foreground min-w-[44px] min-h-[44px]"
         >
           {theme === 'dark' ? (
             <Sun className="w-4 h-4" />
@@ -134,28 +140,32 @@ const Header = ({
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="flex items-center gap-2 text-foreground-muted hover:text-foreground"
+              className="flex items-center gap-1 sm:gap-2 text-foreground-muted hover:text-foreground min-h-[44px] px-2"
             >
-              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <UserIcon className="w-4 h-4 text-foreground-muted" />
                 )}
               </div>
-              <span className="hidden sm:block text-sm">{displayName}</span>
-              <ChevronDown className="w-4 h-4" />
+              {!isMobile && (
+                <>
+                  <span className="text-sm max-w-[100px] truncate">{displayName}</span>
+                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                </>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={onProfileClick} className="text-foreground-muted cursor-pointer">
+            <DropdownMenuItem onClick={onProfileClick} className="text-foreground-muted cursor-pointer min-h-[44px]">
               <UserIcon className="w-4 h-4 mr-2" />
               Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={handleSignOut}
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive min-h-[44px]"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign out
@@ -165,6 +175,8 @@ const Header = ({
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

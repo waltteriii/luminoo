@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -6,16 +6,19 @@ import { Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import PlannerView from '@/components/planner/PlannerView';
-import BrainDumpModal from '@/components/brain-dump/BrainDumpModal';
-import ProfileModal from '@/components/profile/ProfileModal';
-import TrendingTopicsModal from '@/components/trends/TrendingTopicsModal';
-import FriendsModal from '@/components/friends/FriendsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
-import QuickAddTaskDialog from '@/components/tasks/QuickAddTaskDialog';
 import DndProvider from '@/components/dnd/DndProvider';
 import MemoryPanel from '@/components/memory/MemoryPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
+
+// Lazy load modals for better performance
+const BrainDumpModal = lazy(() => import('@/components/brain-dump/BrainDumpModal'));
+const ProfileModal = lazy(() => import('@/components/profile/ProfileModal'));
+const TrendingTopicsModal = lazy(() => import('@/components/trends/TrendingTopicsModal'));
+const FriendsModal = lazy(() => import('@/components/friends/FriendsModal'));
+const QuickAddTaskDialog = lazy(() => import('@/components/tasks/QuickAddTaskDialog'));
 
 interface UserProfile {
   creatorType: string | null;
@@ -33,13 +36,14 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('year');
   const [focusedMonth, setFocusedMonth] = useState<number | null>(null);
   const [focusedDate, setFocusedDate] = useState<Date | null>(null);
   const [currentEnergy, setCurrentEnergy] = useState<EnergyLevel>('medium');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Default closed on mobile
   const [energyFilter, setEnergyFilter] = useState<EnergyLevel[]>([]);
   
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
@@ -48,6 +52,11 @@ const Index = () => {
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
+
+  // Set sidebar default based on screen size
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -75,7 +84,7 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
       .select('creator_type, platforms, niche_keywords, audience_description, avatar_url, default_view, highlight_color')
@@ -102,7 +111,6 @@ const Index = () => {
       // Set the default view if configured
       if (profile.defaultView) {
         setZoomLevel(profile.defaultView);
-        // Set appropriate focus based on view
         if (profile.defaultView === 'month') {
           setFocusedMonth(new Date().getMonth());
         } else if (profile.defaultView === 'week' || profile.defaultView === 'day') {
@@ -110,26 +118,25 @@ const Index = () => {
         }
       }
     }
-  };
+  }, []);
 
-  const handleMonthClick = (month: number) => {
+  const handleMonthClick = useCallback((month: number) => {
     setFocusedMonth(month);
     setZoomLevel('month');
-  };
+  }, []);
 
-  const handleDayClick = (date: Date) => {
+  const handleDayClick = useCallback((date: Date) => {
     setFocusedDate(date);
     setZoomLevel('day');
-  };
+  }, []);
 
-  const handleWeekClick = (date: Date) => {
+  const handleWeekClick = useCallback((date: Date) => {
     setFocusedDate(date);
     setZoomLevel('week');
-  };
+  }, []);
 
-  const handleZoomLevelChange = (level: ZoomLevel) => {
+  const handleZoomLevelChange = useCallback((level: ZoomLevel) => {
     setZoomLevel(level);
-    // Set appropriate focus when changing zoom levels
     if (level === 'year') {
       setFocusedMonth(null);
       setFocusedDate(null);
@@ -138,9 +145,9 @@ const Index = () => {
     } else if ((level === 'week' || level === 'day') && focusedDate === null) {
       setFocusedDate(new Date());
     }
-  };
+  }, [focusedMonth, focusedDate]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (zoomLevel === 'day') {
       setZoomLevel('week');
     } else if (zoomLevel === 'week') {
@@ -149,34 +156,32 @@ const Index = () => {
       setZoomLevel('year');
       setFocusedMonth(null);
     }
-  };
+  }, [zoomLevel]);
 
-  const handleJumpToToday = () => {
+  const handleJumpToToday = useCallback(() => {
     const today = new Date();
     setFocusedDate(today);
     setFocusedMonth(today.getMonth());
     setZoomLevel('day');
-  };
+  }, []);
 
-  const handleToggleEnergyFilter = (energy: EnergyLevel) => {
+  const handleToggleEnergyFilter = useCallback((energy: EnergyLevel) => {
     setEnergyFilter(prev => 
       prev.includes(energy) 
         ? prev.filter(e => e !== energy)
         : [...prev, energy]
     );
-  };
+  }, []);
 
-  const handleViewEnergyInbox = (energy: EnergyLevel) => {
-    // Set filter to only show this energy and clear others
+  const handleViewEnergyInbox = useCallback((energy: EnergyLevel) => {
     setEnergyFilter([energy]);
-  };
+  }, []);
 
-  const handleBrainDumpItems = async (items: ParsedItem[]) => {
+  const handleBrainDumpItems = useCallback(async (items: ParsedItem[]) => {
     if (!user) return;
     
     for (const item of items) {
       if (item.type === 'task') {
-        // Use the user-selected due_date (or null for inbox)
         const dueDate = (item as any).due_date || null;
         
         await supabase.from('tasks').insert({
@@ -186,14 +191,14 @@ const Index = () => {
           urgency: item.urgency,
           emotional_note: item.emotional_note,
           suggested_timeframe: item.suggested_timeframe,
-          due_date: dueDate, // null means it goes to inbox
+          due_date: dueDate,
           detected_from_brain_dump: true,
         });
       }
     }
-  };
+  }, [user]);
 
-  const handleAddTrendTask = async (title: string, energy: EnergyLevel) => {
+  const handleAddTrendTask = useCallback(async (title: string, energy: EnergyLevel) => {
     if (!user) return;
     
     await supabase.from('tasks').insert({
@@ -202,23 +207,21 @@ const Index = () => {
       energy_level: energy,
       detected_from_brain_dump: false,
     });
-  };
+  }, [user]);
 
-  const handleScheduleTask = async (taskId: string, date: Date) => {
-    // This is handled in UnscheduledTasks component and DndProvider
-  };
+  const handleScheduleTask = useCallback(async (taskId: string, date: Date) => {
+    // Handled in UnscheduledTasks and DndProvider
+  }, []);
 
-  const handleProfileClose = (open: boolean) => {
+  const handleProfileClose = useCallback((open: boolean) => {
     setProfileOpen(open);
-    // Reload profile when modal closes to sync avatar and default view
     if (!open && user) {
       loadUserProfile(user.id);
     }
-  };
+  }, [user, loadUserProfile]);
 
-  const handleDefaultViewChange = (view: ZoomLevel) => {
+  const handleDefaultViewChange = useCallback((view: ZoomLevel) => {
     setZoomLevel(view);
-    // Set appropriate focus based on view
     if (view === 'year') {
       setFocusedMonth(null);
       setFocusedDate(null);
@@ -227,7 +230,11 @@ const Index = () => {
     } else if (view === 'week' || view === 'day') {
       setFocusedDate(new Date());
     }
-  };
+  }, []);
+
+  const handleCloseSidebar = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
 
   if (loading) {
     return (
@@ -241,7 +248,7 @@ const Index = () => {
 
   return (
     <DndProvider>
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col w-full">
         <Header 
           user={user}
           currentEnergy={currentEnergy}
@@ -256,7 +263,7 @@ const Index = () => {
           onAddTask={() => setQuickAddOpen(true)}
           onBrainDump={() => setBrainDumpOpen(true)}
         />
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden w-full">
           <Sidebar 
             open={sidebarOpen}
             viewMode={viewMode}
@@ -267,16 +274,17 @@ const Index = () => {
             onJumpToToday={handleJumpToToday}
             memoryOpen={memoryOpen}
             onMemoryClick={() => setMemoryOpen(!memoryOpen)}
+            onClose={handleCloseSidebar}
           />
-          <main className="flex-1 flex flex-col overflow-hidden">
-            {/* Unscheduled tasks inbox - now draggable to calendar */}
+          <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+            {/* Unscheduled tasks inbox */}
             <UnscheduledTasks 
               energyFilter={energyFilter}
               onScheduleTask={handleScheduleTask}
             />
             
-            {/* Main planner view with droppable zones */}
-            <div className="flex-1 overflow-auto">
+            {/* Main planner view */}
+            <div className="flex-1 overflow-auto p-2 sm:p-4">
               <PlannerView
                 viewMode={viewMode}
                 zoomLevel={zoomLevel}
@@ -293,8 +301,8 @@ const Index = () => {
             </div>
           </main>
           
-          {/* Memory Panel - right side */}
-          {user && (
+          {/* Memory Panel - right side (hidden on mobile) */}
+          {user && !isMobile && (
             <MemoryPanel
               userId={user.id}
               isOpen={memoryOpen}
@@ -303,40 +311,51 @@ const Index = () => {
           )}
         </div>
 
-        <BrainDumpModal
-          open={brainDumpOpen}
-          onOpenChange={setBrainDumpOpen}
-          onItemsAdded={handleBrainDumpItems}
-        />
+        {/* Lazy loaded modals */}
+        <Suspense fallback={null}>
+          {brainDumpOpen && (
+            <BrainDumpModal
+              open={brainDumpOpen}
+              onOpenChange={setBrainDumpOpen}
+              onItemsAdded={handleBrainDumpItems}
+            />
+          )}
 
-        <ProfileModal
-          open={profileOpen}
-          onOpenChange={handleProfileClose}
-          userId={user.id}
-          onDefaultViewChange={handleDefaultViewChange}
-        />
+          {profileOpen && (
+            <ProfileModal
+              open={profileOpen}
+              onOpenChange={handleProfileClose}
+              userId={user.id}
+              onDefaultViewChange={handleDefaultViewChange}
+            />
+          )}
 
-        <TrendingTopicsModal
-          open={trendingOpen}
-          onOpenChange={setTrendingOpen}
-          userProfile={userProfile}
-          onAddTask={handleAddTrendTask}
-        />
+          {trendingOpen && (
+            <TrendingTopicsModal
+              open={trendingOpen}
+              onOpenChange={setTrendingOpen}
+              userProfile={userProfile}
+              onAddTask={handleAddTrendTask}
+            />
+          )}
 
-        <FriendsModal
-          open={friendsOpen}
-          onOpenChange={setFriendsOpen}
-          userId={user.id}
-        />
+          {friendsOpen && (
+            <FriendsModal
+              open={friendsOpen}
+              onOpenChange={setFriendsOpen}
+              userId={user.id}
+            />
+          )}
 
-        {user && (
-          <QuickAddTaskDialog
-            open={quickAddOpen}
-            onOpenChange={setQuickAddOpen}
-            userId={user.id}
-            defaultEnergy={currentEnergy}
-          />
-        )}
+          {quickAddOpen && (
+            <QuickAddTaskDialog
+              open={quickAddOpen}
+              onOpenChange={setQuickAddOpen}
+              userId={user.id}
+              defaultEnergy={currentEnergy}
+            />
+          )}
+        </Suspense>
       </div>
     </DndProvider>
   );

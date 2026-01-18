@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { format, startOfWeek, addDays, addWeeks, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
@@ -14,6 +14,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface WeekViewProps {
   startDate: Date;
@@ -33,9 +34,10 @@ interface DroppableDayProps {
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: Task) => void;
+  compact?: boolean;
 }
 
-const DroppableDay = ({
+const DroppableDay = memo(({
   date,
   tasks,
   currentEnergy,
@@ -45,6 +47,7 @@ const DroppableDay = ({
   onUpdateTask,
   onDeleteTask,
   onEditTask,
+  compact = false,
 }: DroppableDayProps) => {
   const dateStr = format(date, 'yyyy-MM-dd');
   const today = isToday(date);
@@ -54,16 +57,19 @@ const DroppableDay = ({
     data: { type: 'day', date },
   });
 
-  const handleDoubleClick = (e: React.MouseEvent, task: Task) => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
     onEditTask(task);
-  };
+  }, [onEditTask]);
+
+  const maxTasks = compact ? 4 : 8;
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border bg-card px-1.5 py-1 transition-all flex flex-col",
+        "rounded-lg border border-border bg-card px-1.5 py-1 transition-all flex flex-col min-h-[120px]",
+        compact && "min-h-[100px]",
         today && "border-highlight ring-1 ring-highlight/30",
         isOver && "ring-2 ring-highlight bg-highlight-muted",
         !isOver && !today && "hover:bg-highlight-muted/50 hover:border-highlight/30"
@@ -92,7 +98,7 @@ const DroppableDay = ({
         strategy={verticalListSortingStrategy}
       >
         <div className="flex flex-col gap-px mt-0.5 flex-1">
-          {tasks.slice(0, 8).map(task => (
+          {tasks.slice(0, maxTasks).map(task => (
             <div 
               key={task.id}
               onDoubleClick={(e) => handleDoubleClick(e, task)}
@@ -108,12 +114,12 @@ const DroppableDay = ({
               />
             </div>
           ))}
-          {tasks.length > 8 && (
+          {tasks.length > maxTasks && (
             <button 
               onClick={() => onDayClick(date)}
               className="text-[9px] text-foreground-muted hover:text-primary pl-0.5"
             >
-              +{tasks.length - 8} more
+              +{tasks.length - maxTasks} more
             </button>
           )}
         </div>
@@ -130,13 +136,16 @@ const DroppableDay = ({
       </SortableContext>
     </div>
   );
-};
+});
+
+DroppableDay.displayName = 'DroppableDay';
 
 const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onBack }: WeekViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentStartDate, setCurrentStartDate] = useState(startDate);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -144,13 +153,15 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     });
   }, []);
 
-  // Sync with prop changes
   useEffect(() => {
     setCurrentStartDate(startDate);
   }, [startDate]);
 
   const weekStart = startOfWeek(currentStartDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekDays = useMemo(() => 
+    Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart]
+  );
 
   const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
     userId: userId || undefined,
@@ -161,7 +172,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     includeShared: true,
   });
 
-  const getTasksForDay = (date: Date) => {
+  const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     let dayTasks = tasks.filter(t => t.due_date === dateStr);
     
@@ -170,61 +181,65 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     }
     
     return dayTasks;
-  };
+  }, [tasks, energyFilter]);
 
-  const handlePrevWeek = () => {
+  const handlePrevWeek = useCallback(() => {
     setCurrentStartDate(prev => addWeeks(prev, -1));
-  };
+  }, []);
 
-  const handleNextWeek = () => {
+  const handleNextWeek = useCallback(() => {
     setCurrentStartDate(prev => addWeeks(prev, 1));
-  };
+  }, []);
 
-  const handleAddTask = async (date: Date, title: string, energy: EnergyLevel) => {
+  const handleAddTask = useCallback(async (date: Date, title: string, energy: EnergyLevel) => {
     await addTask({
       title,
       energy_level: energy,
       due_date: format(date, 'yyyy-MM-dd'),
     });
-  };
+  }, [addTask]);
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveTask = (taskId: string, updates: Partial<Task>) => {
+  const handleSaveTask = useCallback((taskId: string, updates: Partial<Task>) => {
     updateTask(taskId, updates);
     setEditDialogOpen(false);
     setEditingTask(null);
-  };
+  }, [updateTask]);
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 flex-shrink-0">
             <ChevronLeft className="w-4 h-4" />
-            Back
+            <span className="hidden sm:inline">Back</span>
           </Button>
-          <div>
-            <h2 className="text-2xl font-light text-foreground">
-              Week of {format(weekStart, 'MMMM d')}
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-light text-foreground truncate">
+              Week of {format(weekStart, 'MMM d')}
             </h2>
-            <p className="text-foreground-muted">{format(weekStart, 'yyyy')}</p>
+            <p className="text-foreground-muted text-sm hidden sm:block">{format(weekStart, 'yyyy')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrevWeek}>
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={handlePrevWeek} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleNextWeek}>
+          <Button variant="outline" size="sm" onClick={handleNextWeek} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      {/* Responsive grid: 2 cols on mobile, 7 on desktop */}
+      <div className={cn(
+        "grid gap-2",
+        isMobile ? "grid-cols-2" : "grid-cols-7"
+      )}>
         {weekDays.map((day) => (
           <DroppableDay
             key={day.toISOString()}
@@ -237,11 +252,11 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             onUpdateTask={updateTask}
             onDeleteTask={deleteTask}
             onEditTask={handleEditTask}
+            compact={isMobile}
           />
         ))}
       </div>
 
-      {/* Edit dialog for task editing */}
       <EditTaskDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}

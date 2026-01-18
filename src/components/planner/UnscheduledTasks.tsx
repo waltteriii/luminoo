@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { InboxIcon, ChevronRight, ChevronDown, Plus, RefreshCw, Search, ChevronUp, AlertTriangle } from 'lucide-react';
@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UnscheduledTasksProps {
   energyFilter: EnergyLevel[];
@@ -13,8 +14,9 @@ interface UnscheduledTasksProps {
 }
 
 const MAX_VISIBLE_TASKS = 5;
+const MAX_VISIBLE_TASKS_MOBILE = 3;
 
-const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
+const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,15 +25,16 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
-  // Always-visible new task input
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const newTaskInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+
+  const maxVisible = isMobile ? MAX_VISIBLE_TASKS_MOBILE : MAX_VISIBLE_TASKS;
 
   useEffect(() => {
-    // Get user first, then load tasks
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -41,7 +44,6 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
     };
     init();
 
-    // Subscribe to task changes
     const channel = supabase
       .channel('unscheduled-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
@@ -61,7 +63,7 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
     }
   }, [showSearch]);
 
-  const loadTasks = async (uid?: string) => {
+  const loadTasks = useCallback(async (uid?: string) => {
     const userIdToUse = uid || userId;
     if (!userIdToUse) return;
     
@@ -77,13 +79,13 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
       if (error) throw error;
       setTasks((data as Task[]) || []);
     } catch (err) {
-      console.error('Load unscheduled tasks error:', err);
+      // Error handling
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
-  const handleScheduleTask = async (
+  const handleScheduleTask = useCallback(async (
     taskId: string,
     dueDate: string,
     startTime?: string,
@@ -100,15 +102,13 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
         .eq('id', taskId);
 
       if (error) throw error;
-
-      // Remove from local state
       setTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
-      console.error('Schedule task error:', err);
+      // Error handling
     }
-  };
+  }, []);
 
-  const handleEnergyChange = async (taskId: string, energy: EnergyLevel) => {
+  const handleEnergyChange = useCallback(async (taskId: string, energy: EnergyLevel) => {
     try {
       const { error } = await supabase
         .from('tasks')
@@ -116,17 +116,15 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
         .eq('id', taskId);
 
       if (error) throw error;
-
-      // Update local state
       setTasks(prev => prev.map(t =>
         t.id === taskId ? { ...t, energy_level: energy } : t
       ));
     } catch (err) {
-      console.error('Update energy error:', err);
+      // Error handling
     }
-  };
+  }, []);
 
-  const handleTitleChange = async (taskId: string, title: string) => {
+  const handleTitleChange = useCallback(async (taskId: string, title: string) => {
     try {
       const { error } = await supabase
         .from('tasks')
@@ -134,17 +132,15 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
         .eq('id', taskId);
 
       if (error) throw error;
-
-      // Update local state
       setTasks(prev => prev.map(t =>
         t.id === taskId ? { ...t, title } : t
       ));
     } catch (err) {
-      console.error('Update title error:', err);
+      // Error handling
     }
-  };
+  }, []);
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = useCallback(async (taskId: string) => {
     try {
       const { error } = await supabase
         .from('tasks')
@@ -156,12 +152,11 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
       setTasks(prev => prev.filter(t => t.id !== taskId));
       toast({ title: 'Deleted', description: 'Task removed from inbox' });
     } catch (err) {
-      console.error('Delete task error:', err);
       toast({ title: 'Error', description: 'Could not delete task', variant: 'destructive' });
     }
-  };
+  }, [toast]);
 
-  const createNewTask = async () => {
+  const createNewTask = useCallback(async () => {
     const title = newTaskTitle.trim();
     if (!title || !userId) return;
 
@@ -185,16 +180,17 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
       setTasks(prev => [newTask, ...prev]);
       setNewTaskTitle('');
     } catch (err) {
-      console.error('Create inbox task error:', err);
+      // Error handling
     }
-  };
+  }, [newTaskTitle, userId]);
 
-  // Filter by energy if filter is active
-  const energyFilteredTasks = energyFilter.length > 0
-    ? tasks.filter(t => energyFilter.includes(t.energy_level))
-    : tasks;
+  const energyFilteredTasks = useMemo(() => 
+    energyFilter.length > 0
+      ? tasks.filter(t => energyFilter.includes(t.energy_level))
+      : tasks,
+    [tasks, energyFilter]
+  );
 
-  // Filter by search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) return energyFilteredTasks;
     const query = searchQuery.toLowerCase();
@@ -204,14 +200,16 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
     );
   }, [energyFilteredTasks, searchQuery]);
 
-  // Visible tasks (limited unless expanded)
-  const visibleTasks = expanded ? filteredTasks : filteredTasks.slice(0, MAX_VISIBLE_TASKS);
-  const hiddenCount = filteredTasks.length - MAX_VISIBLE_TASKS;
-  const isOverflowing = filteredTasks.length > MAX_VISIBLE_TASKS;
+  const visibleTasks = useMemo(() => 
+    expanded ? filteredTasks : filteredTasks.slice(0, maxVisible),
+    [expanded, filteredTasks, maxVisible]
+  );
+  
+  const hiddenCount = filteredTasks.length - maxVisible;
+  const isOverflowing = filteredTasks.length > maxVisible;
 
   if (loading) return null;
 
-  // Show inbox even when empty so user can add tasks
   const showInbox = filteredTasks.length > 0 || tasks.length === 0;
   if (!showInbox) return null;
 
@@ -231,37 +229,36 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             setCollapsed((v) => !v);
           }
         }}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+        className="w-full flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-secondary/50 transition-colors min-h-[52px]"
       >
-        <div className="flex items-center gap-2">
-          <InboxIcon className="w-4 h-4 text-foreground-muted" />
+        <div className="flex items-center gap-2 min-w-0">
+          <InboxIcon className="w-4 h-4 text-foreground-muted flex-shrink-0" />
           <span className="text-sm font-medium text-foreground">Inbox</span>
           {filteredTasks.length > 0 && (
             <span className={cn(
-              "text-xs px-2 py-0.5 rounded-full",
+              "text-xs px-2 py-0.5 rounded-full flex-shrink-0",
               isOverflowing 
                 ? "bg-highlight-muted text-highlight-foreground" 
                 : "bg-secondary text-foreground-muted"
             )}>
-              {filteredTasks.length} unscheduled
+              {filteredTasks.length}
               {isOverflowing && !expanded && (
-                <span className="ml-1">
-                  <AlertTriangle className="w-3 h-3 inline -mt-0.5" />
-                </span>
+                <AlertTriangle className="w-3 h-3 inline ml-1 -mt-0.5" />
               )}
             </span>
           )}
-          <span className="text-xs text-foreground-muted opacity-60 hidden lg:inline">
-            • Drag tasks to calendar
-          </span>
+          {!isMobile && (
+            <span className="text-xs text-foreground-muted opacity-60 hidden lg:inline">
+              • Drag tasks to calendar
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1">
-          {/* Search toggle */}
+        <div className="flex items-center gap-1 flex-shrink-0">
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 opacity-60 hover:opacity-100 hover:bg-secondary"
+            className="h-8 w-8 opacity-60 hover:opacity-100 hover:bg-secondary"
             onClick={(e) => {
               e.stopPropagation();
               setShowSearch(v => !v);
@@ -269,13 +266,13 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             }}
             title="Search inbox"
           >
-            <Search className={cn("w-3.5 h-3.5", showSearch && "text-primary")} />
+            <Search className={cn("w-4 h-4", showSearch && "text-primary")} />
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 opacity-60 hover:opacity-100 hover:bg-secondary"
+            className="h-8 w-8 opacity-60 hover:opacity-100 hover:bg-secondary"
             onClick={async (e) => {
               e.stopPropagation();
               if (!userId) return;
@@ -285,7 +282,7 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             }}
             title="Refresh inbox"
           >
-            <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
+            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
           </Button>
 
           {collapsed ? (
@@ -297,24 +294,23 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
       </div>
 
       {!collapsed && (
-        <div className="px-4 pb-4 space-y-2">
-          {/* Search input */}
+        <div className="px-3 sm:px-4 pb-4 space-y-2">
           {showSearch && (
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground-muted" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
               <input
                 ref={searchInputRef}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter tasks..."
-                className="w-full pl-7 pr-3 py-1.5 rounded bg-card border border-border text-sm text-foreground placeholder:text-foreground-muted/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full pl-8 pr-3 py-2 rounded bg-card border border-border text-sm text-foreground placeholder:text-foreground-muted/60 focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
           )}
 
-          {/* Always-visible new task input at the top */}
-          <div className="flex items-center gap-2 p-2 rounded bg-card/50 border border-border/50 hover:border-border transition-colors">
+          {/* New task input */}
+          <div className="flex items-center gap-2 p-2 rounded bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[48px]">
             <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
             <input
               ref={newTaskInputRef}
@@ -349,7 +345,7 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             <button
               onClick={() => setExpanded(v => !v)}
               className={cn(
-                "w-full flex items-center justify-center gap-2 py-2 rounded text-xs transition-colors",
+                "w-full flex items-center justify-center gap-2 py-3 rounded text-xs transition-colors min-h-[44px]",
                 expanded
                   ? "text-foreground-muted hover:text-foreground"
                   : "bg-highlight-muted text-highlight-foreground hover:bg-highlight/20"
@@ -357,14 +353,14 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             >
               {expanded ? (
                 <>
-                  <ChevronUp className="w-3.5 h-3.5" />
+                  <ChevronUp className="w-4 h-4" />
                   Show less
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <AlertTriangle className="w-4 h-4" />
                   +{hiddenCount} more tasks — clear your inbox!
-                  <ChevronDown className="w-3.5 h-3.5" />
+                  <ChevronDown className="w-4 h-4" />
                 </>
               )}
             </button>
@@ -373,6 +369,8 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
       )}
     </div>
   );
-};
+});
+
+UnscheduledTasks.displayName = 'UnscheduledTasks';
 
 export default UnscheduledTasks;

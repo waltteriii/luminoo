@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
@@ -12,6 +12,7 @@ import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import { useDroppable } from '@dnd-kit/core';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DayViewProps {
   date: Date;
@@ -28,7 +29,7 @@ interface TimeSlotDropZoneProps {
   children: React.ReactNode;
 }
 
-const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
+const TimeSlotDropZone = memo(({ hour, date, children }: TimeSlotDropZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `time-slot-${hour}`,
     data: { hour, type: 'time-slot', date },
@@ -45,7 +46,9 @@ const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
       {children}
     </div>
   );
-};
+});
+
+TimeSlotDropZone.displayName = 'TimeSlotDropZone';
 
 const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus = false, timezone = 'UTC' }: DayViewProps) => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -55,8 +58,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [dragEndHour, setDragEndHour] = useState<number | null>(null);
   const [currentDate, setCurrentDate] = useState(date);
   const timeGridRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
-  // State for drag-to-create immediate task creation
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
 
@@ -66,7 +69,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     });
   }, []);
 
-  // Sync with prop changes
   useEffect(() => {
     setCurrentDate(date);
   }, [date]);
@@ -78,17 +80,13 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     includeShared: true,
   });
 
-  // Handle mouse events for drag-to-create
-  const handleMouseDown = (hour: number, e: React.MouseEvent) => {
-    if (isDraggingToCreate) return;
+  // Disable drag-to-create on mobile (use tap instead)
+  const handleMouseDown = useCallback((hour: number, e: React.MouseEvent) => {
+    if (isMobile || isDraggingToCreate) return;
 
     const target = e.target as HTMLElement;
-
-    // Never start drag-to-create when interacting with tasks or controls
     if (target.closest('.task-item')) return;
     if (target.closest('button, a, input, textarea, select, [role="button"], [data-no-drag-create]')) return;
-
-    // left click only
     if ((e as unknown as MouseEvent).button !== 0) return;
 
     e.preventDefault();
@@ -101,15 +99,15 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     setDragStartHour(startHour);
     setDragEndHour(endHour);
 
+    const HOUR_HEIGHT = isMobile ? 60 : 48;
+
     const onMove = (ev: MouseEvent) => {
       if (!timeGridRef.current) return;
-
       moved = true;
 
       const rect = timeGridRef.current.getBoundingClientRect();
       const relativeY = ev.clientY - rect.top;
-      const hourHeight = 48; // Height of each hour slot (compact)
-      const hoveredHour = Math.floor(relativeY / hourHeight) + 6; // 6 AM start
+      const hoveredHour = Math.floor(relativeY / HOUR_HEIGHT) + 6;
       const clampedHour = Math.max(6, Math.min(22, hoveredHour));
 
       endHour = clampedHour;
@@ -119,7 +117,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
 
-      // If it was a simple click (no drag), do nothing.
       if (!moved) {
         setIsDraggingToCreate(false);
         setDragStartHour(null);
@@ -145,9 +142,19 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp, { once: true });
-  };
+  }, [isMobile, isDraggingToCreate]);
 
-  const handleQuickAdd = async (task: {
+  // Mobile: tap to add at hour
+  const handleTapToAdd = useCallback((hour: number) => {
+    if (!isMobile) return;
+    setCreateTimeRange({
+      start: `${hour.toString().padStart(2, '0')}:00`,
+      end: `${(hour + 1).toString().padStart(2, '0')}:00`,
+    });
+    setShowCreateDialog(true);
+  }, [isMobile]);
+
+  const handleQuickAdd = useCallback(async (task: {
     title: string;
     energy: EnergyLevel;
     date?: string;
@@ -164,9 +171,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       end_date: task.endDate,
     });
     setAddingAtHour(null);
-  };
+  }, [addTask, dateStr]);
 
-  const handleCreateFromDrag = async (
+  const handleCreateFromDrag = useCallback(async (
     title: string,
     energy: EnergyLevel,
     startTime?: string,
@@ -181,30 +188,29 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     });
     setShowCreateDialog(false);
     setCreateTimeRange(null);
-  };
+  }, [addTask, dateStr]);
 
-  const handlePrevDay = () => {
+  const handlePrevDay = useCallback(() => {
     setCurrentDate(prev => addDays(prev, -1));
-  };
+  }, []);
 
-  const handleNextDay = () => {
+  const handleNextDay = useCallback(() => {
     setCurrentDate(prev => addDays(prev, 1));
-  };
+  }, []);
 
-  const filteredTasks = energyFilter.length > 0
-    ? tasks.filter(t => energyFilter.includes(t.energy_level))
-    : tasks;
+  const filteredTasks = useMemo(() => 
+    energyFilter.length > 0
+      ? tasks.filter(t => energyFilter.includes(t.energy_level))
+      : tasks,
+    [tasks, energyFilter]
+  );
 
-  // Tasks without specific time
-  const untimedTasks = filteredTasks.filter(t => !t.start_time);
-  
-  // Tasks with times - calculate their positions
-  const timedTasks = filteredTasks.filter(t => t.start_time);
+  const untimedTasks = useMemo(() => filteredTasks.filter(t => !t.start_time), [filteredTasks]);
+  const timedTasks = useMemo(() => filteredTasks.filter(t => t.start_time), [filteredTasks]);
 
-  const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
-  const HOUR_HEIGHT = 48; // Height per hour in pixels
+  const hours = useMemo(() => Array.from({ length: 17 }, (_, i) => i + 6), []);
+  const HOUR_HEIGHT = isMobile ? 60 : 48;
 
-  // Calculate drag selection range
   const selectionStart = dragStartHour !== null && dragEndHour !== null
     ? Math.min(dragStartHour, dragEndHour)
     : null;
@@ -212,28 +218,26 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     ? Math.max(dragStartHour, dragEndHour)
     : null;
 
-  // Helper to calculate task position and dimensions
-  const getTaskPosition = (task: Task) => {
+  const getTaskPosition = useCallback((task: Task) => {
     if (!task.start_time) return null;
     
     const [startH, startM] = task.start_time.split(':').map(Number);
     const startHour = startH + startM / 60;
     
-    let endHour = startHour + 1; // Default 1 hour duration
+    let endHour = startHour + 1;
     if (task.end_time) {
       const [endH, endM] = task.end_time.split(':').map(Number);
       endHour = endH + endM / 60;
     }
     
     const duration = endHour - startHour;
-    const top = (startHour - 6) * HOUR_HEIGHT; // 6 AM is hour 0
+    const top = (startHour - 6) * HOUR_HEIGHT;
     const height = duration * HOUR_HEIGHT;
     
     return { top, height, startHour, endHour, duration };
-  };
+  }, [HOUR_HEIGHT]);
 
-  // Group overlapping tasks for horizontal stacking
-  const getOverlappingGroups = () => {
+  const overlappingGroups = useMemo(() => {
     const groups: Task[][] = [];
     const sortedTasks = [...timedTasks].sort((a, b) => {
       const posA = getTaskPosition(a);
@@ -245,13 +249,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       const taskPos = getTaskPosition(task);
       if (!taskPos) continue;
 
-      // Find a group this task overlaps with
       let foundGroup = false;
       for (const group of groups) {
         const groupEnd = Math.max(...group.map(t => getTaskPosition(t)?.endHour || 0));
         const groupStart = Math.min(...group.map(t => getTaskPosition(t)?.startHour || 0));
         
-        // Check if this task overlaps with the group
         if (taskPos.startHour < groupEnd && taskPos.endHour > groupStart) {
           group.push(task);
           foundGroup = true;
@@ -265,45 +267,46 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     }
 
     return groups;
-  };
-
-  const overlappingGroups = getOverlappingGroups();
+  }, [timedTasks, getTaskPosition]);
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 flex-shrink-0">
             <ChevronLeft className="w-4 h-4" />
-            Back
+            <span className="hidden sm:inline">Back</span>
           </Button>
-          <div>
-            <h2 className="text-xl font-medium tracking-tight text-foreground">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-medium tracking-tight text-foreground truncate">
               {format(currentDate, 'EEEE')}
             </h2>
-            <p className="text-sm text-foreground-muted">{format(currentDate, 'MMMM d, yyyy')}</p>
+            <p className="text-sm text-foreground-muted">{format(currentDate, 'MMM d, yyyy')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrevDay}>
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={handlePrevDay} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleNextDay}>
+          <Button variant="outline" size="sm" onClick={handleNextDay} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="flex gap-6">
+      {/* Mobile: stacked layout. Desktop: side-by-side */}
+      <div className={cn("flex gap-4", isMobile ? "flex-col" : "flex-row")}>
         {/* Time grid */}
-        <div className="flex-1">
-          <div ref={timeGridRef} className="border-l border-border select-none relative" style={{ height: `${hours.length * HOUR_HEIGHT}px` }}>
-            {/* Current time indicator - only show for today */}
+        <div className={cn("flex-1", isMobile && "order-2")}>
+          <div 
+            ref={timeGridRef} 
+            className="border-l border-border select-none relative" 
+            style={{ height: `${hours.length * HOUR_HEIGHT}px` }}
+          >
             {isToday(currentDate) && (
               <CurrentTimeIndicator startHour={6} hourHeight={HOUR_HEIGHT} timezone={timezone} />
             )}
 
-            {/* Hour rows - just the grid lines and drop zones */}
             {hours.map(hour => {
               const isInSelection = selectionStart !== null &&
                 selectionEnd !== null &&
@@ -316,23 +319,32 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
                   <div
                     className={cn(
-                      'group relative border-b border-border/50 transition-all cursor-crosshair',
+                      'group relative border-b border-border/50 transition-all',
+                      !isMobile && 'cursor-crosshair',
                       isInSelection && 'bg-highlight/20 ring-1 ring-highlight/50'
                     )}
                     style={{ height: `${HOUR_HEIGHT}px` }}
                     onMouseDown={(e) => handleMouseDown(hour, e)}
+                    onClick={() => handleTapToAdd(hour)}
                   >
-                    {/* Time label */}
-                    <div className="absolute left-0 top-0 w-12 text-[11px] tabular-nums text-foreground-muted py-0.5 pointer-events-none">
+                    <div className="absolute left-0 top-0 w-10 sm:w-12 text-[10px] sm:text-[11px] tabular-nums text-foreground-muted py-0.5 pointer-events-none">
                       {timeStr}
                     </div>
 
-                    {/* Hover hint for empty slots */}
-                    {!isDraggingToCreate && (
+                    {!isDraggingToCreate && !isMobile && (
                       <div className="absolute inset-0 ml-14 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                         <div className="flex items-center gap-1 text-[11px] text-foreground-muted">
                           <Plus className="w-3 h-3" />
                           Drag to create
+                        </div>
+                      </div>
+                    )}
+
+                    {isMobile && (
+                      <div className="absolute inset-0 ml-12 flex items-center justify-center opacity-0 active:opacity-100 transition-opacity pointer-events-none">
+                        <div className="flex items-center gap-1 text-[11px] text-foreground-muted">
+                          <Plus className="w-3 h-3" />
+                          Tap to add
                         </div>
                       </div>
                     )}
@@ -341,8 +353,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               );
             })}
 
-            {/* Absolutely positioned tasks that span their duration */}
-            <div className="absolute inset-0 ml-14 pr-2 pointer-events-none">
+            {/* Positioned tasks */}
+            <div className={cn("absolute inset-0 pr-2 pointer-events-none", isMobile ? "ml-12" : "ml-14")}>
               {overlappingGroups.map((group) => {
                 const columnWidth = 100 / group.length;
 
@@ -381,13 +393,19 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
           </div>
         </div>
 
-        {/* Untimed tasks sidebar */}
-        <div className="w-64 shrink-0">
+        {/* Untimed tasks */}
+        <div className={cn(
+          "shrink-0",
+          isMobile ? "order-1 w-full" : "w-64"
+        )}>
           <h3 className="text-sm font-medium text-foreground-muted mb-3">
             Untimed Tasks
-            <span className="ml-2 text-xs opacity-60">Drag to schedule</span>
+            {!isMobile && <span className="ml-2 text-xs opacity-60">Drag to schedule</span>}
           </h3>
-          <div className="space-y-2">
+          <div className={cn(
+            "space-y-2",
+            isMobile && "grid grid-cols-2 gap-2 space-y-0"
+          )}>
             {untimedTasks.map(task => (
               <DraggableUntimedTask
                 key={task.id}
@@ -409,7 +427,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         </div>
       </div>
 
-      {/* Create task dialog for drag-to-create */}
       <CreateTaskDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
@@ -424,4 +441,3 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 };
 
 export default DayView;
-

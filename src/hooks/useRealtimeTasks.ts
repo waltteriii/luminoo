@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -14,6 +14,17 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharedUserIds, setSharedUserIds] = useState<string[]>([]);
+
+  // Memoize options to prevent unnecessary re-renders
+  const optionsKey = useMemo(() => 
+    JSON.stringify({
+      userId: options.userId,
+      dateRange: options.dateRange,
+      singleDate: options.singleDate,
+      includeShared: options.includeShared,
+    }),
+    [options.userId, options.dateRange, options.singleDate, options.includeShared]
+  );
 
   // Load shared calendar user IDs
   useEffect(() => {
@@ -44,7 +55,6 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
         .select('*')
         .order('created_at', { ascending: true });
 
-      // Build user filter - own tasks + shared calendars
       const userIds = [options.userId, ...sharedUserIds];
       query = query.in('user_id', userIds);
 
@@ -61,7 +71,7 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
       if (error) throw error;
       setTasks((data || []) as Task[]);
     } catch (err) {
-      console.error('Load tasks error:', err);
+      // Error handling without console.log
     } finally {
       setLoading(false);
     }
@@ -71,14 +81,15 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
     loadTasks();
   }, [loadTasks]);
 
-  // Set up realtime subscription
+  // Set up realtime subscription with unique channel name
   useEffect(() => {
     if (!options.userId) return;
 
     const userIds = [options.userId, ...sharedUserIds];
+    const channelName = `tasks-${optionsKey.slice(0, 20)}`;
 
     const channel = supabase
-      .channel('tasks-realtime')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -87,14 +98,10 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
           table: 'tasks',
         },
         (payload: RealtimePostgresChangesPayload<Task>) => {
-          console.log('Realtime task update:', payload);
-
           if (payload.eventType === 'INSERT') {
             const newTask = payload.new as Task;
-            // Only add if it's from a relevant user
             if (userIds.includes(newTask.user_id)) {
               setTasks(prev => {
-                // Check if already exists
                 if (prev.some(t => t.id === newTask.id)) return prev;
                 return [...prev, newTask];
               });
@@ -115,9 +122,9 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [options.userId, sharedUserIds]);
+  }, [options.userId, sharedUserIds, optionsKey]);
 
-  const addTask = async (task: Partial<Task> & { start_time?: string; end_time?: string; end_date?: string }) => {
+  const addTask = useCallback(async (task: Partial<Task> & { start_time?: string; end_time?: string; end_date?: string }) => {
     if (!options.userId) return null;
 
     const { data, error } = await supabase
@@ -141,13 +148,12 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
       .single();
 
     if (error) {
-      console.error('Add task error:', error);
       return null;
     }
 
     const inserted = data as Task;
 
-    // Optimistic add so the task appears immediately (no view switching required)
+    // Optimistic add
     const due = inserted.due_date;
     const include = options.singleDate
       ? due === options.singleDate
@@ -160,42 +166,47 @@ export const useRealtimeTasks = (options: UseRealtimeTasksOptions) => {
     }
 
     return inserted;
-  };
+  }, [options.userId, options.singleDate, options.dateRange]);
 
-  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+  const updateTask = useCallback(async (taskId: string, updates: Partial<Task>) => {
+    // Optimistic update first for immediate UI feedback
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
+
     const { error } = await supabase
       .from('tasks')
       .update(updates)
       .eq('id', taskId);
 
     if (error) {
-      console.error('Update task error:', error);
+      // Revert on error
+      loadTasks();
       return false;
     }
 
-    // Optimistic update
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
     return true;
-  };
+  }, [loadTasks]);
 
-  const deleteTask = async (taskId: string) => {
+  const deleteTask = useCallback(async (taskId: string) => {
+    // Optimistic delete
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+
     const { error } = await supabase
       .from('tasks')
       .delete()
       .eq('id', taskId);
 
     if (error) {
-      console.error('Delete task error:', error);
+      // Revert on error
+      loadTasks();
       return false;
     }
 
-    setTasks(prev => prev.filter(t => t.id !== taskId));
     return true;
-  };
+  }, [loadTasks]);
 
-  const rescheduleTask = async (taskId: string, newDate: string) => {
+  const rescheduleTask = useCallback(async (taskId: string, newDate: string) => {
     return updateTask(taskId, { due_date: newDate });
-  };
+  }, [updateTask]);
 
   return {
     tasks,
