@@ -444,13 +444,14 @@ const CalendarTask = ({
               {...listeners}
               onDoubleClick={handleDoubleClick}
               className={cn(
-                'group relative h-full rounded-lg border-l-[3px] shadow-sm transition-all overflow-hidden',
+                'group relative h-full rounded-lg border-l-[3px] shadow-sm overflow-hidden',
                 'hover:shadow-md hover:brightness-105',
-                !isResizing && 'cursor-grab active:cursor-grabbing',
+                !isResizing && 'cursor-grab active:cursor-grabbing transition-all',
+                isResizing && 'transition-none', // Disable transitions during resize for smoothness
                 energyBorderColors[task.energy_level],
                 energyBgColors[task.energy_level],
                 isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
-                isResizing && 'ring-2 ring-primary shadow-lg z-50',
+                isResizing && 'ring-2 ring-highlight shadow-lg z-50',
                 task.completed && 'opacity-50'
               )}
             >

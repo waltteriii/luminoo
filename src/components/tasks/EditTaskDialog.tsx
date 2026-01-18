@@ -129,7 +129,7 @@ const EditTaskDialog = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
-                className="focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="focus:ring-1 focus:ring-highlight/30 focus:border-highlight/50 transition-all"
               />
             </div>
 
@@ -141,7 +141,7 @@ const EditTaskDialog = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add notes or details..."
-                className="min-h-[80px] resize-none focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="min-h-[80px] resize-none focus:ring-1 focus:ring-highlight/30 focus:border-highlight/50 transition-all"
               />
             </div>
 
@@ -156,7 +156,7 @@ const EditTaskDialog = ({
                     className={cn(
                       'transition-all rounded-full',
                       energy === e
-                        ? 'ring-2 ring-primary/70 ring-offset-2 ring-offset-background'
+                        ? 'ring-2 ring-highlight/70 ring-offset-2 ring-offset-background'
                         : 'opacity-50 hover:opacity-80'
                     )}
                   >
@@ -276,7 +276,7 @@ const EditTaskDialog = ({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Add a location (optional)"
-                className="h-10 focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="h-10 focus:ring-1 focus:ring-highlight/30 focus:border-highlight/50 transition-all"
               />
             </div>
 
