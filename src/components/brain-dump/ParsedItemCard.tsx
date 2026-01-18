@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, ParsedItem, Urgency } from '@/types';
 import { X, AlertCircle, Lightbulb, Target, Calendar, Sparkles, Inbox } from 'lucide-react';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import EnergyPill from '@/components/shared/EnergyPill';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 
 interface ParsedItemCardProps {
@@ -13,6 +14,7 @@ interface ParsedItemCardProps {
   onEnergyChange: (energy: EnergyLevel) => void;
   onRemove: () => void;
   onDateChange?: (date: string | null) => void;
+  onTextChange?: (text: string) => void;
 }
 
 const typeIcons = {
@@ -28,12 +30,22 @@ const urgencyColors: Record<Urgency, string> = {
   critical: 'text-red-500',
 };
 
-const ParsedItemCard = ({ item, onEnergyChange, onRemove, onDateChange }: ParsedItemCardProps) => {
+const ParsedItemCard = ({ item, onEnergyChange, onRemove, onDateChange, onTextChange }: ParsedItemCardProps) => {
   const Icon = typeIcons[item.type];
   const currentEnergy = item.user_override_energy || item.detected_energy;
   // Handle due_date from parsed response - default to null (inbox)
   const dueDate = (item as any).due_date || null;
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(item.text);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date && onDateChange) {
@@ -47,6 +59,27 @@ const ParsedItemCard = ({ item, onEnergyChange, onRemove, onDateChange }: Parsed
       onDateChange(null);
     }
     setCalendarOpen(false);
+  };
+
+  const handleDoubleClick = () => {
+    setEditText(item.text);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editText.trim() && onTextChange) {
+      onTextChange(editText.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setEditText(item.text);
+      setIsEditing(false);
+    }
   };
 
   return (
@@ -66,7 +99,24 @@ const ParsedItemCard = ({ item, onEnergyChange, onRemove, onDateChange }: Parsed
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-medium text-foreground">{item.text}</p>
+            {isEditing ? (
+              <Input
+                ref={inputRef}
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onBlur={handleSaveEdit}
+                onKeyDown={handleKeyDown}
+                className="text-sm font-medium h-7 py-0"
+              />
+            ) : (
+              <p 
+                className="text-sm font-medium text-foreground cursor-text hover:bg-secondary/50 px-1 -mx-1 rounded transition-colors"
+                onDoubleClick={handleDoubleClick}
+                title="Double-click to edit"
+              >
+                {item.text}
+              </p>
+            )}
             <Button
               variant="ghost"
               size="icon"
