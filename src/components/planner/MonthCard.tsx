@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { ZoomLevel, EnergyLevel } from '@/types';
 import { Plus } from 'lucide-react';
+import { useDensity } from '@/contexts/DensityContext';
 import {
   Tooltip,
   TooltipContent,

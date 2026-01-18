@@ -15,6 +15,7 @@ import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { useDndContext } from '@/components/dnd/DndProvider';
+import { useDensity } from '@/contexts/DensityContext';
 import {
   Tooltip,
   TooltipContent,
@@ -116,6 +117,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const timeGridRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const { activeTask, dragOverInfo } = useDndContext();
+  const { isTooltipEnabledForView } = useDensity();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
@@ -505,8 +507,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       // For single tasks (no overlap), enable horizontal resizing
                       const isSingleTask = group.length === 1;
                       const taskCustomWidth = taskWidths[task.id];
-                      const baseWidth = columnWidth;
-                      const displayWidth = isSingleTask ? (taskCustomWidth ?? 100) : 100;
+                      // For single tasks, use custom width; for multi-task groups, use column width
+                      const effectiveWidthPercent = isSingleTask 
+                        ? (taskCustomWidth ?? 100) 
+                        : 100;
                       
                       const handleWidthChange = isSingleTask ? (newWidth: number) => {
                         setTaskWidths(prev => ({ ...prev, [task.id]: newWidth }));
@@ -520,7 +524,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             top: `${pos.top + 1}px`,
                             height: `${taskHeight}px`,
                             left: `calc(${columnIdx * columnWidth}% + 4px)`,
-                            width: `calc(${baseWidth}% - 8px)`,
+                            width: isSingleTask 
+                              ? `calc(${effectiveWidthPercent}% - 8px)` 
+                              : `calc(${columnWidth}% - 8px)`,
                           }}
                           onMouseDown={(e) => e.stopPropagation()}
                           onPointerDown={(e) => e.stopPropagation()}
@@ -532,7 +538,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             isShared={task.user_id !== userId}
                             showTimeRange={pos.duration >= 1}
                             height={taskHeight}
-                            width={displayWidth}
+                            width={isSingleTask ? effectiveWidthPercent : undefined}
                             minWidth={30}
                             maxWidth={100}
                             onWidthChange={handleWidthChange}
@@ -540,6 +546,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             canMoveRight={!!handleMoveRight}
                             onMoveLeft={handleMoveLeft}
                             onMoveRight={handleMoveRight}
+                            showTooltip={isTooltipEnabledForView('day')}
                           />
                         </div>
                       );

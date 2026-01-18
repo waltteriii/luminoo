@@ -29,6 +29,7 @@ interface CalendarTaskProps {
   canMoveRight?: boolean;
   onMoveLeft?: () => void;
   onMoveRight?: () => void;
+  showTooltip?: boolean; // Whether to show hover tooltip
 }
 
 const energyBorderColors: Record<EnergyLevel, string> = {
@@ -60,6 +61,7 @@ const CalendarTask = ({
   canMoveRight,
   onMoveLeft,
   onMoveRight,
+  showTooltip = true,
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -354,7 +356,6 @@ const CalendarTask = ({
                 ...style,
                 height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
                 marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
-                width: displayWidth ? `${displayWidth}%` : undefined,
               }}
               {...attributes}
               {...listeners}
@@ -535,15 +536,17 @@ const CalendarTask = ({
               </div>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[200px]">
-            <p className="font-medium">{task.title}</p>
-            {task.start_time && (
-              <p className="text-xs text-muted-foreground">{getTimeRange()}</p>
-            )}
-            {task.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
-            )}
-          </TooltipContent>
+          {showTooltip && (
+            <TooltipContent side="top" className="max-w-[200px]">
+              <p className="font-medium">{task.title}</p>
+              {task.start_time && (
+                <p className="text-xs text-muted-foreground">{getTimeRange()}</p>
+              )}
+              {task.description && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
+              )}
+            </TooltipContent>
+          )}
         </Tooltip>
       </TooltipProvider>
 

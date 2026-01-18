@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDensity } from '@/contexts/DensityContext';
 import {
   Tooltip,
   TooltipContent,
