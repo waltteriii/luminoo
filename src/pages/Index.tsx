@@ -260,6 +260,7 @@ const Index = () => {
           onViewInbox={handleViewEnergyInbox}
           activeFilters={energyFilter}
           avatarUrl={userProfile?.avatarUrl}
+          highlightColor={userProfile?.highlightColor || 'blue'}
           onAddTask={() => setQuickAddOpen(true)}
           onBrainDump={() => setBrainDumpOpen(true)}
         />

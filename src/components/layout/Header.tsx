@@ -34,6 +34,7 @@ interface HeaderProps {
   onViewInbox?: (energy: EnergyLevel) => void;
   activeFilters?: EnergyLevel[];
   avatarUrl?: string | null;
+  highlightColor?: string;
   onAddTask?: () => void;
   onBrainDump?: () => void;
 }
@@ -49,6 +50,7 @@ const Header = memo(({
   onViewInbox,
   activeFilters = [],
   avatarUrl,
+  highlightColor = 'blue',
   onAddTask,
   onBrainDump
 }: HeaderProps) => {
@@ -94,9 +96,21 @@ const Header = memo(({
         
         {/* Logo - hide on mobile to save space */}
         {!isMobile && (
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <Squirrel className="w-4 h-4 text-primary-foreground" />
+          <div className="flex items-center gap-2 group">
+            <div 
+              className={cn(
+                "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                "group-hover:scale-110 group-hover:rotate-6",
+                highlightColor === 'blue' && "bg-blue-500",
+                highlightColor === 'purple' && "bg-purple-500",
+                highlightColor === 'green' && "bg-emerald-500",
+                highlightColor === 'orange' && "bg-orange-500",
+                highlightColor === 'pink' && "bg-pink-500",
+                highlightColor === 'cyan' && "bg-cyan-500",
+                !['blue', 'purple', 'green', 'orange', 'pink', 'cyan'].includes(highlightColor) && "bg-primary"
+              )}
+            >
+              <Squirrel className="w-4 h-4 text-white transition-transform duration-300 group-hover:animate-[wiggle_0.3s_ease-in-out]" />
             </div>
             <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
           </div>
