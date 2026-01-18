@@ -7,6 +7,7 @@ import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTasksContext } from '@/contexts/TasksContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnscheduledTasksProps {
   energyFilter: EnergyLevel[];
@@ -29,6 +30,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [showSearch, setShowSearch] = useState(false);
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [defaultInboxEnergy, setDefaultInboxEnergy] = useState<EnergyLevel>('high');
   const newTaskInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -39,6 +41,26 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     allTasks.filter(t => !t.due_date && !t.completed && t.location !== 'memory'),
     [allTasks]
   );
+
+  // Fetch user's default inbox energy setting
+  useEffect(() => {
+    const fetchDefaultEnergy = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('default_inbox_energy')
+        .eq('id', user.id)
+        .single();
+      
+      if (data?.default_inbox_energy) {
+        setDefaultInboxEnergy(data.default_inbox_energy as EnergyLevel);
+      }
+    };
+    
+    fetchDefaultEnergy();
+  }, []);
 
   // Responsive columns and max visible tasks
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -127,13 +149,13 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
 
     await addTask({
       title,
-      energy_level: 'medium',
+      energy_level: defaultInboxEnergy,
       due_date: null,
       completed: false,
       detected_from_brain_dump: false,
     });
     setNewTaskTitle('');
-  }, [newTaskTitle, addTask]);
+  }, [newTaskTitle, addTask, defaultInboxEnergy]);
 
   const energyFilteredTasks = useMemo(() => 
     energyFilter.length > 0

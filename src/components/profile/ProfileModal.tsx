@@ -254,6 +254,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
   const [currentTime, setCurrentTime] = useState('');
   const [defaultView, setDefaultView] = useState<ZoomLevel>('year');
   const [highlightColor, setHighlightColor] = useState<HighlightColor>('blue');
+  const [defaultInboxEnergy, setDefaultInboxEnergy] = useState<'high' | 'medium' | 'low' | 'recovery'>('high');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -321,6 +322,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
         setDefaultView(((data as any).default_view as ZoomLevel) || 'year');
         const loadedHighlight = ((data as any).highlight_color as HighlightColor) || 'blue';
         setHighlightColor(loadedHighlight);
+        setDefaultInboxEnergy((data as any).default_inbox_energy || 'high');
         // Apply highlight color to document
         document.documentElement.setAttribute('data-highlight', loadedHighlight);
         // Extract "More about you" from audience description if it exists
@@ -420,6 +422,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
           timezone: timezone,
           default_view: defaultView,
           highlight_color: highlightColor,
+          default_inbox_energy: defaultInboxEnergy,
           updated_at: new Date().toISOString(),
         } as any)
         .eq('id', userId);
@@ -926,6 +929,41 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
 
                 {/* UI Density */}
                 <DensitySection />
+
+                <Separator className="my-1" />
+
+                {/* Default Inbox Energy */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Plus className="w-3.5 h-3.5 text-highlight" />
+                    <Label className="text-xs font-medium">Default Inbox Energy</Label>
+                  </div>
+                  <p className="text-xs text-foreground-muted">
+                    Energy level assigned to new tasks when pressing Enter in the inbox
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: 'high' as const, label: 'High Focus', color: 'bg-energy-high' },
+                      { value: 'medium' as const, label: 'Steady', color: 'bg-energy-medium' },
+                      { value: 'low' as const, label: 'Low', color: 'bg-energy-low' },
+                      { value: 'recovery' as const, label: 'Recovery', color: 'bg-energy-recovery' },
+                    ].map(option => (
+                      <button
+                        key={option.value}
+                        onClick={() => setDefaultInboxEnergy(option.value)}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-lg border transition-all",
+                          defaultInboxEnergy === option.value
+                            ? "border-highlight bg-highlight-muted text-highlight-foreground"
+                            : "border-border hover:border-foreground-muted/50 text-foreground-muted hover:text-foreground"
+                        )}
+                      >
+                        <span className={cn("w-3 h-3 rounded-full", option.color)} />
+                        <span className="text-[10px] font-medium">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <Separator className="my-1" />
 
