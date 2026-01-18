@@ -5,7 +5,7 @@ import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
 import { Pencil, ChevronLeft, ChevronRight, Hand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import {
   Tooltip,
@@ -76,6 +76,7 @@ const CalendarTask = ({
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isSelected, setIsSelected] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<'top' | 'bottom' | 'left' | 'right' | null>(null);
   const [resizePreviewHeight, setResizePreviewHeight] = useState<number | null>(null);
   const [resizePreviewTop, setResizePreviewTop] = useState<number | null>(null);
@@ -95,6 +96,20 @@ const CalendarTask = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!isSelected) return;
+
+    const handleOutsidePointerDown = (ev: PointerEvent) => {
+      const el = containerRef.current;
+      if (!el) return;
+      if (el.contains(ev.target as Node)) return;
+      setIsSelected(false);
+    };
+
+    window.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => window.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [isSelected]);
 
   const {
     attributes,
@@ -441,14 +456,11 @@ const CalendarTask = ({
     setEditDialogOpen(true);
   }, []);
   
-  // Handle single click for compact tasks - opens dialog directly
-  const handleCompactClick = useCallback((e: React.MouseEvent) => {
-    if (isCompact) {
-      e.stopPropagation();
-      e.preventDefault();
-      setEditDialogOpen(true);
-    }
-  }, [isCompact]);
+  // Click selects the task (used to reveal resize handles)
+  const handleClickSelect = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSelected(true);
+  }, []);
 
   // Handle inline title editing
   const handleTitleClick = useCallback((e: React.MouseEvent) => {
@@ -531,10 +543,16 @@ const CalendarTask = ({
                 }}
                 {...attributes}
                 {...listeners}
+                onPointerDownCapture={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest('button, input, textarea, [data-no-select]')) return;
+                  setIsSelected(true);
+                }}
                 onDoubleClick={handleDoubleClick}
-                onClick={handleCompactClick}
+                onClick={handleClickSelect}
                 className={cn(
-                  'group relative h-full rounded-lg border-l-[3px] shadow-sm overflow-hidden',
+                  'group relative h-full rounded-lg border-l-[3px] shadow-sm',
+                  (isSelected || isResizing) ? 'overflow-visible' : 'overflow-hidden',
                   'hover:shadow-md hover:brightness-105',
                   !isResizing && 'cursor-grab active:cursor-grabbing transition-all',
                   isResizing && 'transition-none', // Disable transitions during resize for smoothness
@@ -543,20 +561,20 @@ const CalendarTask = ({
                   isVerySmall && 'touch-none',
                   energyBorderColors[task.energy_level],
                   energyBgColors[task.energy_level],
+                  isSelected && !isResizing && !isDragging && 'ring-2 ring-highlight/50',
                   isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
                   isResizing && 'ring-2 ring-highlight shadow-lg z-50',
-                  task.completed && 'opacity-50',
-                  // For very small tasks, add hover highlight to indicate clickability
-                  isVerySmall && 'hover:ring-2 hover:ring-highlight/50'
+                  task.completed && 'opacity-50'
                 )}
               >
               {/* Left resize handle - for split-pane resize */}
-              {canResizeHorizontallyLeft && (
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && canResizeHorizontallyLeft && (
                 <div
+                  data-no-select
                   className={cn(
-                    'absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-20',
-                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20',
-                    isResizing && resizeDirection === 'left' && 'opacity-100 bg-primary/30'
+                    'absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-30',
+                    'bg-background/40',
+                    isResizing && resizeDirection === 'left' && 'bg-primary/30'
                   )}
                   onPointerDown={handleResizeLeftStart}
                   onMouseDown={(e) => e.stopPropagation()}
@@ -566,12 +584,13 @@ const CalendarTask = ({
               )}
 
               {/* Right resize handle - for split-pane resize */}
-              {canResizeHorizontallyRight && (
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && canResizeHorizontallyRight && (
                 <div
+                  data-no-select
                   className={cn(
-                    'absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-20',
-                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20',
-                    isResizing && resizeDirection === 'right' && 'opacity-100 bg-primary/30'
+                    'absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-30',
+                    'bg-background/40',
+                    isResizing && resizeDirection === 'right' && 'bg-primary/30'
                   )}
                   onPointerDown={handleResizeRightStart}
                   onMouseDown={(e) => e.stopPropagation()}
@@ -580,26 +599,27 @@ const CalendarTask = ({
                 </div>
               )}
 
-              {/* Top resize handle - larger for small tasks, always visible for very small */}
-              <div
-                className={cn(
-                  'absolute top-0 left-0 right-0 cursor-ns-resize flex items-center justify-center z-10',
-                  isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity',
-                  isResizing && resizeDirection === 'top' && 'opacity-100',
-                  isVerySmall ? 'h-8' : 'h-5'
-                )}
-                style={{ touchAction: 'none' }}
-                onPointerDown={handleResizeTopStart}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className={cn("rounded-full bg-foreground/50", isVerySmall ? "w-12 h-1.5" : "w-8 h-1")} />
-              </div>
+              {/* Top resize handle - outside the box, only when selected */}
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && (
+                <div
+                  data-no-select
+                  className={cn(
+                    'absolute left-1/2 -translate-x-1/2 -top-2 z-40 flex items-center justify-center',
+                    'w-16 h-4'
+                  )}
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={handleResizeTopStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-12 h-2 rounded-full bg-foreground/40 shadow-sm" />
+                </div>
+              )}
 
               {/* Drag affordance for tiny tasks */}
-              {isVerySmall && (
+              {isVerySmall && !isEditingTitle && !isEditingDescription && (
                 <div className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none">
-                  <GripVertical className="w-4 h-4 text-foreground/60" />
+                  <Hand className="w-4 h-4 text-foreground/60" />
                 </div>
               )}
 
@@ -696,7 +716,7 @@ const CalendarTask = ({
               </div>
 
               {/* Reorder buttons - kept in top area, but text has reserved padding */}
-              {(canMoveLeft || canMoveRight) && (
+              {!isEditingTitle && !isEditingDescription && (canMoveLeft || canMoveRight) && (
                 <div className={cn(
                   'absolute left-1 top-5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10'
                 )}>
@@ -738,41 +758,44 @@ const CalendarTask = ({
               )}
 
               {/* Edit button - appears on hover, always visible for very small tasks */}
-              <Button
-                variant="secondary"
-                size="icon"
-                className={cn(
-                  'absolute top-1 right-1 h-6 w-6 transition-opacity',
-                  'bg-background/90 hover:bg-background shadow-sm',
-                  isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setEditDialogOpen(true);
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <Pencil className="w-3 h-3" />
-              </Button>
+              {!isEditingTitle && !isEditingDescription && (
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className={cn(
+                    'absolute top-1 right-1 h-6 w-6 transition-opacity z-40',
+                    'bg-background/90 hover:bg-background shadow-sm',
+                    isSelected || isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setEditDialogOpen(true);
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              )}
 
-              {/* Bottom resize handle - larger for small tasks, always visible for very small */}
-              <div
-                className={cn(
-                  'absolute bottom-0 left-0 right-0 cursor-ns-resize flex items-center justify-center',
-                  isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity',
-                  'bg-gradient-to-t from-background/60 to-transparent',
-                  isResizing && resizeDirection === 'bottom' && 'opacity-100',
-                  isVerySmall ? 'h-8' : 'h-5'
-                )}
-                style={{ touchAction: 'none' }}
-                onPointerDown={handleResizeBottomStart}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className={cn("rounded-full bg-foreground/50", isVerySmall ? "w-12 h-2" : "w-10 h-1.5")} />
-              </div>
+              {/* Bottom resize handle - outside the box, only when selected */}
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && (
+                <div
+                  data-no-select
+                  className={cn(
+                    'absolute left-1/2 -translate-x-1/2 -bottom-2 z-40 flex items-center justify-center',
+                    'w-16 h-4'
+                  )}
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={handleResizeBottomStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-12 h-2 rounded-full bg-foreground/40 shadow-sm" />
+                </div>
+              )}
+
             </div>
           </TooltipTrigger>
           {showTooltip && (
