@@ -84,11 +84,24 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     startTime?: string,
     endTime?: string
   ) => {
-    await updateTask(taskId, {
-      due_date: dueDate,
-      start_time: startTime === 'none' ? null : startTime,
-      end_time: endTime === 'none' ? null : endTime,
-    });
+    const updates: Record<string, unknown> = { due_date: dueDate };
+
+    // Only set times when explicitly provided.
+    // This avoids accidentally clearing an existing start_time/end_time.
+    if (startTime !== undefined) {
+      if (startTime === 'none' || startTime === '') {
+        updates.start_time = null;
+        updates.end_time = null;
+      } else {
+        updates.start_time = startTime;
+      }
+    }
+
+    if (endTime !== undefined && startTime !== 'none' && startTime !== '') {
+      updates.end_time = endTime === 'none' || endTime === '' ? null : endTime;
+    }
+
+    await updateTask(taskId, updates as any);
   }, [updateTask]);
 
   const handleEnergyChange = useCallback(async (taskId: string, energy: EnergyLevel) => {

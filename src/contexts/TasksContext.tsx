@@ -179,6 +179,12 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
   // Update task with optimistic update
   const updateTask = useCallback(
     async (id: string, updates: TaskUpdate): Promise<boolean> => {
+      const sanitizedUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, v]) => v !== undefined)
+      ) as TaskUpdate;
+
+      if (Object.keys(sanitizedUpdates).length === 0) return true;
+
       const taskToUpdate = tasks.find((t) => t.id === id);
       if (!taskToUpdate) return false;
 
@@ -188,14 +194,16 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
       // Optimistic update
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
+          t.id === id
+            ? { ...t, ...sanitizedUpdates, updated_at: new Date().toISOString() }
+            : t
         )
       );
 
       try {
         const { error } = await supabase
           .from('tasks')
-          .update(updates)
+          .update(sanitizedUpdates)
           .eq('id', id);
 
         if (error) {
