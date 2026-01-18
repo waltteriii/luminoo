@@ -576,59 +576,108 @@ const CalendarTask = ({
                   task.completed && 'opacity-50'
                 )}
               >
-              {/* Left resize handle - for split-pane resize */}
-              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && canResizeHorizontallyLeft && (
-                <div
-                  data-no-select
-                  className={cn(
-                    'absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-30',
-                    'bg-background/40',
-                    isResizing && resizeDirection === 'left' && 'bg-primary/30'
-                  )}
-                  onPointerDown={handleResizeLeftStart}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <div className="h-8 w-0.5 rounded-full bg-foreground/40" />
-                </div>
-              )}
+              {/* === UNIFORM RESIZE HANDLES (outside box, OS cursors) === */}
 
-              {/* Right resize handle - for split-pane resize */}
-              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && canResizeHorizontallyRight && (
-                <div
-                  data-no-select
-                  className={cn(
-                    'absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-30',
-                    'bg-background/40',
-                    isResizing && resizeDirection === 'right' && 'bg-primary/30'
-                  )}
-                  onPointerDown={handleResizeRightStart}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <div className="h-8 w-0.5 rounded-full bg-foreground/40" />
-                </div>
-              )}
-
-              {/* Top resize handle - outside the box, only when selected */}
+              {/* Top resize handle */}
               {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && (
                 <div
                   data-no-select
                   className={cn(
-                    'absolute left-1/2 -translate-x-1/2 -top-2 z-40 flex items-center justify-center',
-                    'w-16 h-4'
+                    'absolute -top-3 left-1/2 -translate-x-1/2 z-50',
+                    'w-10 h-3 flex items-center justify-center cursor-ns-resize',
+                    'group/handle'
                   )}
                   style={{ touchAction: 'none' }}
                   onPointerDown={handleResizeTopStart}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="w-12 h-2 rounded-full bg-foreground/40 shadow-sm" />
+                  <div
+                    className={cn(
+                      'w-8 h-1.5 rounded-full transition-all',
+                      'bg-foreground/30 group-hover/handle:bg-primary group-hover/handle:scale-110',
+                      isResizing && resizeDirection === 'top' && 'bg-primary scale-110'
+                    )}
+                  />
                 </div>
               )}
 
-              {/* Drag affordance for tiny tasks */}
-              {isVerySmall && !isEditingTitle && !isEditingDescription && (
-                <div className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none">
-                  <Hand className="w-4 h-4 text-foreground/60" />
+              {/* Bottom resize handle */}
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && (
+                <div
+                  data-no-select
+                  className={cn(
+                    'absolute -bottom-3 left-1/2 -translate-x-1/2 z-50',
+                    'w-10 h-3 flex items-center justify-center cursor-ns-resize',
+                    'group/handle'
+                  )}
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={handleResizeBottomStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    className={cn(
+                      'w-8 h-1.5 rounded-full transition-all',
+                      'bg-foreground/30 group-hover/handle:bg-primary group-hover/handle:scale-110',
+                      isResizing && resizeDirection === 'bottom' && 'bg-primary scale-110'
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Left resize handle */}
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && canResizeHorizontallyLeft && (
+                <div
+                  data-no-select
+                  className={cn(
+                    'absolute -left-3 top-1/2 -translate-y-1/2 z-50',
+                    'h-10 w-3 flex items-center justify-center cursor-ew-resize',
+                    'group/handle'
+                  )}
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={handleResizeLeftStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    className={cn(
+                      'h-8 w-1.5 rounded-full transition-all',
+                      'bg-foreground/30 group-hover/handle:bg-primary group-hover/handle:scale-110',
+                      isResizing && resizeDirection === 'left' && 'bg-primary scale-110'
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Right resize handle */}
+              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && canResizeHorizontallyRight && (
+                <div
+                  data-no-select
+                  className={cn(
+                    'absolute -right-3 top-1/2 -translate-y-1/2 z-50',
+                    'h-10 w-3 flex items-center justify-center cursor-ew-resize',
+                    'group/handle'
+                  )}
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={handleResizeRightStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    className={cn(
+                      'h-8 w-1.5 rounded-full transition-all',
+                      'bg-foreground/30 group-hover/handle:bg-primary group-hover/handle:scale-110',
+                      isResizing && resizeDirection === 'right' && 'bg-primary scale-110'
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Hand icon for drag affordance on small tasks (not resizing) */}
+              {isVerySmall && !isEditingTitle && !isEditingDescription && !isSelected && (
+                <div className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none">
+                  <Hand className="w-3.5 h-3.5 text-foreground/60" />
                 </div>
               )}
 
@@ -786,23 +835,6 @@ const CalendarTask = ({
                 >
                   <Pencil className="w-3 h-3" />
                 </Button>
-              )}
-
-              {/* Bottom resize handle - outside the box, only when selected */}
-              {(isSelected || isResizing) && !isEditingTitle && !isEditingDescription && (
-                <div
-                  data-no-select
-                  className={cn(
-                    'absolute left-1/2 -translate-x-1/2 -bottom-2 z-40 flex items-center justify-center',
-                    'w-16 h-4'
-                  )}
-                  style={{ touchAction: 'none' }}
-                  onPointerDown={handleResizeBottomStart}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="w-12 h-2 rounded-full bg-foreground/40 shadow-sm" />
-                </div>
               )}
 
             </div>
