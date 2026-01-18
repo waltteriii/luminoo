@@ -115,7 +115,7 @@ const DraggableTask = ({
         style={style}
         {...dragProps}
         className={cn(
-          'group flex items-center gap-0.5 pl-1.5 pr-1 py-0.5 rounded text-xs bg-secondary border-l-2',
+          'group flex items-center gap-0.5 pl-1.5 pr-1 py-0.5 rounded text-xs bg-secondary border-l-2 h-full',
           energyColors[task.energy_level],
           isDragging && 'opacity-50 shadow-lg',
           task.completed && 'opacity-60',

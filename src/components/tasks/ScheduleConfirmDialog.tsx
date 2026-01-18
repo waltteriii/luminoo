@@ -11,23 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Calendar, Clock, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Users } from 'lucide-react';
 import EnergyPill from '@/components/shared/EnergyPill';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import TimeRangeSlider from './TimeRangeSlider';
 
 interface ScheduleConfirmDialogProps {
   open: boolean;
@@ -43,12 +31,6 @@ interface ScheduleConfirmDialogProps {
     updates?: { title?: string; energy_level?: EnergyLevel; location?: string; is_shared?: boolean }
   ) => void;
 }
-
-const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
-  const hour = Math.floor(i / 2) + 6;
-  const minute = (i % 2) * 30;
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-});
 
 const ScheduleConfirmDialog = ({
   open,
@@ -146,45 +128,15 @@ const ScheduleConfirmDialog = ({
             </div>
           </div>
 
-          {/* Time selection */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-sm text-foreground-muted mb-2 block flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Start time
-              </label>
-              <Select value={startTime} onValueChange={setStartTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select start time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  <SelectItem value="none">No specific time</SelectItem>
-                  {TIME_OPTIONS.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <label className="text-sm text-foreground-muted mb-2 block">
-                End time
-              </label>
-              <Select value={endTime} onValueChange={setEndTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select end time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  <SelectItem value="none">No specific time</SelectItem>
-                  {TIME_OPTIONS.filter(t => !startTime || startTime === 'none' || t > startTime).map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Time selection - Visual slider */}
+          <div className="space-y-2">
+            <Label>Time</Label>
+            <TimeRangeSlider
+              startTime={startTime === 'none' ? '09:00' : startTime}
+              endTime={endTime === 'none' ? '10:00' : endTime}
+              onStartTimeChange={setStartTime}
+              onEndTimeChange={setEndTime}
+            />
           </div>
 
           {/* Location */}

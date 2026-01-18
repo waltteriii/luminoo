@@ -11,10 +11,6 @@ import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import { useDroppable } from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 
 interface DayViewProps {
@@ -201,8 +197,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   // Tasks without specific time
   const untimedTasks = filteredTasks.filter(t => !t.start_time);
+  
+  // Tasks with times - calculate their positions
+  const timedTasks = filteredTasks.filter(t => t.start_time);
 
   const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
+  const HOUR_HEIGHT = 48; // Height per hour in pixels
 
   // Calculate drag selection range
   const selectionStart = dragStartHour !== null && dragEndHour !== null
@@ -211,6 +211,63 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const selectionEnd = dragStartHour !== null && dragEndHour !== null
     ? Math.max(dragStartHour, dragEndHour)
     : null;
+
+  // Helper to calculate task position and dimensions
+  const getTaskPosition = (task: Task) => {
+    if (!task.start_time) return null;
+    
+    const [startH, startM] = task.start_time.split(':').map(Number);
+    const startHour = startH + startM / 60;
+    
+    let endHour = startHour + 1; // Default 1 hour duration
+    if (task.end_time) {
+      const [endH, endM] = task.end_time.split(':').map(Number);
+      endHour = endH + endM / 60;
+    }
+    
+    const duration = endHour - startHour;
+    const top = (startHour - 6) * HOUR_HEIGHT; // 6 AM is hour 0
+    const height = duration * HOUR_HEIGHT;
+    
+    return { top, height, startHour, endHour, duration };
+  };
+
+  // Group overlapping tasks for horizontal stacking
+  const getOverlappingGroups = () => {
+    const groups: Task[][] = [];
+    const sortedTasks = [...timedTasks].sort((a, b) => {
+      const posA = getTaskPosition(a);
+      const posB = getTaskPosition(b);
+      return (posA?.startHour || 0) - (posB?.startHour || 0);
+    });
+
+    for (const task of sortedTasks) {
+      const taskPos = getTaskPosition(task);
+      if (!taskPos) continue;
+
+      // Find a group this task overlaps with
+      let foundGroup = false;
+      for (const group of groups) {
+        const groupEnd = Math.max(...group.map(t => getTaskPosition(t)?.endHour || 0));
+        const groupStart = Math.min(...group.map(t => getTaskPosition(t)?.startHour || 0));
+        
+        // Check if this task overlaps with the group
+        if (taskPos.startHour < groupEnd && taskPos.endHour > groupStart) {
+          group.push(task);
+          foundGroup = true;
+          break;
+        }
+      }
+
+      if (!foundGroup) {
+        groups.push([task]);
+      }
+    }
+
+    return groups;
+  };
+
+  const overlappingGroups = getOverlappingGroups();
 
   return (
     <div className="animate-fade-in">
@@ -240,12 +297,13 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       <div className="flex gap-6">
         {/* Time grid */}
         <div className="flex-1">
-          <div ref={timeGridRef} className="border-l border-border select-none relative">
+          <div ref={timeGridRef} className="border-l border-border select-none relative" style={{ height: `${hours.length * HOUR_HEIGHT}px` }}>
             {/* Current time indicator - only show for today */}
             {isToday(currentDate) && (
-              <CurrentTimeIndicator startHour={6} hourHeight={48} timezone={timezone} />
+              <CurrentTimeIndicator startHour={6} hourHeight={HOUR_HEIGHT} timezone={timezone} />
             )}
 
+            {/* Hour rows - just the grid lines and drop zones */}
             {hours.map(hour => {
               const isInSelection = selectionStart !== null &&
                 selectionEnd !== null &&
@@ -253,25 +311,15 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 hour <= selectionEnd;
 
               const timeStr = format(addHours(startOfDay(currentDate), hour), 'h a');
-              const hourTasks = filteredTasks.filter(t => {
-                if (!t.start_time) return false;
-                const taskHour = parseInt(t.start_time.split(':')[0]);
-                return taskHour === hour;
-              });
-
-              // Dynamic height: minimum 48px, expand if multiple tasks
-              const minHeight = 48;
-              const taskHeight = 32; // Height per task
-              const dynamicHeight = Math.max(minHeight, hourTasks.length * taskHeight + 8);
 
               return (
                 <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
                   <div
                     className={cn(
                       'group relative border-b border-border/50 transition-all cursor-crosshair',
-                      isInSelection && 'bg-primary/20 ring-1 ring-primary/50'
+                      isInSelection && 'bg-highlight/20 ring-1 ring-highlight/50'
                     )}
-                    style={{ minHeight: `${dynamicHeight}px` }}
+                    style={{ height: `${HOUR_HEIGHT}px` }}
                     onMouseDown={(e) => handleMouseDown(hour, e)}
                   >
                     {/* Time label */}
@@ -279,90 +327,63 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       {timeStr}
                     </div>
 
-                    {/* Content area */}
-                    <div className="ml-20 h-full relative">
-                      <SortableContext
-                        items={hourTasks.map(t => t.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {hourTasks.length > 1 ? (
-                          // Multiple tasks - stacked with visual indicator
-                          <div className="py-1 space-y-0.5 relative">
-                            <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-transparent rounded-full" />
-                            {hourTasks.map((task, idx) => (
-                              <div
-                                key={task.id}
-                                className="task-item pl-2"
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onPointerDown={(e) => e.stopPropagation()}
-                              >
-                                <DraggableTask
-                                  task={task}
-                                  onUpdate={(updates) => updateTask(task.id, updates)}
-                                  onDelete={() => deleteTask(task.id)}
-                                  isShared={task.user_id !== userId}
-                                  compact
-                                  showDetailsButton
-                                  enableInlineTitleEdit
-                                  disableDoubleClickEdit
-                                  dndData={{ hour, date: currentDate }}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          // Single task or empty
-                          <div className="space-y-1 py-1">
-                            {hourTasks.map(task => (
-                              <div
-                                key={task.id}
-                                className="task-item"
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onPointerDown={(e) => e.stopPropagation()}
-                              >
-                                <DraggableTask
-                                  task={task}
-                                  onUpdate={(updates) => updateTask(task.id, updates)}
-                                  onDelete={() => deleteTask(task.id)}
-                                  isShared={task.user_id !== userId}
-                                  compact
-                                  showDetailsButton
-                                  enableInlineTitleEdit
-                                  disableDoubleClickEdit
-                                  dndData={{ hour, date: currentDate }}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </SortableContext>
-
-                      {/* Add task inline */}
-                      {addingAtHour === hour ? (
-                        <div className="absolute top-1 left-0 right-4 z-10">
-                          <QuickAddTask
-                            onAdd={handleQuickAdd}
-                            defaultEnergy={currentEnergy}
-                            defaultDate={currentDate}
-                            defaultTime={`${hour.toString().padStart(2, '0')}:00`}
-                            compact
-                          />
+                    {/* Hover hint for empty slots */}
+                    {!isDraggingToCreate && (
+                      <div className="absolute inset-0 ml-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="flex items-center gap-1 text-xs text-foreground-muted">
+                          <Plus className="w-3 h-3" />
+                          Drag to create
                         </div>
-                      ) : (
-                        !isDraggingToCreate && hourTasks.length === 0 && (
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            <div className="flex items-center gap-1 text-xs text-foreground-muted">
-                              <Plus className="w-3 h-3" />
-                              Drag to create
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </TimeSlotDropZone>
               );
             })}
+
+            {/* Absolutely positioned tasks that span their duration */}
+            <div className="absolute inset-0 ml-20 pointer-events-none">
+              {overlappingGroups.map((group, groupIdx) => {
+                const groupWidth = 100 / group.length;
+                
+                return group.map((task, taskIdx) => {
+                  const pos = getTaskPosition(task);
+                  if (!pos) return null;
+
+                  const leftPercent = taskIdx * groupWidth;
+                  const widthPercent = groupWidth - 1; // Small gap between stacked tasks
+
+                  return (
+                    <div
+                      key={task.id}
+                      className="absolute task-item pointer-events-auto"
+                      style={{
+                        top: `${pos.top}px`,
+                        height: `${Math.max(pos.height - 4, 24)}px`, // Min height 24px, slight gap
+                        left: `${leftPercent}%`,
+                        width: `calc(${widthPercent}% - 8px)`,
+                        marginRight: '8px',
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <DraggableTask
+                        task={task}
+                        onUpdate={(updates) => updateTask(task.id, updates)}
+                        onDelete={() => deleteTask(task.id)}
+                        isShared={task.user_id !== userId}
+                        compact={pos.height < 60}
+                        showDetailsButton
+                        enableInlineTitleEdit
+                        disableDoubleClickEdit
+                        enableFullDrag
+                        dndData={{ hour: Math.floor(pos.startHour), date: currentDate }}
+                      />
+                    </div>
+                  );
+                });
+              })}
+            </div>
           </div>
         </div>
 
