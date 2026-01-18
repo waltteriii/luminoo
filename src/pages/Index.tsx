@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import PlannerView from '@/components/planner/PlannerView';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
+import HeroWidgets from '@/components/planner/HeroWidgets';
 import DndProvider from '@/components/dnd/DndProvider';
 import MemoryPanel from '@/components/memory/MemoryPanel';
 import { TasksProvider } from '@/contexts/TasksContext';
@@ -350,6 +351,12 @@ const Index = () => {
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
             {/* Centered content container for large screens */}
             <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
+              {/* Hero widgets - Brain Dump & Trending Topics */}
+              <HeroWidgets
+                onBrainDumpClick={() => setBrainDumpOpen(true)}
+                onTrendingClick={() => setTrendingOpen(true)}
+              />
+              
               {/* Unscheduled tasks inbox */}
               <UnscheduledTasks 
                 energyFilter={energyFilter}

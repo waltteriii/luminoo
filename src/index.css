@@ -473,6 +473,59 @@
     50% { opacity: 0.7; }
   }
 
+  /* Glow animation for new tasks */
+  .animate-glow-highlight {
+    animation: glowHighlight 1.5s ease-out forwards;
+  }
+
+  @keyframes glowHighlight {
+    0% {
+      box-shadow: 0 0 0 0 hsl(var(--highlight) / 0.6), 0 0 20px 0 hsl(var(--highlight) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 4px hsl(var(--highlight) / 0.3), 0 0 30px 8px hsl(var(--highlight) / 0.2);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--highlight) / 0), 0 0 0 0 hsl(var(--highlight) / 0);
+    }
+  }
+
+  /* Subtle underline glow for container */
+  .animate-underline-glow {
+    position: relative;
+  }
+
+  .animate-underline-glow::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      hsl(var(--highlight)) 20%, 
+      hsl(var(--highlight)) 80%, 
+      transparent 100%
+    );
+    animation: underlineGlow 2s ease-out forwards;
+  }
+
+  @keyframes underlineGlow {
+    0% {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    30% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scaleX(1);
+    }
+  }
+
   /* Global sleek scrollbar styling */
   * {
     scrollbar-width: thin;
