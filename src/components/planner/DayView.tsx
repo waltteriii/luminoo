@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
-import DraggableTask from '@/components/tasks/DraggableTask';
+import CalendarTask from '@/components/tasks/CalendarTask';
 import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
@@ -352,32 +352,28 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
                   const leftPercent = taskIdx * groupWidth;
                   const widthPercent = groupWidth - 1; // Small gap between stacked tasks
-
+                  const taskHeight = Math.max(pos.height - 2, 20);
+                  
                   return (
                     <div
                       key={task.id}
                       className="absolute task-item pointer-events-auto"
                       style={{
-                        top: `${pos.top}px`,
-                        height: `${Math.max(pos.height - 4, 24)}px`, // Min height 24px, slight gap
+                        top: `${pos.top + 1}px`,
+                        height: `${taskHeight}px`,
                         left: `${leftPercent}%`,
-                        width: `calc(${widthPercent}% - 8px)`,
-                        marginRight: '8px',
+                        width: `calc(${widthPercent}% - 4px)`,
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
-                      <DraggableTask
+                      <CalendarTask
                         task={task}
                         onUpdate={(updates) => updateTask(task.id, updates)}
                         onDelete={() => deleteTask(task.id)}
                         isShared={task.user_id !== userId}
-                        compact={pos.height < 60}
-                        showDetailsButton
-                        enableInlineTitleEdit
-                        disableDoubleClickEdit
-                        enableFullDrag
-                        dndData={{ hour: Math.floor(pos.startHour), date: currentDate }}
+                        showTimeRange={pos.duration >= 2}
+                        height={taskHeight}
                       />
                     </div>
                   );
