@@ -21,6 +21,8 @@ interface CalendarTaskProps {
   isShared?: boolean;
   showTimeRange?: boolean;
   height: number;
+  /** Pixel height for 1 hour in the Day grid; keeps resize math consistent across breakpoints */
+  hourHeight?: number;
   width?: number; // Current width in percentage
   baseWidth?: number; // Base width percentage (for overlapping tasks)
   minWidth?: number; // Minimum width percentage
@@ -59,6 +61,7 @@ const CalendarTask = ({
   isShared,
   showTimeRange = false,
   height,
+  hourHeight = 48,
   width,
   baseWidth = 100,
   minWidth = 20,
@@ -145,53 +148,59 @@ const CalendarTask = ({
   const calculateNewEndTime = useCallback((heightDelta: number) => {
     const startHour = parseTimeToHours(task.start_time);
     if (startHour === null) return null;
-    
-    const HOUR_HEIGHT = 48;
+
+    const HOUR_HEIGHT = hourHeight;
     const MIN_DURATION_MINS = 15;
-    
-    const newHeight = Math.max(resizeStartHeight.current + heightDelta, MIN_DURATION_MINS / 60 * HOUR_HEIGHT);
+
+    const newHeight = Math.max(
+      resizeStartHeight.current + heightDelta,
+      (MIN_DURATION_MINS / 60) * HOUR_HEIGHT
+    );
     const durationHours = newHeight / HOUR_HEIGHT;
-    
-    const durationMins = Math.round(durationHours * 60 / 15) * 15;
+
+    const durationMins = Math.round((durationHours * 60) / 15) * 15;
     const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60));
-    
+
     const startTotalMins = startHour * 60;
     const endTotalMins = startTotalMins + clampedMins;
-    
+
     const endH = Math.floor(endTotalMins / 60);
     const endM = Math.round(endTotalMins % 60);
-    
+
     if (endH >= 22) return '22:00';
-    
+
     return formatHoursToTime(endH + endM / 60);
-  }, [task.start_time]);
+  }, [task.start_time, hourHeight]);
 
   // Calculate new start time from height change (resize top)
   const calculateNewStartTime = useCallback((heightDelta: number) => {
     const endHour = parseTimeToHours(task.end_time);
     if (endHour === null) return null;
-    
-    const HOUR_HEIGHT = 48;
+
+    const HOUR_HEIGHT = hourHeight;
     const MIN_DURATION_MINS = 15;
-    
+
     // Height delta is negative when dragging up (earlier start time)
-    const newHeight = Math.max(resizeStartHeight.current - heightDelta, MIN_DURATION_MINS / 60 * HOUR_HEIGHT);
+    const newHeight = Math.max(
+      resizeStartHeight.current - heightDelta,
+      (MIN_DURATION_MINS / 60) * HOUR_HEIGHT
+    );
     const durationHours = newHeight / HOUR_HEIGHT;
-    
-    const durationMins = Math.round(durationHours * 60 / 15) * 15;
+
+    const durationMins = Math.round((durationHours * 60) / 15) * 15;
     const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60));
-    
+
     const endTotalMins = endHour * 60;
     const startTotalMins = endTotalMins - clampedMins;
-    
+
     const startH = Math.floor(startTotalMins / 60);
     const startM = Math.round(startTotalMins % 60);
-    
+
     // Clamp to 6:00 min
     if (startH < 6) return '06:00';
-    
+
     return formatHoursToTime(startH + startM / 60);
-  }, [task.end_time]);
+  }, [task.end_time, hourHeight]);
 
   // Handle bottom resize (changes end time)
   const handleResizeBottomStart = useCallback((e: React.PointerEvent) => {
