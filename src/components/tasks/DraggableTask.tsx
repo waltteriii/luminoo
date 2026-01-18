@@ -178,11 +178,13 @@ const DraggableTask = ({
           
           {/* Show time if enabled and task has time */}
           {showTime && task.start_time && (
-            <span className="text-[9px] text-foreground-muted flex items-center gap-0.5 mt-0.5">
-              <Clock className="w-2 h-2" />
-              {formatTime(task.start_time)}
-              {task.end_time && ` - ${formatTime(task.end_time)}`}
-            </span>
+            <div className="flex items-center gap-1 text-[10px] text-foreground-muted leading-tight mt-0.5">
+              <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className="tabular-nums truncate">
+                {formatTime(task.start_time)}
+                {task.end_time && ` - ${formatTime(task.end_time)}`}
+              </span>
+            </div>
           )}
         </div>
 
