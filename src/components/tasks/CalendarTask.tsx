@@ -223,6 +223,7 @@ const CalendarTask = ({
   const displayHeight = resizePreviewHeight ?? height;
   const isCompact = displayHeight < 40;
   const showDetails = displayHeight >= 60;
+  const showDescription = displayHeight >= 80 && !!task.description;
   const contentPadding = isCompact ? 'py-0.5' : showDetails ? 'py-2' : 'py-1.5';
   const contentJustify = showDetails ? 'justify-start' : 'justify-center';
 
@@ -275,7 +276,7 @@ const CalendarTask = ({
 
               <div
                 className={cn(
-                  'h-full flex flex-col leading-snug',
+                  'h-full flex flex-col leading-snug overflow-hidden',
                   (canMoveLeft || canMoveRight) ? 'pl-8 pr-2' : 'px-2',
                   contentJustify,
                   contentPadding,
@@ -294,8 +295,15 @@ const CalendarTask = ({
 
                 {/* Time range - show if enough space */}
                 {showDetails && showTimeRange && task.start_time && (
-                  <div className="mt-1 text-[11px] tabular-nums text-foreground-muted truncate">
+                  <div className="text-[11px] tabular-nums text-foreground-muted truncate">
                     {getTimeRange()}
+                  </div>
+                )}
+
+                {/* Description - show if task is tall enough */}
+                {showDescription && (
+                  <div className="mt-1 text-[11px] text-foreground-muted/80 line-clamp-2 leading-relaxed">
+                    {task.description}
                   </div>
                 )}
               </div>
