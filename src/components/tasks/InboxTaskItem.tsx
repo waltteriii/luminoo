@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { format, addDays, startOfWeek, addWeeks } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { useState, useRef, useEffect } from 'react';
 import EnergyPill from '@/components/shared/EnergyPill';
 import {
@@ -68,15 +68,35 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
       }
     : undefined;
 
+  const [clickPosition, setClickPosition] = useState<number | null>(null);
+
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
+      // If we have a click position, set the cursor there instead of selecting all
+      if (clickPosition !== null) {
+        inputRef.current.setSelectionRange(clickPosition, clickPosition);
+        setClickPosition(null);
+      }
     }
-  }, [isEditing]);
+  }, [isEditing, clickPosition]);
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
     e.stopPropagation();
+    
+    // Get the click position relative to the text
+    const target = e.currentTarget;
+    const text = task.title;
+    
+    // Calculate approximate character position based on click
+    const rect = target.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const charWidth = rect.width / text.length;
+    const approxPosition = Math.round(clickX / charWidth);
+    const clampedPosition = Math.max(0, Math.min(text.length, approxPosition));
+    
     setEditTitle(task.title);
+    setClickPosition(clampedPosition);
     setIsEditing(true);
   };
 
@@ -125,7 +145,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
     }
   };
 
-  const nextMonday = startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 });
+  
 
   return (
     <div
@@ -151,7 +171,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
               onChange={(e) => setEditTitle(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSaveTitle}
-              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground focus:ring-0 focus:outline-none p-0 selection:bg-transparent"
+              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground focus:ring-0 focus:outline-none p-0 selection:bg-highlight/30"
               onClick={(e) => e.stopPropagation()}
             />
             <Button
@@ -255,17 +275,6 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
           >
             Tomorrow
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSchedule(task.id, format(nextMonday, 'yyyy-MM-dd'));
-            }}
-          >
-            Mon
-          </Button>
 
           {/* Full date/time picker */}
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -338,19 +347,19 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
             </PopoverContent>
           </Popover>
 
-          {/* Delete button */}
+          {/* Delete button - with more margin for easier access */}
           {onDelete && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="h-6 w-6 p-0 ml-2 text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(task.id);
               }}
               title="Delete task"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
           )}
         </div>

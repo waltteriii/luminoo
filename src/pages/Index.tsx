@@ -13,6 +13,7 @@ import FriendsModal from '@/components/friends/FriendsModal';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
 import QuickAddTaskDialog from '@/components/tasks/QuickAddTaskDialog';
 import DndProvider from '@/components/dnd/DndProvider';
+import MemoryPanel from '@/components/memory/MemoryPanel';
 
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
 
@@ -46,6 +47,7 @@ const Index = () => {
   const [trendingOpen, setTrendingOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -263,6 +265,8 @@ const Index = () => {
             onTrendingClick={() => setTrendingOpen(true)}
             onFriendsClick={() => setFriendsOpen(true)}
             onJumpToToday={handleJumpToToday}
+            memoryOpen={memoryOpen}
+            onMemoryClick={() => setMemoryOpen(!memoryOpen)}
           />
           <main className="flex-1 flex flex-col overflow-hidden">
             {/* Unscheduled tasks inbox - now draggable to calendar */}
@@ -288,6 +292,15 @@ const Index = () => {
               />
             </div>
           </main>
+          
+          {/* Memory Panel - right side */}
+          {user && (
+            <MemoryPanel
+              userId={user.id}
+              isOpen={memoryOpen}
+              onClose={() => setMemoryOpen(false)}
+            />
+          )}
         </div>
 
         <BrainDumpModal
