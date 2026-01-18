@@ -122,8 +122,66 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
   
-  // Track custom widths for tasks (percentage width per task id)
+  // Track custom widths for tasks in overlap groups (actual percentage width per task id)
+  // When not set, tasks get equal share of 100%
   const [taskWidths, setTaskWidths] = useState<Record<string, number>>({});
+
+  // Helper to get widths for a group - ensures they always sum to 100%
+  const getGroupWidths = useCallback((group: Task[]): number[] => {
+    const defaultWidth = 100 / group.length;
+    const widths = group.map(t => taskWidths[t.id] ?? defaultWidth);
+    
+    // Normalize to ensure sum is exactly 100%
+    const sum = widths.reduce((a, b) => a + b, 0);
+    if (Math.abs(sum - 100) > 0.1) {
+      const scale = 100 / sum;
+      return widths.map(w => w * scale);
+    }
+    return widths;
+  }, [taskWidths]);
+
+  // Handle width change for a task - redistributes space from/to neighbors
+  const handleGroupWidthChange = useCallback((
+    group: Task[],
+    taskIndex: number,
+    newWidth: number,
+    direction: 'left' | 'right'
+  ) => {
+    const MIN_WIDTH = 12; // Minimum 12% width
+    const widths = getGroupWidths(group);
+    const currentWidth = widths[taskIndex];
+    const delta = newWidth - currentWidth;
+    
+    if (Math.abs(delta) < 0.5) return;
+    
+    // Find neighbor to steal from / give to
+    const neighborIndex = direction === 'right' ? taskIndex + 1 : taskIndex - 1;
+    
+    if (neighborIndex < 0 || neighborIndex >= group.length) return;
+    
+    const neighborWidth = widths[neighborIndex];
+    const newNeighborWidth = neighborWidth - delta;
+    
+    // Clamp both to min width
+    let finalNewWidth = newWidth;
+    let finalNeighborWidth = newNeighborWidth;
+    
+    if (finalNewWidth < MIN_WIDTH) {
+      finalNewWidth = MIN_WIDTH;
+      finalNeighborWidth = currentWidth + neighborWidth - MIN_WIDTH;
+    }
+    if (finalNeighborWidth < MIN_WIDTH) {
+      finalNeighborWidth = MIN_WIDTH;
+      finalNewWidth = currentWidth + neighborWidth - MIN_WIDTH;
+    }
+    
+    // Update both widths
+    setTaskWidths(prev => ({
+      ...prev,
+      [group[taskIndex].id]: finalNewWidth,
+      [group[neighborIndex].id]: finalNeighborWidth,
+    }));
+  }, [getGroupWidths]);
 
   const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
 
@@ -481,81 +539,107 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       </>
                     )}
                     
-                    {group.map((task, columnIdx) => {
-                      const pos = getTaskPosition(task);
-                      if (!pos) return null;
-
-                      const taskHeight = Math.max(pos.height - 2, 22);
+                    {(() => {
+                      // Calculate split-pane widths for this group
+                      const groupWidths = getGroupWidths(group);
+                      let cumulativeLeft = 0;
                       
-                      // Reorder handlers - use sequential indices for clear ordering
-                      const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
-                        const leftTask = group[columnIdx - 1];
-                        const newLeftOrder = columnIdx * 10;
-                        const newCurrentOrder = (columnIdx - 1) * 10;
-                        updateTask(task.id, { display_order: newCurrentOrder });
-                        updateTask(leftTask.id, { display_order: newLeftOrder });
-                      } : undefined;
-                      
-                      const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
-                        const rightTask = group[columnIdx + 1];
-                        const newRightOrder = columnIdx * 10;
-                        const newCurrentOrder = (columnIdx + 1) * 10;
-                        updateTask(task.id, { display_order: newCurrentOrder });
-                        updateTask(rightTask.id, { display_order: newRightOrder });
-                      } : undefined;
+                      return group.map((task, columnIdx) => {
+                        const pos = getTaskPosition(task);
+                        if (!pos) return null;
 
-                      // Enable horizontal resizing for ALL tasks
-                      const isSingleTask = group.length === 1;
-                      const taskCustomWidth = taskWidths[task.id];
-                      // Base width is the column width for overlapping tasks, or 100% for single
-                      const baseWidthPercent = isSingleTask ? 100 : columnWidth;
-                      // Apply custom width multiplier if set (stored as percentage of base)
-                      const effectiveWidthPercent = taskCustomWidth !== undefined 
-                        ? (baseWidthPercent * taskCustomWidth / 100) 
-                        : baseWidthPercent;
-                      
-                      // Enable width change for ALL tasks
-                      const handleWidthChange = (newWidth: number) => {
-                        // Store as percentage relative to base width
-                        const relativeWidth = (newWidth / baseWidthPercent) * 100;
-                        setTaskWidths(prev => ({ ...prev, [task.id]: Math.min(100, Math.max(30, relativeWidth)) }));
-                      };
+                        const taskHeight = Math.max(pos.height - 2, 22);
+                        const taskWidth = groupWidths[columnIdx];
+                        const taskLeft = cumulativeLeft;
+                        cumulativeLeft += taskWidth;
+                        
+                        // Swap handlers - swap positions AND widths with neighbor
+                        const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
+                          const leftTask = group[columnIdx - 1];
+                          // Swap display_order
+                          const newLeftOrder = columnIdx * 10;
+                          const newCurrentOrder = (columnIdx - 1) * 10;
+                          updateTask(task.id, { display_order: newCurrentOrder });
+                          updateTask(leftTask.id, { display_order: newLeftOrder });
+                          // Swap widths so they snap to each other's position
+                          const leftWidth = groupWidths[columnIdx - 1];
+                          const currentWidth = groupWidths[columnIdx];
+                          setTaskWidths(prev => ({
+                            ...prev,
+                            [task.id]: leftWidth,
+                            [leftTask.id]: currentWidth,
+                          }));
+                        } : undefined;
+                        
+                        const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
+                          const rightTask = group[columnIdx + 1];
+                          // Swap display_order
+                          const newRightOrder = columnIdx * 10;
+                          const newCurrentOrder = (columnIdx + 1) * 10;
+                          updateTask(task.id, { display_order: newCurrentOrder });
+                          updateTask(rightTask.id, { display_order: newRightOrder });
+                          // Swap widths so they snap to each other's position
+                          const rightWidth = groupWidths[columnIdx + 1];
+                          const currentWidth = groupWidths[columnIdx];
+                          setTaskWidths(prev => ({
+                            ...prev,
+                            [task.id]: rightWidth,
+                            [rightTask.id]: currentWidth,
+                          }));
+                        } : undefined;
 
-                      return (
-                        <div
-                          key={task.id}
-                          className="absolute task-item pointer-events-auto group/task"
-                          style={{
-                            top: `${pos.top + 1}px`,
-                            height: `${taskHeight}px`,
-                            left: `calc(${columnIdx * columnWidth}% + 4px)`,
-                            width: `calc(${effectiveWidthPercent}% - 8px)`,
-                            transition: 'none', // Disable transitions during resize
-                          }}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onPointerDown={(e) => e.stopPropagation()}
-                        >
-                          <CalendarTask
-                            task={task}
-                            onUpdate={(updates) => updateTask(task.id, updates)}
-                            onDelete={() => deleteTask(task.id)}
-                            isShared={task.user_id !== userId}
-                            showTimeRange={pos.duration >= 1}
-                            height={taskHeight}
-                            width={effectiveWidthPercent}
-                            baseWidth={baseWidthPercent}
-                            minWidth={isSingleTask ? 30 : 15}
-                            maxWidth={isSingleTask ? 100 : columnWidth}
-                            onWidthChange={handleWidthChange}
-                            canMoveLeft={!!handleMoveLeft}
-                            canMoveRight={!!handleMoveRight}
-                            onMoveLeft={handleMoveLeft}
-                            onMoveRight={handleMoveRight}
-                            showTooltip={isTooltipEnabledForView('day')}
-                          />
-                        </div>
-                      );
-                    })}
+                        // For split-pane resize: can resize left if not first, right if not last
+                        const canResizeLeft = isMultiTask && columnIdx > 0;
+                        const canResizeRight = isMultiTask && columnIdx < group.length - 1;
+                        
+                        // Resize handlers that adjust neighbor widths
+                        const handleResizeLeft = canResizeLeft ? (delta: number) => {
+                          handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'left');
+                        } : undefined;
+                        
+                        const handleResizeRight = canResizeRight ? (delta: number) => {
+                          handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'right');
+                        } : undefined;
+
+                        return (
+                          <div
+                            key={task.id}
+                            className="absolute task-item pointer-events-auto group/task"
+                            style={{
+                              top: `${pos.top + 1}px`,
+                              height: `${taskHeight}px`,
+                              left: `calc(${taskLeft}% + 2px)`,
+                              width: `calc(${taskWidth}% - 4px)`,
+                              transition: 'none',
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            <CalendarTask
+                              task={task}
+                              onUpdate={(updates) => updateTask(task.id, updates)}
+                              onDelete={() => deleteTask(task.id)}
+                              isShared={task.user_id !== userId}
+                              showTimeRange={pos.duration >= 1}
+                              height={taskHeight}
+                              width={taskWidth}
+                              baseWidth={100 / group.length}
+                              minWidth={12}
+                              maxWidth={100 - 12 * (group.length - 1)}
+                              canResizeLeft={canResizeLeft}
+                              canResizeRight={canResizeRight}
+                              onResizeLeft={handleResizeLeft}
+                              onResizeRight={handleResizeRight}
+                              canMoveLeft={!!handleMoveLeft}
+                              canMoveRight={!!handleMoveRight}
+                              onMoveLeft={handleMoveLeft}
+                              onMoveRight={handleMoveRight}
+                              showTooltip={isTooltipEnabledForView('day')}
+                            />
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 );
               })}
