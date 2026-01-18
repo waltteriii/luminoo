@@ -164,7 +164,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     newWidth: number,
     direction: 'left' | 'right'
   ) => {
-    const MIN_WIDTH = 12; // Minimum 12% width
+    const MIN_WIDTH = 15; // Minimum 15% width
     const widths = getGroupWidths(group);
     const currentWidth = widths[taskIndex];
     const delta = newWidth - currentWidth;
@@ -206,22 +206,23 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     delta: number,
     direction: 'left' | 'right'
   ) => {
-    const MIN_WIDTH = 20;
+    const MIN_WIDTH = 15;
+    const MAX_WIDTH = 85; // Maximum 85% width (leaving 15% minimum visible)
     const currentWidth = taskWidths[taskId] ?? 100;
     const currentLeft = taskLefts[taskId] ?? 0;
     
     if (direction === 'right') {
-      // Right edge: just change width
-      const newWidth = Math.max(MIN_WIDTH, Math.min(100 - currentLeft, currentWidth + delta));
+      // Right edge: just change width, clamped to MAX_WIDTH
+      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.min(100 - currentLeft, currentWidth + delta)));
       setTaskWidths(prev => ({ ...prev, [taskId]: newWidth }));
     } else {
       // Left edge: change both left position and width
       const potentialLeft = currentLeft + delta;
       const potentialWidth = currentWidth - delta;
       
-      // Clamp
-      let newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
-      let newWidth = Math.max(MIN_WIDTH, Math.min(100, potentialWidth));
+      // Clamp left position to 15% minimum and width to MAX_WIDTH
+      let newLeft = Math.max(15, Math.min(100 - MIN_WIDTH, potentialLeft));
+      let newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, potentialWidth));
       
       // Ensure left + width <= 100
       if (newLeft + newWidth > 100) {
@@ -657,8 +658,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         } : undefined;
 
                         // For split-pane resize in groups; for single task, both edges are resizable
-                        const canResizeLeft = isMultiTask ? columnIdx > 0 : true;
-                        const canResizeRight = isMultiTask ? columnIdx < group.length - 1 : true;
+                        // Disable horizontal resizing on mobile/touch devices for better UX
+                        const canResizeLeft = !isMobile && (isMultiTask ? columnIdx > 0 : true);
+                        const canResizeRight = !isMobile && (isMultiTask ? columnIdx < group.length - 1 : true);
                         
                         // Resize handlers - different logic for single vs group
                         const handleResizeLeft = canResizeLeft ? (delta: number) => {
@@ -704,8 +706,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               height={taskHeight}
                               width={displayWidth}
                               baseWidth={100 / group.length}
-                              minWidth={isMultiTask ? 12 : 20}
-                              maxWidth={isMultiTask ? 100 - 12 * (group.length - 1) : 100}
+                              minWidth={isMultiTask ? 15 : 15}
+                              maxWidth={isMultiTask ? 100 - 15 * (group.length - 1) : 85}
                               canResizeLeft={canResizeLeft}
                               canResizeRight={canResizeRight}
                               onResizeLeft={handleResizeLeft}
