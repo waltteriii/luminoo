@@ -312,27 +312,28 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             </div>
           )}
 
-          {/* New task input */}
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[44px] max-w-2xl">
-            <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
-            <input
-              ref={newTaskInputRef}
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') createNewTask();
-                if (e.key === 'Escape') {
-                  setNewTaskTitle('');
-                  newTaskInputRef.current?.blur();
-                }
-              }}
-              placeholder="New task…"
-              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
-            />
-          </div>
-
-          {/* Task list - multi-column on larger screens */}
+          {/* Task grid with new task input in first column slot */}
           <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+            {/* New task input - same width as task items */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[44px]">
+              <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
+              <input
+                ref={newTaskInputRef}
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') createNewTask();
+                  if (e.key === 'Escape') {
+                    setNewTaskTitle('');
+                    newTaskInputRef.current?.blur();
+                  }
+                }}
+                placeholder="New task…"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
+              />
+            </div>
+            
+            {/* Task list */}
             {visibleTasks.map(task => (
               <InboxTaskItem
                 key={task.id}
