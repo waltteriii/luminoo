@@ -92,7 +92,7 @@ const Index = () => {
   const [focusedMonth, setFocusedMonth] = useState<number | null>(cachedViewState?.focusedMonth ?? null);
   const [focusedDate, setFocusedDate] = useState<Date | null>(cachedViewState?.focusedDate ?? null);
   const [currentEnergy, setCurrentEnergy] = useState<EnergyLevel>('medium');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [energyFilter, setEnergyFilter] = useState<EnergyLevel[]>([]);
   
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
@@ -113,9 +113,12 @@ const Index = () => {
     localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(state));
   }, [zoomLevel, focusedMonth, focusedDate, viewMode]);
 
-  // Set sidebar default based on screen size
+  // Close sidebar when switching to mobile, but don't force open on desktop
+  // (allows user's toggle state to persist on desktop)
   useEffect(() => {
-    setSidebarOpen(!isMobile);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   }, [isMobile]);
 
   useEffect(() => {
