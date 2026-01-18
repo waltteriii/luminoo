@@ -21,6 +21,10 @@ interface CalendarTaskProps {
   isShared?: boolean;
   showTimeRange?: boolean;
   height: number;
+  width?: number; // Current width in percentage
+  minWidth?: number; // Minimum width percentage
+  maxWidth?: number; // Maximum width percentage
+  onWidthChange?: (newWidth: number) => void; // Callback when width changes
   canMoveLeft?: boolean;
   canMoveRight?: boolean;
   onMoveLeft?: () => void;
@@ -48,6 +52,10 @@ const CalendarTask = ({
   isShared,
   showTimeRange = false,
   height,
+  width,
+  minWidth = 20,
+  maxWidth = 100,
+  onWidthChange,
   canMoveLeft,
   canMoveRight,
   onMoveLeft,
@@ -55,12 +63,16 @@ const CalendarTask = ({
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeDirection, setResizeDirection] = useState<'top' | 'bottom' | null>(null);
+  const [resizeDirection, setResizeDirection] = useState<'top' | 'bottom' | 'left' | 'right' | null>(null);
   const [resizePreviewHeight, setResizePreviewHeight] = useState<number | null>(null);
   const [resizePreviewTop, setResizePreviewTop] = useState<number | null>(null);
+  const [resizePreviewWidth, setResizePreviewWidth] = useState<number | null>(null);
   const resizeStartY = useRef<number>(0);
+  const resizeStartX = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
   const resizeStartTop = useRef<number>(0);
+  const resizeStartWidth = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     attributes,
@@ -219,7 +231,90 @@ const CalendarTask = ({
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewStartTime, task.start_time, onUpdate]);
 
-  // Determine layout based on height
+  // Handle right resize (changes width)
+  const handleResizeRightStart = useCallback((e: React.PointerEvent) => {
+    if (!onWidthChange || !width) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    setResizeDirection('right');
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = width;
+    
+    // Get parent container width for percentage calculation
+    const parentWidth = containerRef.current?.parentElement?.offsetWidth || 200;
+    
+    const handleMove = (ev: PointerEvent) => {
+      const deltaX = ev.clientX - resizeStartX.current;
+      const deltaPercent = (deltaX / parentWidth) * 100;
+      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
+      setResizePreviewWidth(newWidth);
+    };
+    
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      
+      const deltaX = ev.clientX - resizeStartX.current;
+      const deltaPercent = (deltaX / parentWidth) * 100;
+      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
+      
+      if (newWidth !== width) {
+        onWidthChange(newWidth);
+      }
+      
+      setIsResizing(false);
+      setResizeDirection(null);
+      setResizePreviewWidth(null);
+    };
+    
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  }, [width, minWidth, maxWidth, onWidthChange]);
+
+  // Handle left resize (changes width from left side)
+  const handleResizeLeftStart = useCallback((e: React.PointerEvent) => {
+    if (!onWidthChange || !width) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    setResizeDirection('left');
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = width;
+    
+    const parentWidth = containerRef.current?.parentElement?.offsetWidth || 200;
+    
+    const handleMove = (ev: PointerEvent) => {
+      const deltaX = resizeStartX.current - ev.clientX; // Inverted for left resize
+      const deltaPercent = (deltaX / parentWidth) * 100;
+      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
+      setResizePreviewWidth(newWidth);
+    };
+    
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      
+      const deltaX = resizeStartX.current - ev.clientX;
+      const deltaPercent = (deltaX / parentWidth) * 100;
+      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
+      
+      if (newWidth !== width) {
+        onWidthChange(newWidth);
+      }
+      
+      setIsResizing(false);
+      setResizeDirection(null);
+      setResizePreviewWidth(null);
+    };
+    
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  }, [width, minWidth, maxWidth, onWidthChange]);
   const displayHeight = resizePreviewHeight ?? height;
   const isCompact = displayHeight < 36;
   const isMedium = displayHeight >= 36 && displayHeight < 60;
@@ -241,17 +336,25 @@ const CalendarTask = ({
     setEditDialogOpen(true);
   }, []);
 
+  // Calculate display width
+  const displayWidth = resizePreviewWidth ?? width;
+  const canResizeHorizontally = !!onWidthChange && width !== undefined;
+
   return (
     <>
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
             <div
-              ref={setNodeRef}
+              ref={(node) => {
+                setNodeRef(node);
+                (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+              }}
               style={{
                 ...style,
                 height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
                 marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
+                width: displayWidth ? `${displayWidth}%` : undefined,
               }}
               {...attributes}
               {...listeners}
@@ -267,6 +370,36 @@ const CalendarTask = ({
                 task.completed && 'opacity-50'
               )}
             >
+              {/* Left resize handle */}
+              {canResizeHorizontally && (
+                <div
+                  className={cn(
+                    'absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-10',
+                    'opacity-0 group-hover:opacity-100 transition-opacity',
+                    isResizing && resizeDirection === 'left' && 'opacity-100'
+                  )}
+                  onPointerDown={handleResizeLeftStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="h-6 w-0.5 rounded-full bg-foreground/40" />
+                </div>
+              )}
+
+              {/* Right resize handle */}
+              {canResizeHorizontally && (
+                <div
+                  className={cn(
+                    'absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-10',
+                    'opacity-0 group-hover:opacity-100 transition-opacity',
+                    isResizing && resizeDirection === 'right' && 'opacity-100'
+                  )}
+                  onPointerDown={handleResizeRightStart}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="h-6 w-0.5 rounded-full bg-foreground/40" />
+                </div>
+              )}
+
               {/* Top resize handle */}
               <div
                 className={cn(
