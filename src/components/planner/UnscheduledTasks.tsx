@@ -13,10 +13,10 @@ interface UnscheduledTasksProps {
   onScheduleTask: (taskId: string, date: Date) => void;
 }
 
-// Show 7 tasks (fills grid nicely), with fade on last if more exist
-const MAX_VISIBLE_TASKS_DESKTOP = 7;
-const MAX_VISIBLE_TASKS_TABLET = 5;
-const MAX_VISIBLE_TASKS_MOBILE = 4;
+// Responsive task counts: 1 col = 4, 2 cols = 6, 3 cols = 9 (fills grid evenly)
+const MAX_VISIBLE_MOBILE = 4;   // 1 column × 4 rows
+const MAX_VISIBLE_TABLET = 6;   // 2 columns × 3 rows
+const MAX_VISIBLE_DESKTOP = 9;  // 3 columns × 3 rows
 
 const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -34,8 +34,21 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Responsive max visible tasks
-  const maxVisible = isMobile ? MAX_VISIBLE_TASKS_MOBILE : MAX_VISIBLE_TASKS_DESKTOP;
+  // Responsive max visible tasks based on breakpoints
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Match Tailwind breakpoints: lg = 1024, 2xl = 1536
+  const maxVisible = useMemo(() => {
+    if (windowWidth >= 1536) return MAX_VISIBLE_DESKTOP;  // 3 columns
+    if (windowWidth >= 1024) return MAX_VISIBLE_TABLET;   // 2 columns
+    return MAX_VISIBLE_MOBILE;                            // 1 column
+  }, [windowWidth]);
 
   useEffect(() => {
     const init = async () => {
@@ -312,66 +325,54 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             </div>
           )}
 
-          {/* Task grid with new task input in first column slot */}
-          <div className="relative">
-            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-              {/* New task input - same width as task items */}
-              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card/50 border border-border/50 hover:border-primary/50 focus-within:border-primary focus-within:bg-card/80 transition-all min-h-[44px] group">
-                <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-primary flex-shrink-0 transition-colors" />
-                <input
-                  ref={newTaskInputRef}
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') createNewTask();
-                    if (e.key === 'Escape') {
-                      setNewTaskTitle('');
-                      newTaskInputRef.current?.blur();
-                    }
-                  }}
-                  placeholder="New task…"
-                  className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
-                />
-              </div>
-              
-              {/* Task list */}
-              {visibleTasks.map(task => (
-                <InboxTaskItem
-                  key={task.id}
-                  task={task}
-                  onSchedule={handleScheduleTask}
-                  onEnergyChange={handleEnergyChange}
-                  onTitleChange={handleTitleChange}
-                  onDelete={handleDeleteTask}
-                />
-              ))}
+          {/* Task grid - responsive 1/2/3 columns */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+            {/* New task input - same width as task items */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 focus-within:bg-card transition-all min-h-[44px] group">
+              <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-primary flex-shrink-0 transition-colors" />
+              <input
+                ref={newTaskInputRef}
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') createNewTask();
+                  if (e.key === 'Escape') {
+                    setNewTaskTitle('');
+                    newTaskInputRef.current?.blur();
+                  }
+                }}
+                placeholder="New task…"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
+              />
             </div>
             
-            {/* Elegant fade overlay for overflow - spans full width of last row */}
-            {isOverflowing && !expanded && (
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
-            )}
+            {/* Task list */}
+            {visibleTasks.map(task => (
+              <InboxTaskItem
+                key={task.id}
+                task={task}
+                onSchedule={handleScheduleTask}
+                onEnergyChange={handleEnergyChange}
+                onTitleChange={handleTitleChange}
+                onDelete={handleDeleteTask}
+              />
+            ))}
           </div>
 
-          {/* Overflow indicator - minimal, elegant */}
+          {/* Clean overflow indicator */}
           {isOverflowing && (
             <button
               onClick={() => setExpanded(v => !v)}
-              className={cn(
-                "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all",
-                expanded
-                  ? "text-foreground-muted hover:text-foreground"
-                  : "text-primary hover:text-primary/80"
-              )}
+              className="w-full flex items-center justify-center gap-1 py-2 text-xs text-primary hover:text-primary/80 transition-colors"
             >
               {expanded ? (
                 <>
                   <ChevronUp className="w-3.5 h-3.5" />
-                  Show less
+                  <span>Show less</span>
                 </>
               ) : (
                 <>
-                  <span className="opacity-70">+{hiddenCount} more</span>
+                  <span>+{hiddenCount} more</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </>
               )}
