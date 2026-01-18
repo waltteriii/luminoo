@@ -50,10 +50,10 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick, onEd
       className={cn(
         "h-[100px] p-2 rounded-lg border text-left transition-all overflow-hidden",
         inMonth 
-          ? "bg-card border-border hover:border-primary/50" 
+          ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50" 
           : "bg-secondary/50 border-transparent opacity-50",
         today && "border-primary ring-1 ring-primary/20",
-        isOver && "ring-2 ring-primary bg-primary/5"
+        isOver && "ring-2 ring-highlight bg-highlight-muted"
       )}
     >
       <div className={cn(

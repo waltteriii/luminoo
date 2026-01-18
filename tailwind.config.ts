@@ -66,6 +66,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Highlight/Info color (calming, customizable)
+        highlight: {
+          DEFAULT: "hsl(var(--highlight))",
+          foreground: "hsl(var(--highlight-foreground))",
+          muted: "hsl(var(--highlight-muted))",
+        },
         // Energy state colors
         energy: {
           high: "hsl(var(--energy-high))",

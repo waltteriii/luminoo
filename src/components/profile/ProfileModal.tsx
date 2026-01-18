@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays } from 'lucide-react';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform, ZoomLevel } from '@/types';
@@ -49,6 +49,16 @@ const defaultViews: { value: ZoomLevel; label: string; icon: React.ReactNode }[]
   { value: 'month', label: 'Month', icon: <Calendar className="w-4 h-4" /> },
   { value: 'week', label: 'Week', icon: <CalendarDays className="w-4 h-4" /> },
   { value: 'day', label: 'Day', icon: <Clock className="w-4 h-4" /> },
+];
+
+type HighlightColor = 'blue' | 'teal' | 'pink' | 'amber' | 'purple';
+
+const highlightColors: { value: HighlightColor; label: string; colorClass: string }[] = [
+  { value: 'blue', label: 'Calm Blue', colorClass: 'bg-[hsl(210,100%,52%)]' },
+  { value: 'teal', label: 'Teal', colorClass: 'bg-[hsl(174,72%,46%)]' },
+  { value: 'pink', label: 'Soft Pink', colorClass: 'bg-[hsl(330,70%,60%)]' },
+  { value: 'amber', label: 'Warm Amber', colorClass: 'bg-[hsl(38,92%,50%)]' },
+  { value: 'purple', label: 'Purple', colorClass: 'bg-[hsl(270,60%,60%)]' },
 ];
 
 const PRESET_PLATFORMS = [
@@ -127,6 +137,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
   const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([]);
   const [currentTime, setCurrentTime] = useState('');
   const [defaultView, setDefaultView] = useState<ZoomLevel>('year');
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>('blue');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -192,6 +203,10 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
         setPlatforms(data.platforms || []);
         setTimezone((data as any).timezone || 'UTC');
         setDefaultView(((data as any).default_view as ZoomLevel) || 'year');
+        const loadedHighlight = ((data as any).highlight_color as HighlightColor) || 'blue';
+        setHighlightColor(loadedHighlight);
+        // Apply highlight color to document
+        document.documentElement.setAttribute('data-highlight', loadedHighlight);
         // Extract "More about you" from audience description if it exists
         const desc = data.audience_description || '';
         if (desc.includes('\n\nMore about me:')) {
@@ -288,11 +303,15 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
           platforms: platforms,
           timezone: timezone,
           default_view: defaultView,
+          highlight_color: highlightColor,
           updated_at: new Date().toISOString(),
         } as any)
         .eq('id', userId);
 
       if (error) throw error;
+
+      // Apply highlight color immediately
+      document.documentElement.setAttribute('data-highlight', highlightColor);
 
       // Notify parent about default view change
       if (onDefaultViewChange) {
@@ -506,6 +525,38 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                       >
                         {view.icon}
                         <span className="text-xs">{view.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Highlight Color Preference - for ADHD/Autism friendly customization */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-highlight" />
+                    <Label>Highlight Color</Label>
+                  </div>
+                  <p className="text-xs text-foreground-muted -mt-1">
+                    Choose a calming accent color that works best for you
+                  </p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {highlightColors.map(color => (
+                      <button
+                        key={color.value}
+                        onClick={() => {
+                          setHighlightColor(color.value);
+                          // Preview immediately
+                          document.documentElement.setAttribute('data-highlight', color.value);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
+                          highlightColor === color.value
+                            ? "border-highlight bg-highlight-muted ring-1 ring-highlight/30"
+                            : "border-border hover:border-foreground-muted"
+                        )}
+                      >
+                        <div className={cn("w-5 h-5 rounded-full", color.colorClass)} />
+                        <span className="text-2xs text-foreground-muted">{color.label}</span>
                       </button>
                     ))}
                   </div>

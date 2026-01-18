@@ -48,6 +48,11 @@
 
     --radius: 0.625rem;
 
+    /* Highlight/Info color - calming blue (replaces amber alert) */
+    --highlight: 210 100% 52%;
+    --highlight-foreground: 210 100% 80%;
+    --highlight-muted: 210 60% 20%;
+
     /* Energy states - vibrant for dark theme */
     --energy-high: 142 50% 45%;
     --energy-medium: 45 75% 55%;
@@ -75,6 +80,37 @@
     --sidebar-accent-foreground: 210 100% 70%;
     --sidebar-border: 0 0% 14%;
     --sidebar-ring: 210 100% 52%;
+  }
+
+  /* Highlight color themes */
+  :root[data-highlight="blue"], :root {
+    --highlight: 210 100% 52%;
+    --highlight-foreground: 210 100% 80%;
+    --highlight-muted: 210 60% 20%;
+  }
+
+  :root[data-highlight="teal"] {
+    --highlight: 174 72% 46%;
+    --highlight-foreground: 174 72% 70%;
+    --highlight-muted: 174 50% 20%;
+  }
+
+  :root[data-highlight="pink"] {
+    --highlight: 330 70% 60%;
+    --highlight-foreground: 330 70% 80%;
+    --highlight-muted: 330 50% 25%;
+  }
+
+  :root[data-highlight="amber"] {
+    --highlight: 38 92% 50%;
+    --highlight-foreground: 38 92% 75%;
+    --highlight-muted: 38 60% 25%;
+  }
+
+  :root[data-highlight="purple"] {
+    --highlight: 270 60% 60%;
+    --highlight-foreground: 270 60% 80%;
+    --highlight-muted: 270 40% 25%;
   }
 
   .light {
@@ -112,6 +148,11 @@
     --input: 35 15% 90%;
     --ring: 210 100% 45%;
 
+    /* Highlight/Info color - calming blue (light theme) */
+    --highlight: 210 100% 45%;
+    --highlight-foreground: 210 100% 35%;
+    --highlight-muted: 210 80% 92%;
+
     --energy-high: 142 45% 42%;
     --energy-medium: 45 65% 50%;
     --energy-low: 20 60% 52%;
@@ -135,6 +176,31 @@
     --sidebar-accent-foreground: 210 100% 40%;
     --sidebar-border: 35 15% 90%;
     --sidebar-ring: 210 100% 45%;
+  }
+
+  /* Light theme highlight colors */
+  .light[data-highlight="teal"] {
+    --highlight: 174 72% 40%;
+    --highlight-foreground: 174 72% 30%;
+    --highlight-muted: 174 50% 92%;
+  }
+
+  .light[data-highlight="pink"] {
+    --highlight: 330 70% 50%;
+    --highlight-foreground: 330 70% 40%;
+    --highlight-muted: 330 50% 92%;
+  }
+
+  .light[data-highlight="amber"] {
+    --highlight: 38 92% 45%;
+    --highlight-foreground: 38 92% 35%;
+    --highlight-muted: 38 60% 92%;
+  }
+
+  .light[data-highlight="purple"] {
+    --highlight: 270 60% 50%;
+    --highlight-foreground: 270 60% 40%;
+    --highlight-muted: 270 40% 92%;
   }
 }
 

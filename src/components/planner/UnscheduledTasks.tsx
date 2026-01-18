@@ -218,7 +218,7 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
   return (
     <div className={cn(
       "border-b border-border bg-secondary/30",
-      isOverflowing && !expanded && "border-l-2 border-l-amber-500/50"
+      isOverflowing && !expanded && "border-l-2 border-l-highlight/50"
     )}>
       <div
         role="button"
@@ -240,7 +240,7 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full",
               isOverflowing 
-                ? "bg-amber-500/20 text-amber-400" 
+                ? "bg-highlight-muted text-highlight-foreground" 
                 : "bg-secondary text-foreground-muted"
             )}>
               {filteredTasks.length} unscheduled
@@ -352,7 +352,7 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
                 "w-full flex items-center justify-center gap-2 py-2 rounded text-xs transition-colors",
                 expanded
                   ? "text-foreground-muted hover:text-foreground"
-                  : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                  : "bg-highlight-muted text-highlight-foreground hover:bg-highlight/20"
               )}
             >
               {expanded ? (
