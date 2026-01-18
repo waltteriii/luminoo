@@ -27,6 +27,7 @@ interface MonthTaskData {
     medium: number;
     low: number;
     recovery: number;
+    topTasks: { title: string; energy: EnergyLevel }[];
   };
 }
 
@@ -37,9 +38,10 @@ interface DroppableMonthCardProps {
   zoomLevel: ZoomLevel;
   onClick: () => void;
   taskIndicators: { energy: EnergyLevel; count: number }[];
+  topTasks: { title: string; energy: EnergyLevel }[];
 }
 
-const DroppableMonthCard = ({ monthIndex, name, isCurrentMonth, zoomLevel, onClick, taskIndicators }: DroppableMonthCardProps) => {
+const DroppableMonthCard = ({ monthIndex, name, isCurrentMonth, zoomLevel, onClick, taskIndicators, topTasks }: DroppableMonthCardProps) => {
   const { isOver, setNodeRef } = useDroppable({
     id: `month-${monthIndex}`,
     data: { type: 'month', monthIndex },
@@ -54,6 +56,7 @@ const DroppableMonthCard = ({ monthIndex, name, isCurrentMonth, zoomLevel, onCli
         zoomLevel={zoomLevel}
         onClick={onClick}
         taskIndicators={taskIndicators}
+        topTasks={topTasks}
       />
     </div>
   );
@@ -82,10 +85,12 @@ const YearGridView = ({
 
       const { data: tasks, error } = await supabase
         .from('tasks')
-        .select('due_date, energy_level')
+        .select('title, due_date, energy_level')
         .eq('user_id', user.id)
+        .eq('completed', false)
         .gte('due_date', yearStart.toISOString())
-        .lte('due_date', yearEnd.toISOString());
+        .lte('due_date', yearEnd.toISOString())
+        .order('due_date', { ascending: true });
 
       if (error) {
         console.error('Error fetching year tasks:', error);
@@ -95,7 +100,7 @@ const YearGridView = ({
       // Group tasks by month and energy level
       const grouped: MonthTaskData = {};
       for (let i = 0; i < 12; i++) {
-        grouped[i] = { high: 0, medium: 0, low: 0, recovery: 0 };
+        grouped[i] = { high: 0, medium: 0, low: 0, recovery: 0, topTasks: [] };
       }
 
       tasks?.forEach(task => {
@@ -105,6 +110,10 @@ const YearGridView = ({
           const energy = (task.energy_level || 'medium') as EnergyLevel;
           if (grouped[month]) {
             grouped[month][energy]++;
+            // Store up to 4 top tasks per month
+            if (grouped[month].topTasks.length < 4) {
+              grouped[month].topTasks.push({ title: task.title, energy });
+            }
           }
         }
       });
@@ -160,6 +169,10 @@ const YearGridView = ({
     return indicators;
   };
 
+  const getTopTasks = (monthIndex: number) => {
+    return monthTaskData[monthIndex]?.topTasks || [];
+  };
+
   return (
     <div className="space-y-4 lg:space-y-6 animate-fade-in px-1">
       {/* Header - cleaner on mobile */}
@@ -194,6 +207,7 @@ const YearGridView = ({
             zoomLevel={zoomLevel}
             onClick={() => onMonthClick(monthIndex)}
             taskIndicators={getTaskIndicators(monthIndex)}
+            topTasks={getTopTasks(monthIndex)}
           />
         ))}
       </div>

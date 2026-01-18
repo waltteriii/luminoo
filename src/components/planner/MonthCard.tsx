@@ -1,10 +1,20 @@
 import { cn } from '@/lib/utils';
 import { ZoomLevel, EnergyLevel } from '@/types';
 import { Plus } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface TaskIndicator {
   energy: EnergyLevel;
   count: number;
+}
+
+interface TopTask {
+  title: string;
+  energy: EnergyLevel;
 }
 
 interface MonthCardProps {
@@ -14,6 +24,7 @@ interface MonthCardProps {
   zoomLevel: ZoomLevel;
   onClick: () => void;
   taskIndicators?: TaskIndicator[];
+  topTasks?: TopTask[];
 }
 
 const energyColors: Record<EnergyLevel, string> = {
@@ -30,6 +41,7 @@ const MonthCard = ({
   zoomLevel,
   onClick,
   taskIndicators = [],
+  topTasks = [],
 }: MonthCardProps) => {
   const isCompact = zoomLevel === 'year';
   const isExpanded = zoomLevel === 'month';
@@ -37,7 +49,7 @@ const MonthCard = ({
   // Calculate total tasks for display
   const totalTasks = taskIndicators.reduce((sum, t) => sum + t.count, 0);
 
-  return (
+  const cardContent = (
     <div
       onClick={onClick}
       className={cn(
@@ -143,6 +155,37 @@ const MonthCard = ({
       )}
     </div>
   );
+
+  // Wrap with tooltip only if we have tasks to preview (and in compact/year view)
+  if (isCompact && topTasks.length > 0) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {cardContent}
+        </TooltipTrigger>
+        <TooltipContent 
+          side="bottom" 
+          className="max-w-[200px] p-2 space-y-1.5"
+          sideOffset={4}
+        >
+          <p className="text-xs font-medium text-foreground mb-1.5">Upcoming tasks</p>
+          {topTasks.slice(0, 4).map((task, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", energyColors[task.energy])} />
+              <span className="text-xs text-foreground-muted truncate">{task.title}</span>
+            </div>
+          ))}
+          {totalTasks > 4 && (
+            <p className="text-[10px] text-foreground-muted/60 pt-1">
+              +{totalTasks - 4} more tasks
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return cardContent;
 };
 
 export default MonthCard;
