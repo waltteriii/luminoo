@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, TrendingUp, Sparkles, Plus, Clock, Zap, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -131,8 +130,8 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
               </Button>
             </div>
             
-            <ScrollArea className="flex-1 -mx-6 px-6 [&>div>div]:!block [&_[data-radix-scroll-area-viewport]]:!overflow-y-scroll [&_[data-radix-scroll-area-scrollbar]]:!flex [&_[data-radix-scroll-area-scrollbar]]:!w-2 [&_[data-radix-scroll-area-scrollbar]]:!bg-transparent [&_[data-radix-scroll-area-thumb]]:!bg-foreground/20 [&_[data-radix-scroll-area-thumb]]:!rounded-full hover:[&_[data-radix-scroll-area-thumb]]:!bg-foreground/30">
-              <div className="space-y-3 pb-4">
+            <div className="flex-1 overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-foreground/30">
+              <div className="space-y-3 pb-4 pr-2">
                 {trends.map((trend, index) => {
                   const CategoryIcon = categoryConfig[trend.category]?.icon || TrendingUp;
                   const isExpanded = expandedTrend === index;
@@ -220,7 +219,7 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           </>
         )}
       </DialogContent>

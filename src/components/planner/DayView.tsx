@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { parseTimeToHours } from '@/lib/timeUtils';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -222,15 +223,13 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     : null;
 
   const getTaskPosition = useCallback((task: Task) => {
-    if (!task.start_time) return null;
-    
-    const [startH, startM] = task.start_time.split(':').map(Number);
-    const startHour = startH + startM / 60;
+    const startHour = parseTimeToHours(task.start_time);
+    if (startHour === null) return null;
     
     let endHour = startHour + 1;
-    if (task.end_time) {
-      const [endH, endM] = task.end_time.split(':').map(Number);
-      endHour = endH + endM / 60;
+    const parsedEnd = parseTimeToHours(task.end_time);
+    if (parsedEnd !== null) {
+      endHour = parsedEnd;
     }
     
     const duration = endHour - startHour;
