@@ -323,6 +323,21 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
               <div className="p-3 space-y-3">
+                {/* Close button for mobile */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Schedule Task</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDatePickerOpen(false);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
                 <CalendarPicker
                   mode="single"
                   selected={selectedDate}
@@ -367,15 +382,27 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
                     </Select>
                   </div>
                 </div>
-                <Button
-                  onClick={handleConfirmSchedule}
-                  disabled={!selectedDate}
-                  className="w-full min-h-[44px]"
-                  size="sm"
-                >
-                  Schedule {selectedDate && `for ${format(selectedDate, 'MMM d')}`}
-                  {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDatePickerOpen(false);
+                    }}
+                    className="flex-1 min-h-[44px]"
+                    size="sm"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmSchedule}
+                    disabled={!selectedDate}
+                    className="flex-1 min-h-[44px]"
+                    size="sm"
+                  >
+                    Schedule
+                  </Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>

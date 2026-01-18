@@ -13,20 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Calendar as CalendarIcon, Clock, MapPin, Users, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Users, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import EnergyPill from '@/components/shared/EnergyPill';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import TimeRangeSlider from './TimeRangeSlider';
 
 interface EditTaskDialogProps {
   open: boolean;
@@ -36,11 +30,7 @@ interface EditTaskDialogProps {
   onDelete?: (taskId: string) => void;
 }
 
-const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
-  const hour = Math.floor(i / 2) + 6;
-  const minute = (i % 2) * 30;
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-});
+// No longer needed as we use TimeRangeSlider
 
 const EditTaskDialog = ({
   open,
@@ -177,43 +167,15 @@ const EditTaskDialog = ({
               </Popover>
             </div>
 
-            {/* Time selection */}
-            <div className="flex gap-4">
-              <div className="flex-1 space-y-2">
-                <Label className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  Start time
-                </Label>
-                <Select value={startTime} onValueChange={setStartTime}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    <SelectItem value="none">No specific time</SelectItem>
-                    {TIME_OPTIONS.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 space-y-2">
-                <Label>End time</Label>
-                <Select value={endTime} onValueChange={setEndTime}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    <SelectItem value="none">No specific time</SelectItem>
-                    {TIME_OPTIONS.filter(t => startTime === 'none' || t > startTime).map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Time selection - Visual slider */}
+            <div className="space-y-2">
+              <Label>Time</Label>
+              <TimeRangeSlider
+                startTime={startTime === 'none' ? '09:00' : startTime}
+                endTime={endTime === 'none' ? '10:00' : endTime}
+                onStartTimeChange={setStartTime}
+                onEndTimeChange={setEndTime}
+              />
             </div>
 
             {/* Location */}
