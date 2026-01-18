@@ -38,7 +38,7 @@ const TimeSlotDropZone = ({ hour, date, children }: TimeSlotDropZoneProps) => {
     <div
       ref={setNodeRef}
       className={cn(
-        'h-full transition-colors',
+        'transition-colors',
         isOver && 'bg-primary/10 ring-1 ring-primary/30'
       )}
     >
@@ -271,17 +271,17 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
             <ChevronLeft className="w-4 h-4" />
             Back
           </Button>
           <div>
-            <h2 className="text-2xl font-light text-foreground">
+            <h2 className="text-xl font-medium tracking-tight text-foreground">
               {format(currentDate, 'EEEE')}
             </h2>
-            <p className="text-foreground-muted">{format(currentDate, 'MMMM d, yyyy')}</p>
+            <p className="text-sm text-foreground-muted">{format(currentDate, 'MMMM d, yyyy')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -323,14 +323,14 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                     onMouseDown={(e) => handleMouseDown(hour, e)}
                   >
                     {/* Time label */}
-                    <div className="absolute left-0 top-0 w-16 text-xs text-foreground-muted py-1 pointer-events-none">
+                    <div className="absolute left-0 top-0 w-12 text-[11px] tabular-nums text-foreground-muted py-0.5 pointer-events-none">
                       {timeStr}
                     </div>
 
                     {/* Hover hint for empty slots */}
                     {!isDraggingToCreate && (
-                      <div className="absolute inset-0 ml-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        <div className="flex items-center gap-1 text-xs text-foreground-muted">
+                      <div className="absolute inset-0 ml-14 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="flex items-center gap-1 text-[11px] text-foreground-muted">
                           <Plus className="w-3 h-3" />
                           Drag to create
                         </div>
@@ -342,18 +342,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
             })}
 
             {/* Absolutely positioned tasks that span their duration */}
-            <div className="absolute inset-0 ml-20 pointer-events-none">
-              {overlappingGroups.map((group, groupIdx) => {
-                const groupWidth = 100 / group.length;
-                
-                return group.map((task, taskIdx) => {
+            <div className="absolute inset-0 ml-14 pr-2 pointer-events-none">
+              {overlappingGroups.map((group) => {
+                const columnWidth = 100 / group.length;
+
+                return group.map((task, columnIdx) => {
                   const pos = getTaskPosition(task);
                   if (!pos) return null;
 
-                  const leftPercent = taskIdx * groupWidth;
-                  const widthPercent = groupWidth - 1; // Small gap between stacked tasks
-                  const taskHeight = Math.max(pos.height - 2, 20);
-                  
+                  const taskHeight = Math.max(pos.height - 2, 22);
+
                   return (
                     <div
                       key={task.id}
@@ -361,8 +359,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       style={{
                         top: `${pos.top + 1}px`,
                         height: `${taskHeight}px`,
-                        left: `${leftPercent}%`,
-                        width: `calc(${widthPercent}% - 4px)`,
+                        left: `calc(${columnIdx * columnWidth}% + 4px)`,
+                        width: `calc(${columnWidth}% - 8px)`,
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
@@ -372,7 +370,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         onUpdate={(updates) => updateTask(task.id, updates)}
                         onDelete={() => deleteTask(task.id)}
                         isShared={task.user_id !== userId}
-                        showTimeRange={pos.duration >= 2}
+                        showTimeRange={pos.duration >= 1}
                         height={taskHeight}
                       />
                     </div>
