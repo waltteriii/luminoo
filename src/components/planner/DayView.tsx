@@ -591,6 +591,38 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     ? Math.max(dragStartHour, dragEndHour)
     : null;
 
+  // Check if an hour is in nighttime (outside focus hours)
+  const isNightHour = useCallback((hour: number) => {
+    return hour < effectiveSettings.focusStartTime || hour >= effectiveSettings.focusEndTime;
+  }, [effectiveSettings.focusStartTime, effectiveSettings.focusEndTime]);
+
+  // Get position in night mode timeline (handles midnight crossing)
+  const getNightModePosition = useCallback((taskStartHour: number, taskEndHour: number): { top: number; height: number } | null => {
+    if (!nightSegments || nightSegments.length < 2) return null;
+    
+    const segment1 = nightSegments[0]; // Evening segment (focusEnd to 24)
+    const segment2 = nightSegments[1]; // Morning segment (0 to focusStart)
+    const segment1Hours = segment1.endHour - segment1.startHour;
+    
+    // Check if task is in evening segment
+    if (taskStartHour >= segment1.startHour && taskStartHour < segment1.endHour) {
+      const clampedEnd = Math.min(taskEndHour, segment1.endHour);
+      const top = (taskStartHour - segment1.startHour) * HOUR_HEIGHT;
+      const height = (clampedEnd - taskStartHour) * HOUR_HEIGHT;
+      return { top, height };
+    }
+    
+    // Check if task is in morning segment  
+    if (taskStartHour >= segment2.startHour && taskStartHour < segment2.endHour) {
+      const clampedEnd = Math.min(taskEndHour, segment2.endHour);
+      const top = segment1Hours * HOUR_HEIGHT + (taskStartHour - segment2.startHour) * HOUR_HEIGHT;
+      const height = (clampedEnd - taskStartHour) * HOUR_HEIGHT;
+      return { top, height };
+    }
+    
+    return null; // Task is in daytime, not visible in night mode
+  }, [nightSegments, HOUR_HEIGHT]);
+
   const getTaskPosition = useCallback((task: Task) => {
     const startHour = parseTimeToHours(task.start_time);
     if (startHour === null) return null;
@@ -602,11 +634,22 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     }
     
     const duration = endHour - startHour;
+    
+    // Handle night mode with midnight crossing
+    if (isCrossingMidnight && nightSegments) {
+      const nightPos = getNightModePosition(startHour, endHour);
+      if (nightPos) {
+        return { top: nightPos.top, height: nightPos.height, startHour, endHour, duration };
+      }
+      return null; // Task not visible in night mode
+    }
+    
+    // Standard positioning for Day, Both, or Full 24H modes
     const top = (startHour - rangeStartHour) * HOUR_HEIGHT;
     const height = duration * HOUR_HEIGHT;
     
     return { top, height, startHour, endHour, duration };
-  }, [HOUR_HEIGHT, rangeStartHour]);
+  }, [HOUR_HEIGHT, rangeStartHour, isCrossingMidnight, nightSegments, getNightModePosition]);
 
   const overlappingGroups = useMemo(() => {
     const groups: Task[][] = [];
@@ -689,21 +732,28 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               <CurrentTimeIndicator startHour={rangeStartHour} endHour={rangeEndHour} hourHeight={HOUR_HEIGHT} timezone={timezone} />
             )}
 
-            {hours.map(hour => {
+            {hours.map((hour, hourIndex) => {
               const isInSelection = selectionStart !== null &&
                 selectionEnd !== null &&
                 hour >= selectionStart &&
                 hour <= selectionEnd;
 
               const timeStr = format(addHours(startOfDay(currentDate), hour), 'h a');
+              
+              // Determine if this hour is night (for subtle visual distinction in Both mode)
+              const displayMode = effectiveSettings.timeDisplayMode || 'BOTH';
+              const isNight = isNightHour(hour);
+              const showNightIndicator = displayMode === 'BOTH' && effectiveSettings.dayTimeRangeMode === 'FOCUS' && isNight;
 
               return (
-                <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
+                <TimeSlotDropZone key={`${hour}-${hourIndex}`} hour={hour} date={currentDate}>
                   <div
                     className={cn(
                       'group relative border-b border-border/50 transition-all',
                       !isMobile && 'cursor-crosshair',
-                      isInSelection && 'bg-highlight/20 ring-1 ring-highlight/50'
+                      isInSelection && 'bg-highlight/20 ring-1 ring-highlight/50',
+                      // Subtle night hour background tint
+                      showNightIndicator && 'bg-secondary/30'
                     )}
                     style={{ height: `${HOUR_HEIGHT}px` }}
                     onMouseDown={(e) => handleMouseDown(hour, e)}
@@ -723,7 +773,14 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                       style={{ height: 0 }}
                     />
 
-                    <div className="absolute left-0 top-0 w-10 sm:w-12 text-[10px] sm:text-[11px] tabular-nums text-foreground-muted py-0.5 pointer-events-none">
+                    {/* Hour label with night styling */}
+                    <div className={cn(
+                      "absolute left-0 top-0 w-10 sm:w-12 text-[10px] sm:text-[11px] tabular-nums py-0.5 pointer-events-none flex items-center gap-0.5",
+                      showNightIndicator ? "text-foreground-muted/70" : "text-foreground-muted"
+                    )}>
+                      {showNightIndicator && (
+                        <span className="w-1 h-1 rounded-full bg-foreground-muted/40" />
+                      )}
                       {timeStr}
                     </div>
 
