@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { normalizeTime, parseTimeToHours, formatHoursToTime } from '@/lib/timeUtils';
 import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
-import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useRef } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
@@ -507,46 +507,49 @@ const CalendarTask = ({
   const canResizeHorizontallyLeft = canResizeLeft || !!onWidthChange;
   const canResizeHorizontallyRight = canResizeRight || !!onWidthChange;
   
-  // For small tasks, show edit button always and make entire task clickable
-  const isVerySmall = displayHeight < 40;
+  // For small tasks, show edit button always and add a drag affordance
+  const isVerySmall = displayHeight < 44;
   
-  // Minimum height for interaction - clamp to 32px minimum display for easier interaction
-  const minInteractiveHeight = 32;
+  // Minimum height for interaction - keep tiny tasks still easy to grab
+  const minInteractiveHeight = 44;
 
   return (
     <>
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div
-              ref={(node) => {
-                setNodeRef(node);
-                (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-              }}
-              style={{
-                ...style,
-                height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
-                marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
-                minHeight: `${minInteractiveHeight}px`,
-              }}
-              {...attributes}
-              {...listeners}
-              onDoubleClick={handleDoubleClick}
-              onClick={handleCompactClick}
-              className={cn(
-                'group relative h-full rounded-lg border-l-[3px] shadow-sm overflow-hidden',
-                'hover:shadow-md hover:brightness-105',
-                !isResizing && 'cursor-grab active:cursor-grabbing transition-all',
-                isResizing && 'transition-none', // Disable transitions during resize for smoothness
-                energyBorderColors[task.energy_level],
-                energyBgColors[task.energy_level],
-                isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
-                isResizing && 'ring-2 ring-highlight shadow-lg z-50',
-                task.completed && 'opacity-50',
-                // For very small tasks, add hover highlight to indicate clickability
-                isVerySmall && 'hover:ring-2 hover:ring-highlight/50'
-              )}
-            >
+              <div
+                ref={(node) => {
+                  setNodeRef(node);
+                  (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+                }}
+                style={{
+                  ...style,
+                  height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
+                  marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
+                  minHeight: `${minInteractiveHeight}px`,
+                }}
+                {...attributes}
+                {...listeners}
+                onDoubleClick={handleDoubleClick}
+                onClick={handleCompactClick}
+                className={cn(
+                  'group relative h-full rounded-lg border-l-[3px] shadow-sm overflow-hidden',
+                  'hover:shadow-md hover:brightness-105',
+                  !isResizing && 'cursor-grab active:cursor-grabbing transition-all',
+                  isResizing && 'transition-none', // Disable transitions during resize for smoothness
+                  // Prevent accidental text selection while dragging
+                  !isEditingTitle && !isEditingDescription && 'select-none',
+                  isVerySmall && 'touch-none',
+                  energyBorderColors[task.energy_level],
+                  energyBgColors[task.energy_level],
+                  isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
+                  isResizing && 'ring-2 ring-highlight shadow-lg z-50',
+                  task.completed && 'opacity-50',
+                  // For very small tasks, add hover highlight to indicate clickability
+                  isVerySmall && 'hover:ring-2 hover:ring-highlight/50'
+                )}
+              >
               {/* Left resize handle - for split-pane resize */}
               {canResizeHorizontallyLeft && (
                 <div
@@ -592,6 +595,13 @@ const CalendarTask = ({
               >
                 <div className={cn("rounded-full bg-foreground/50", isVerySmall ? "w-12 h-1.5" : "w-8 h-1")} />
               </div>
+
+              {/* Drag affordance for tiny tasks */}
+              {isVerySmall && (
+                <div className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none">
+                  <GripVertical className="w-4 h-4 text-foreground/60" />
+                </div>
+              )}
 
               {/* Main content */}
               <div

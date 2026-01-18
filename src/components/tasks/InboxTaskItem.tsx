@@ -11,7 +11,6 @@ import {
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { format, addDays } from 'date-fns';
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import EnergyPill from '@/components/shared/EnergyPill';
 import {
   Select,
   SelectContent,
@@ -34,14 +33,6 @@ const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
   const minute = (i % 2) * 30;
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 });
-
-const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
-  { value: 'high', label: 'High Focus' },
-  { value: 'medium', label: 'Steady' },
-  { value: 'low', label: 'Low Energy' },
-  { value: 'recovery', label: 'Recovery' },
-];
-
 const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, onDelete }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
