@@ -77,15 +77,15 @@ const CurrentTimeIndicator = ({
     >
       <div className="relative flex items-center">
         {/* Time label */}
-        <div className="absolute -left-1 -translate-y-1/2 bg-primary text-primary-foreground text-2xs px-1.5 py-0.5 rounded font-medium">
+        <div className="absolute -left-1 -translate-y-1/2 bg-highlight text-white text-2xs px-1.5 py-0.5 rounded font-medium">
           {currentTime}
         </div>
         
         {/* Dot at the start of the line */}
-        <div className="w-2 h-2 rounded-full bg-primary ml-14 -translate-y-1/2" />
+        <div className="w-2 h-2 rounded-full bg-highlight ml-14 -translate-y-1/2" />
         
         {/* Line across the time grid */}
-        <div className="flex-1 h-0.5 bg-primary" />
+        <div className="flex-1 h-0.5 bg-highlight" />
       </div>
     </div>
   );

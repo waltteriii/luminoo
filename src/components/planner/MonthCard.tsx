@@ -43,7 +43,7 @@ const MonthCard = ({
       className={cn(
         "group relative rounded-xl border transition-all duration-200 cursor-pointer",
         "bg-card hover:bg-highlight-muted/50 border-border hover:border-highlight/30",
-        isCurrentMonth && "ring-1 ring-primary/50",
+        isCurrentMonth && "ring-1 ring-highlight/50",
         isCompact && "p-4 min-h-[120px]",
         !isCompact && !isExpanded && "p-6 min-h-[200px]",
         isExpanded && "p-8 min-h-[400px]"
@@ -60,7 +60,7 @@ const MonthCard = ({
             {name}
           </h3>
           {isCurrentMonth && (
-            <span className="inline-block mt-1 text-2xs uppercase tracking-wider text-primary font-medium">
+            <span className="inline-block mt-1 text-2xs uppercase tracking-wider text-highlight font-medium">
               Current
             </span>
           )}
@@ -147,7 +147,7 @@ const MonthCard = ({
 
       {/* Current month indicator line */}
       {isCurrentMonth && (
-        <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-full" />
+        <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-highlight rounded-full" />
       )}
     </div>
   );

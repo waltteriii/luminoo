@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles } from 'lucide-react';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform, ZoomLevel } from '@/types';
@@ -396,10 +396,14 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
           </div>
         ) : (
           <Tabs defaultValue="profile" className="flex-1 min-h-0 flex flex-col">
-            <TabsList className="mx-6 mt-4 grid grid-cols-4 w-auto flex-shrink-0">
+            <TabsList className="mx-6 mt-4 grid grid-cols-5 w-auto flex-shrink-0">
               <TabsTrigger value="profile" className="text-xs gap-1">
                 <User className="w-3 h-3" />
                 Profile
+              </TabsTrigger>
+              <TabsTrigger value="interface" className="text-xs gap-1">
+                <SlidersHorizontal className="w-3 h-3" />
+                Interface
               </TabsTrigger>
               <TabsTrigger value="sharing" className="text-xs gap-1">
                 <Share2 className="w-3 h-3" />
@@ -505,62 +509,6 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                   </Popover>
                 </div>
 
-                {/* Default View Preference */}
-                <div className="space-y-3">
-                  <Label>Default View on Login</Label>
-                  <p className="text-xs text-foreground-muted -mt-1">
-                    Choose which calendar view to show when you open the app
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {defaultViews.map(view => (
-                      <button
-                        key={view.value}
-                        onClick={() => setDefaultView(view.value)}
-                        className={cn(
-                          "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
-                          defaultView === view.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/50 text-foreground-muted"
-                        )}
-                      >
-                        {view.icon}
-                        <span className="text-xs">{view.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Highlight Color Preference - for ADHD/Autism friendly customization */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-highlight" />
-                    <Label>Highlight Color</Label>
-                  </div>
-                  <p className="text-xs text-foreground-muted -mt-1">
-                    Choose a calming accent color that works best for you
-                  </p>
-                  <div className="grid grid-cols-5 gap-2">
-                    {highlightColors.map(color => (
-                      <button
-                        key={color.value}
-                        onClick={() => {
-                          setHighlightColor(color.value);
-                          // Preview immediately
-                          document.documentElement.setAttribute('data-highlight', color.value);
-                        }}
-                        className={cn(
-                          "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
-                          highlightColor === color.value
-                            ? "border-highlight bg-highlight-muted ring-1 ring-highlight/30"
-                            : "border-border hover:border-foreground-muted"
-                        )}
-                      >
-                        <div className={cn("w-5 h-5 rounded-full", color.colorClass)} />
-                        <span className="text-2xs text-foreground-muted">{color.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Creator Type */}
                 <div className="space-y-3">
@@ -718,6 +666,80 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                   />
                   <p className="text-xs text-foreground-muted">
                     ✨ The more detail you share, the better AI can personalize suggestions for you
+                  </p>
+                </div>
+              </TabsContent>
+
+              {/* Interface Tab - UI/UX preferences for neurodivergent users */}
+              <TabsContent value="interface" className="px-6 py-6 space-y-6 mt-0 pr-8">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-foreground">Visual Preferences</h3>
+                  <p className="text-xs text-foreground-muted">
+                    Customize how the interface looks and behaves to match your working style
+                  </p>
+                </div>
+
+                {/* Default View - Compact */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Default View on Login</Label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {defaultViews.map(view => (
+                      <button
+                        key={view.value}
+                        onClick={() => setDefaultView(view.value)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all text-xs",
+                          defaultView === view.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50 text-foreground-muted"
+                        )}
+                      >
+                        {view.icon}
+                        <span>{view.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Highlight Color - Compact */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-highlight" />
+                    <Label className="text-xs">Highlight Color</Label>
+                  </div>
+                  <p className="text-xs text-foreground-muted -mt-1">
+                    Choose a calming accent color for current day, selections, and focus states
+                  </p>
+                  <div className="flex gap-2">
+                    {highlightColors.map(color => (
+                      <button
+                        key={color.value}
+                        onClick={() => {
+                          setHighlightColor(color.value);
+                          document.documentElement.setAttribute('data-highlight', color.value);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center gap-1 px-3 py-2 rounded-md border transition-all",
+                          highlightColor === color.value
+                            ? "border-highlight bg-highlight-muted ring-1 ring-highlight/30"
+                            : "border-border hover:border-foreground-muted"
+                        )}
+                      >
+                        <div className={cn("w-4 h-4 rounded-full", color.colorClass)} />
+                        <span className="text-2xs text-foreground-muted">{color.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Future accessibility settings placeholder */}
+                <div className="p-4 bg-secondary/30 rounded-lg border border-border/50">
+                  <p className="text-xs text-foreground-muted text-center">
+                    More accessibility and focus settings coming soon
                   </p>
                 </div>
               </TabsContent>

@@ -52,13 +52,13 @@ const DroppableDayCell = ({ day, tasks, inMonth, today, userId, onDayClick, onEd
         inMonth 
           ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50" 
           : "bg-secondary/50 border-transparent opacity-50",
-        today && "border-primary ring-1 ring-primary/20",
+        today && "border-highlight ring-1 ring-highlight/30",
         isOver && "ring-2 ring-highlight bg-highlight-muted"
       )}
     >
       <div className={cn(
         "text-sm font-medium mb-1",
-        today ? "text-primary" : inMonth ? "text-foreground" : "text-foreground-muted"
+        today ? "text-highlight" : inMonth ? "text-foreground" : "text-foreground-muted"
       )}>
         {format(day, 'd')}
       </div>
