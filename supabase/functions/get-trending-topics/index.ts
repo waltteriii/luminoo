@@ -37,7 +37,53 @@ serve(async (req) => {
       });
     }
 
-    const { userProfile } = await req.json();
+    const body = await req.json();
+    const { userProfile } = body;
+    
+    // Input validation
+    if (userProfile !== undefined && userProfile !== null) {
+      if (typeof userProfile !== 'object' || Array.isArray(userProfile)) {
+        return new Response(JSON.stringify({ error: 'userProfile must be an object if provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (userProfile.platforms !== undefined && !Array.isArray(userProfile.platforms)) {
+        return new Response(JSON.stringify({ error: 'platforms must be an array if provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (userProfile.nicheKeywords !== undefined && !Array.isArray(userProfile.nicheKeywords)) {
+        return new Response(JSON.stringify({ error: 'nicheKeywords must be an array if provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (userProfile.creatorType !== undefined && typeof userProfile.creatorType !== 'string') {
+        return new Response(JSON.stringify({ error: 'creatorType must be a string if provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (userProfile.audienceDescription !== undefined && typeof userProfile.audienceDescription !== 'string') {
+        return new Response(JSON.stringify({ error: 'audienceDescription must be a string if provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    
+    // Sanitize inputs to prevent prompt injection (limit lengths)
+    const sanitizedCreatorType = (userProfile?.creatorType || 'content creator').slice(0, 50);
+    const sanitizedPlatforms = (userProfile?.platforms || ['social media']).slice(0, 10).map((p: string) => String(p).slice(0, 50));
+    const sanitizedKeywords = (userProfile?.nicheKeywords || ['general']).slice(0, 20).map((k: string) => String(k).slice(0, 50));
+    const sanitizedAudience = (userProfile?.audienceDescription || 'General audience').slice(0, 500);
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -53,10 +99,10 @@ serve(async (req) => {
 Based on the user's profile, generate relevant trending topics and content suggestions they should consider creating content about.
 
 User Profile:
-- Creator Type: ${userProfile?.creatorType || 'content creator'}
-- Platforms: ${userProfile?.platforms?.join(', ') || 'social media'}
-- Niche Keywords: ${userProfile?.nicheKeywords?.join(', ') || 'general'}
-- About: ${userProfile?.audienceDescription || 'General audience'}
+- Creator Type: ${sanitizedCreatorType}
+- Platforms: ${sanitizedPlatforms.join(', ')}
+- Niche Keywords: ${sanitizedKeywords.join(', ')}
+- About: ${sanitizedAudience}
 
 Consider:
 1. Current events and seasonal trends relevant to their niche

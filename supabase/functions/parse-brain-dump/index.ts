@@ -63,7 +63,35 @@ serve(async (req) => {
       });
     }
 
-    const { text, userProfile } = await req.json();
+    const body = await req.json();
+    
+    // Input validation
+    const { text, userProfile } = body;
+    
+    if (!text || typeof text !== "string") {
+      return new Response(JSON.stringify({ error: "Text is required and must be a string" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (text.length === 0 || text.length > 10000) {
+      return new Response(JSON.stringify({ error: "Text must be between 1 and 10,000 characters" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (userProfile !== undefined && typeof userProfile !== "string") {
+      return new Response(JSON.stringify({ error: "userProfile must be a string if provided" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Sanitize userProfile to prevent prompt injection (limit length)
+    const sanitizedUserProfile = userProfile ? userProfile.slice(0, 500) : "Creative professional";
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -99,7 +127,7 @@ Your job is to:
 5. Note any emotional context
 6. Suggest related items
 
-User profile context: ${userProfile || "Creative professional"}
+User profile context: ${sanitizedUserProfile}
 
 Return structured data using the provided tool. For due_date, use ISO format YYYY-MM-DD or null if no date specified.`;
 
