@@ -382,6 +382,9 @@ const Index = () => {
                   onWeekClick={handleWeekClick}
                   onZoomOut={handleZoomOut}
                   onZoomLevelChange={handleZoomLevelChange}
+                  onJumpToToday={handleJumpToToday}
+                  onSetFocusedDate={setFocusedDate}
+                  onSetFocusedMonth={setFocusedMonth}
                 />
               </div>
             </div>

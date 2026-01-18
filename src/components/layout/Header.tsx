@@ -7,7 +7,9 @@ import {
   Menu, 
   LogOut, 
   User as UserIcon,
-  ChevronDown 
+  ChevronDown,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +23,12 @@ import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel } from '@/types';
 import EnergySelector from '@/components/planner/NewEnergySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface HeaderProps {
   user: User;
@@ -138,8 +146,11 @@ const Header = memo(({
         />
       </div>
 
-      {/* Right section - avatar only */}
-      <div className="flex items-center flex-shrink-0">
+      {/* Right section - theme toggle + avatar */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
@@ -183,6 +194,59 @@ const Header = memo(({
     </header>
   );
 });
+
+// Theme Toggle Component
+const THEME_KEY = 'luminoo-theme';
+
+const ThemeToggle = memo(() => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+    // Default to dark
+    return 'dark';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light');
+    } else {
+      root.classList.remove('light');
+    }
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9 text-foreground-muted hover:text-foreground"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Switch to {theme === 'dark' ? 'light' : 'dark'} mode</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
+
+ThemeToggle.displayName = 'ThemeToggle';
 
 Header.displayName = 'Header';
 
