@@ -2,11 +2,18 @@ import { memo, useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { Moon, ChevronDown, ChevronUp, Clock, GripVertical } from 'lucide-react';
+import { Moon, ChevronDown, ChevronUp, Clock, Copy, Trash2 } from 'lucide-react';
 import { parseTimeToHours } from '@/lib/timeUtils';
 import { TimeRangeSettings, formatHourLabel } from '@/lib/timeRangeConfig';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { Input } from '@/components/ui/input';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from '@/components/ui/context-menu';
 
 interface OffHoursSectionProps {
   type: 'night-before' | 'night-after';
@@ -16,6 +23,7 @@ interface OffHoursSectionProps {
   onTaskClick?: (task: Task) => void;
   onTaskUpdate?: (taskId: string, updates: Partial<Task>) => void;
   onTaskDelete?: (taskId: string) => void;
+  onTaskCopy?: (task: Task) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   className?: string;
@@ -35,20 +43,29 @@ const energyBorderColors: Record<EnergyLevel, string> = {
   recovery: 'border-l-energy-recovery',
 };
 
-// Draggable task item for night sections
-interface DraggableNightTaskProps {
+const energyBgColors: Record<EnergyLevel, string> = {
+  high: 'bg-energy-high/15 hover:bg-energy-high/25',
+  medium: 'bg-energy-medium/15 hover:bg-energy-medium/25',
+  low: 'bg-energy-low/15 hover:bg-energy-low/25',
+  recovery: 'bg-energy-recovery/15 hover:bg-energy-recovery/25',
+};
+
+// Night task item - behaves like CalendarTask
+interface NightTaskItemProps {
   task: Task;
   onUpdate?: (updates: Partial<Task>) => void;
   onDelete?: () => void;
+  onCopy?: () => void;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
-const DraggableNightTask = memo(({ task, onUpdate, onDelete }: DraggableNightTaskProps) => {
+const NightTaskItem = memo(({ task, onUpdate, onDelete, onCopy, isSelected, onSelect }: NightTaskItemProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const clickTimeout = useRef<NodeJS.Timeout | null>(null);
-  const clickCount = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     attributes,
@@ -84,6 +101,30 @@ const DraggableNightTask = memo(({ task, onUpdate, onDelete }: DraggableNightTas
     }
   }, [task.title, isEditingTitle]);
 
+  // Handle keyboard shortcuts when selected
+  useEffect(() => {
+    if (!isSelected) return;
+
+    const handleKeyDown = (ev: KeyboardEvent) => {
+      // Skip when editing text
+      if (isEditingTitle) return;
+      
+      // Copy: Ctrl+C or Cmd+C
+      if ((ev.ctrlKey || ev.metaKey) && ev.key === 'c' && onCopy) {
+        ev.preventDefault();
+        onCopy();
+      }
+      // Delete: Backspace or Delete
+      if ((ev.key === 'Backspace' || ev.key === 'Delete') && onDelete) {
+        ev.preventDefault();
+        onDelete();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSelected, onCopy, onDelete, isEditingTitle]);
+
   const handleSaveTitle = useCallback(() => {
     const trimmed = editTitle.trim();
     if (trimmed && trimmed !== task.title) {
@@ -104,28 +145,30 @@ const DraggableNightTask = memo(({ task, onUpdate, onDelete }: DraggableNightTas
     }
   }, [handleSaveTitle, task.title]);
 
-  // Handle click: single = edit title, double = open dialog
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  // Handle click on title for inline editing
+  const handleTitleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    clickCount.current += 1;
+    if (!isEditingTitle) {
+      setIsEditingTitle(true);
+    }
+  }, [isEditingTitle]);
 
-    if (clickCount.current === 1) {
-      clickTimeout.current = setTimeout(() => {
-        // Single click - start inline editing
-        if (clickCount.current === 1) {
-          setIsEditingTitle(true);
-        }
-        clickCount.current = 0;
-      }, 250);
-    } else if (clickCount.current === 2) {
-      // Double click - open dialog
-      if (clickTimeout.current) {
-        clearTimeout(clickTimeout.current);
-      }
-      clickCount.current = 0;
+  // Handle double-click to open edit dialog
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!isEditingTitle) {
       setEditDialogOpen(true);
     }
-  }, []);
+  }, [isEditingTitle]);
+
+  // Handle selection
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Don't select if clicking on title (for inline edit)
+    if ((e.target as HTMLElement).closest('.task-title-area')) return;
+    e.stopPropagation();
+    onSelect?.();
+  }, [onSelect]);
 
   const startHour = parseTimeToHours(task.start_time);
   const endHour = parseTimeToHours(task.end_time);
@@ -135,62 +178,93 @@ const DraggableNightTask = memo(({ task, onUpdate, onDelete }: DraggableNightTas
 
   return (
     <>
-      <div
-        ref={setNodeRef}
-        style={style}
-        className={cn(
-          'group flex items-center gap-2 px-2 py-1.5 rounded-md',
-          'bg-secondary/60 hover:bg-secondary/80 transition-colors text-left',
-          'border-l-4 border border-border/50',
-          energyBorderColors[task.energy_level],
-          isDragging && 'opacity-50 shadow-lg ring-2 ring-primary/50'
-        )}
-      >
-        {/* Drag handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
-        >
-          <GripVertical className="w-3.5 h-3.5 text-foreground-muted" />
-        </div>
-
-        {/* Energy indicator */}
-        <div
-          className={cn(
-            'w-2 h-full min-h-[20px] rounded-full shrink-0',
-            energyColors[task.energy_level]
-          )}
-        />
-
-        {/* Content - click to edit */}
-        <div 
-          className="flex-1 min-w-0 cursor-text"
-          onClick={handleClick}
-        >
-          {isEditingTitle ? (
-            <Input
-              ref={titleInputRef}
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onBlur={handleSaveTitle}
-              onKeyDown={handleTitleKeyDown}
-              className="h-6 py-0 px-1 text-sm font-medium border-none bg-background focus-visible:ring-1"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <div className="text-sm font-medium truncate hover:text-primary transition-colors">
-              {task.title}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            ref={(node) => {
+              setNodeRef(node);
+              (containerRef as any).current = node;
+            }}
+            style={style}
+            onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
+            {...attributes}
+            {...listeners}
+            className={cn(
+              'task-item group relative flex items-stretch gap-0 rounded-md cursor-grab active:cursor-grabbing touch-none',
+              'transition-all duration-150',
+              'border-l-4 border',
+              energyBorderColors[task.energy_level],
+              energyBgColors[task.energy_level],
+              isDragging && 'opacity-50 shadow-lg ring-2 ring-primary/50 scale-[1.02]',
+              isSelected && 'ring-2 ring-primary shadow-md',
+              task.completed && 'opacity-60'
+            )}
+          >
+            {/* Main content */}
+            <div className="flex-1 min-w-0 py-1.5 px-2">
+              {/* Title - click to edit */}
+              <div className="task-title-area">
+                {isEditingTitle ? (
+                  <Input
+                    ref={titleInputRef}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={handleSaveTitle}
+                    onKeyDown={handleTitleKeyDown}
+                    className="h-5 py-0 px-1 text-sm font-medium border-none bg-background/80 focus-visible:ring-1"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div 
+                    className={cn(
+                      "text-sm font-medium truncate cursor-text hover:text-primary transition-colors",
+                      task.completed && 'line-through'
+                    )}
+                    onClick={handleTitleClick}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    {task.title}
+                  </div>
+                )}
+              </div>
+              
+              {/* Time display */}
+              {timeStr && !isEditingTitle && (
+                <div className="flex items-center gap-1 text-[10px] text-foreground-muted mt-0.5">
+                  <Clock className="w-2.5 h-2.5" />
+                  {timeStr}
+                </div>
+              )}
             </div>
+
+            {/* Selection indicator */}
+            {isSelected && (
+              <div className="absolute -right-1 -top-1 w-2.5 h-2.5 rounded-full bg-primary shadow-sm" />
+            )}
+          </div>
+        </ContextMenuTrigger>
+        
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => setEditDialogOpen(true)}>
+            Edit task...
+          </ContextMenuItem>
+          {onCopy && (
+            <ContextMenuItem onClick={onCopy}>
+              <Copy className="w-3.5 h-3.5 mr-2" />
+              Copy
+            </ContextMenuItem>
           )}
-          {timeStr && !isEditingTitle && (
-            <div className="flex items-center gap-1 text-[10px] text-foreground-muted">
-              <Clock className="w-2.5 h-2.5" />
-              {timeStr}
-            </div>
+          <ContextMenuSeparator />
+          {onDelete && (
+            <ContextMenuItem onClick={onDelete} className="text-destructive">
+              <Trash2 className="w-3.5 h-3.5 mr-2" />
+              Delete
+            </ContextMenuItem>
           )}
-        </div>
-      </div>
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* Edit Dialog */}
       <EditTaskDialog
@@ -210,7 +284,7 @@ const DraggableNightTask = memo(({ task, onUpdate, onDelete }: DraggableNightTas
   );
 });
 
-DraggableNightTask.displayName = 'DraggableNightTask';
+NightTaskItem.displayName = 'NightTaskItem';
 
 const OffHoursSection = memo(({
   type,
@@ -220,17 +294,33 @@ const OffHoursSection = memo(({
   onTaskClick,
   onTaskUpdate,
   onTaskDelete,
+  onTaskCopy,
   isExpanded,
   onToggleExpand,
   className,
 }: OffHoursSectionProps) => {
   const isNightBefore = type === 'night-before';
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   // Droppable zone for the night section
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `night-section-${type}`,
     data: { type: 'night-section', section: type },
   });
+  
+  // Deselect when clicking outside tasks
+  useEffect(() => {
+    if (!selectedTaskId) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.task-item')) return;
+      setSelectedTaskId(null);
+    };
+    
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [selectedTaskId]);
   
   const { startHour, endHour, label, hourCount } = useMemo(() => {
     if (isNightBefore) {
@@ -254,7 +344,7 @@ const OffHoursSection = memo(({
 
   // Calculate collapsed height (compact representation)
   const collapsedHeight = 48; // Fixed collapsed height
-  const expandedHeight = Math.max(hourCount * hourHeight * settings.offHoursDenseScaleFactor, 120);
+  const expandedHeight = Math.max(hourCount * hourHeight * settings.offHoursDenseScaleFactor, 140);
 
   const currentHeight = isExpanded ? expandedHeight : collapsedHeight;
 
@@ -348,7 +438,7 @@ const OffHoursSection = memo(({
             <ChevronUp className="w-4 h-4 text-foreground-muted" />
           </button>
 
-          {/* Task list in dense mode - with draggable items */}
+          {/* Task list - with full interaction support */}
           <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
             {tasks.length === 0 ? (
               <div className="text-xs text-foreground-muted text-center py-4">
@@ -360,11 +450,14 @@ const OffHoursSection = memo(({
               </div>
             ) : (
               tasks.map(task => (
-                <DraggableNightTask
+                <NightTaskItem
                   key={task.id}
                   task={task}
                   onUpdate={(updates) => onTaskUpdate?.(task.id, updates)}
                   onDelete={() => onTaskDelete?.(task.id)}
+                  onCopy={() => onTaskCopy?.(task)}
+                  isSelected={selectedTaskId === task.id}
+                  onSelect={() => setSelectedTaskId(task.id)}
                 />
               ))
             )}
