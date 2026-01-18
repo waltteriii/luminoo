@@ -21,13 +21,22 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTasks();
+    // Get user first, then load tasks
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        loadTasks(user.id);
+      }
+    };
+    init();
 
     // Subscribe to task changes
     const channel = supabase
       .channel('unscheduled-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        loadTasks();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) loadTasks(user.id);
       })
       .subscribe();
 
@@ -36,16 +45,15 @@ const UnscheduledTasks = ({ energyFilter }: UnscheduledTasksProps) => {
     };
   }, []);
 
-  const loadTasks = async () => {
+  const loadTasks = async (uid?: string) => {
+    const userIdToUse = uid || userId;
+    if (!userIdToUse) return;
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userIdToUse)
         .is('due_date', null)
         .eq('completed', false)
         .order('created_at', { ascending: false });
