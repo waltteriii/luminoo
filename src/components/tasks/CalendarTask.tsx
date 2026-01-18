@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { normalizeTime, parseTimeToHours, formatHoursToTime } from '@/lib/timeUtils';
 import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
-import { Pencil, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
+import { Pencil, ChevronLeft, ChevronRight, Hand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useRef } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
