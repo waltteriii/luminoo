@@ -159,41 +159,52 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
       }
     }
 
-    // Inbox task being dragged (unscheduled) => confirmation dialog
+    // Inbox task being dragged (unscheduled) => schedule immediately without dialog
     if (activeData?.type === 'inbox-task') {
       const task = activeData.task as Task;
 
-      // Dropped on a time slot (day view)
+      // Dropped on a time slot (day view) - schedule immediately
       if (overData?.type === 'time-slot') {
         const hour = overData.hour as number;
-        setTaskToSchedule(task);
-        setTargetHour(hour);
         const date = overData.date as Date | undefined;
-        setTargetDate(date || new Date());
-        setConfirmDialogOpen(true);
+        const nextDate = date || new Date();
+        const nextDueDate = format(nextDate, 'yyyy-MM-dd');
+        const start = `${String(hour).padStart(2, '0')}:00:00`;
+        const end = `${String(hour + 1).padStart(2, '0')}:00:00`;
+        
+        await updateTask(task.id, {
+          due_date: nextDueDate,
+          start_time: start,
+          end_time: end,
+        } as any);
+        onTaskScheduled?.();
         return;
       }
 
-      // Dropped on a day (week/month view)
+      // Dropped on a day (week/month view) - schedule immediately without time
       if (/^\d{4}-\d{2}-\d{2}$/.test(overId)) {
         const date = parse(overId, 'yyyy-MM-dd', new Date());
-        setTaskToSchedule(task);
-        setTargetDate(date);
-        setTargetHour(undefined);
-        setConfirmDialogOpen(true);
+        const nextDueDate = format(date, 'yyyy-MM-dd');
+        
+        await updateTask(task.id, {
+          due_date: nextDueDate,
+        } as any);
+        onTaskScheduled?.();
         return;
       }
 
-      // Dropped on a month (year view)
+      // Dropped on a month (year view) - schedule to first day of month
       if (/^month-\d+$/.test(overId)) {
         const monthIndex = parseInt(overId.split('-')[1]);
         const date = new Date();
         date.setMonth(monthIndex);
         date.setDate(1);
-        setTaskToSchedule(task);
-        setTargetDate(date);
-        setTargetHour(undefined);
-        setConfirmDialogOpen(true);
+        const nextDueDate = format(date, 'yyyy-MM-dd');
+        
+        await updateTask(task.id, {
+          due_date: nextDueDate,
+        } as any);
+        onTaskScheduled?.();
         return;
       }
 

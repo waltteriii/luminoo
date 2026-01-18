@@ -504,7 +504,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
       <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
+            <User className="w-5 h-5 text-highlight" />
             Settings
           </DialogTitle>
         </DialogHeader>
@@ -610,7 +610,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                               className={cn(
                                 "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
                                 timezone === tz.value
-                                  ? "bg-primary text-primary-foreground"
+                                  ? "bg-highlight text-highlight-foreground"
                                   : "hover:bg-secondary"
                               )}
                             >
@@ -640,8 +640,8 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                         className={cn(
                           "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
                           creatorType === type.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/50 text-foreground-muted"
+                            ? "border-highlight bg-highlight/10 text-highlight"
+                            : "border-border hover:border-highlight/50 text-foreground-muted"
                         )}
                       >
                         {type.icon}
@@ -657,8 +657,8 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                         className={cn(
                           "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
                           creatorType === type.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/50 text-foreground-muted"
+                            ? "border-highlight bg-highlight/10 text-highlight"
+                            : "border-border hover:border-highlight/50 text-foreground-muted"
                         )}
                       >
                         {type.icon}
@@ -766,8 +766,8 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                 {/* More About You - Enhanced AI personalization */}
                 <div className="space-y-3 p-4 bg-secondary/20 rounded-lg border border-border/50">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-primary" />
+                    <div className="w-8 h-8 rounded-full bg-highlight/10 flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-highlight" />
                     </div>
                     <div className="flex-1">
                       <Label htmlFor="moreAboutYou" className="text-sm font-medium">Tell AI More About You</Label>
