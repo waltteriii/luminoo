@@ -244,6 +244,10 @@ const CalendarTask = ({
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewStartTime, task.start_time, onUpdate]);
 
+  // Throttle resize updates with RAF for smooth performance
+  const rafRef = useRef<number | null>(null);
+  const pendingDeltaRef = useRef<number>(0);
+
   // Handle right resize (split-pane style - steals from right neighbor)
   const handleResizeRightStart = useCallback((e: React.PointerEvent) => {
     if (!onResizeRight && !onWidthChange) return;
@@ -261,23 +265,42 @@ const CalendarTask = ({
     const grandParentElement = parentElement?.parentElement;
     const containerWidth = grandParentElement?.offsetWidth || parentElement?.offsetWidth || 400;
     
-    const handleMove = (ev: PointerEvent) => {
-      const deltaX = ev.clientX - resizeStartX.current;
-      const deltaPercent = (deltaX / containerWidth) * 100;
+    let lastDelta = 0;
+    
+    const applyResize = () => {
+      const deltaPercent = pendingDeltaRef.current;
+      if (Math.abs(deltaPercent - lastDelta) < 0.5) return;
+      lastDelta = deltaPercent;
       
       if (onResizeRight) {
-        // Split-pane mode: pass delta to parent which handles neighbor adjustment
         onResizeRight(deltaPercent);
       } else if (onWidthChange) {
-        // Legacy mode: just update this task's width
         const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
         onWidthChange(newWidth);
+      }
+    };
+    
+    const handleMove = (ev: PointerEvent) => {
+      const deltaX = ev.clientX - resizeStartX.current;
+      pendingDeltaRef.current = (deltaX / containerWidth) * 100;
+      
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          applyResize();
+          rafRef.current = null;
+        });
       }
     };
     
     const handleUp = () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      // Final apply
+      applyResize();
       
       setIsResizing(false);
       setResizeDirection(null);
@@ -303,23 +326,42 @@ const CalendarTask = ({
     const grandParentElement = parentElement?.parentElement;
     const containerWidth = grandParentElement?.offsetWidth || parentElement?.offsetWidth || 400;
     
-    const handleMove = (ev: PointerEvent) => {
-      const deltaX = resizeStartX.current - ev.clientX; // Inverted for left resize
-      const deltaPercent = (deltaX / containerWidth) * 100;
+    let lastDelta = 0;
+    
+    const applyResize = () => {
+      const deltaPercent = pendingDeltaRef.current;
+      if (Math.abs(deltaPercent - lastDelta) < 0.5) return;
+      lastDelta = deltaPercent;
       
       if (onResizeLeft) {
-        // Split-pane mode: pass delta to parent which handles neighbor adjustment
         onResizeLeft(deltaPercent);
       } else if (onWidthChange) {
-        // Legacy mode: just update this task's width
         const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
         onWidthChange(newWidth);
+      }
+    };
+    
+    const handleMove = (ev: PointerEvent) => {
+      const deltaX = resizeStartX.current - ev.clientX; // Inverted for left resize
+      pendingDeltaRef.current = (deltaX / containerWidth) * 100;
+      
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          applyResize();
+          rafRef.current = null;
+        });
       }
     };
     
     const handleUp = () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      // Final apply
+      applyResize();
       
       setIsResizing(false);
       setResizeDirection(null);
