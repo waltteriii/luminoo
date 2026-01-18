@@ -63,7 +63,7 @@ const DroppableDay = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border bg-card p-2 transition-all flex flex-col",
+        "rounded-lg border border-border bg-card px-1.5 py-1 transition-all flex flex-col",
         today && "border-primary ring-1 ring-primary/20",
         isOver && "ring-2 ring-primary bg-primary/5"
       )}
@@ -71,15 +71,15 @@ const DroppableDay = ({
       <button
         onClick={() => onDayClick(date)}
         className={cn(
-          "w-full text-left mb-1 hover:text-primary transition-colors",
+          "w-full text-left hover:text-primary transition-colors",
           today && "text-primary"
         )}
       >
-        <div className="text-[10px] text-foreground-muted uppercase leading-none">
+        <div className="text-[9px] text-foreground-muted uppercase leading-none">
           {format(date, 'EEE')}
         </div>
         <div className={cn(
-          "text-base font-medium leading-tight",
+          "text-sm font-medium leading-tight",
           today ? "text-primary" : "text-foreground"
         )}>
           {format(date, 'd')}
@@ -90,8 +90,8 @@ const DroppableDay = ({
         items={tasks.map(t => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-0.5 flex-1">
-          {tasks.slice(0, 6).map(task => (
+        <div className="flex flex-col gap-px mt-0.5 flex-1">
+          {tasks.slice(0, 8).map(task => (
             <div 
               key={task.id}
               onDoubleClick={(e) => handleDoubleClick(e, task)}
@@ -107,16 +107,16 @@ const DroppableDay = ({
               />
             </div>
           ))}
-          {tasks.length > 6 && (
+          {tasks.length > 8 && (
             <button 
               onClick={() => onDayClick(date)}
-              className="text-[10px] text-foreground-muted hover:text-primary pl-1"
+              className="text-[9px] text-foreground-muted hover:text-primary pl-0.5"
             >
-              +{tasks.length - 6} more
+              +{tasks.length - 8} more
             </button>
           )}
         </div>
-        <div className="mt-auto pt-1">
+        <div className="mt-auto pt-0.5">
           <QuickAddTask
             onAdd={async (task) => {
               await onAddTask(date, task.title, task.energy);
