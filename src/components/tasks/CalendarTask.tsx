@@ -3,10 +3,16 @@ import { cn } from '@/lib/utils';
 import { normalizeTime, parseTimeToHours, formatHoursToTime } from '@/lib/timeUtils';
 import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
-import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useRef } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface CalendarTaskProps {
   task: Task;
@@ -220,143 +226,149 @@ const CalendarTask = ({
   const contentPadding = isCompact ? 'py-0.5' : showDetails ? 'py-2' : 'py-1.5';
   const contentJustify = showDetails ? 'justify-start' : 'justify-center';
 
+  // Handle double-click to open edit dialog
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setEditDialogOpen(true);
+  }, []);
+
   return (
     <>
-      <div
-        ref={setNodeRef}
-        style={{
-          ...style,
-          height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
-          marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
-        }}
-        {...attributes}
-        {...listeners}
-        className={cn(
-          'group relative h-full rounded-md border-l-2 ring-1 ring-border/40 shadow-sm transition-[box-shadow,opacity] overflow-hidden',
-          'hover:shadow-md',
-          !isResizing && 'cursor-grab active:cursor-grabbing',
-          energyBorderColors[task.energy_level],
-          energyBgColors[task.energy_level],
-          isDragging && 'opacity-60 shadow-lg ring-1 ring-highlight',
-          isResizing && 'ring-2 ring-primary shadow-lg z-50',
-          task.completed && 'opacity-50'
-        )}
-      >
-        {/* Top resize handle - changes start time */}
-        <div
-          className={cn(
-            'absolute top-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
-            'opacity-0 group-hover:opacity-100 transition-opacity',
-            'bg-gradient-to-b from-background/60 to-transparent',
-            isResizing && resizeDirection === 'top' && 'opacity-100'
-          )}
-          onPointerDown={handleResizeTopStart}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="w-8 h-1 rounded-full bg-foreground/30" />
-        </div>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              ref={setNodeRef}
+              style={{
+                ...style,
+                height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
+                marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
+              }}
+              {...attributes}
+              {...listeners}
+              onDoubleClick={handleDoubleClick}
+              className={cn(
+                'group relative h-full rounded-md border-l-2 ring-1 ring-border/40 shadow-sm transition-[box-shadow,opacity] overflow-hidden',
+                'hover:shadow-md',
+                !isResizing && 'cursor-grab active:cursor-grabbing',
+                energyBorderColors[task.energy_level],
+                energyBgColors[task.energy_level],
+                isDragging && 'opacity-60 shadow-lg ring-1 ring-highlight',
+                isResizing && 'ring-2 ring-primary shadow-lg z-50',
+                task.completed && 'opacity-50'
+              )}
+            >
+              {/* Top resize handle - changes start time */}
+              <div
+                className={cn(
+                  'absolute top-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
+                  'opacity-0 group-hover:opacity-100 transition-opacity',
+                  'bg-gradient-to-b from-background/60 to-transparent',
+                  isResizing && resizeDirection === 'top' && 'opacity-100'
+                )}
+                onPointerDown={handleResizeTopStart}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="w-8 h-1 rounded-full bg-foreground/30" />
+              </div>
 
-        <div
-          className={cn(
-            'h-full flex flex-col px-2 leading-snug',
-            contentJustify,
-            contentPadding,
-            task.completed && 'line-through'
-          )}
-        >
-          {/* Title */}
-          <div
-            className={cn(
-              'font-medium truncate tracking-tight',
-              isCompact ? 'text-[12px]' : 'text-[13px]'
-            )}
-          >
-            {task.title}
-          </div>
+              <div
+                className={cn(
+                  'h-full flex flex-col px-2 leading-snug',
+                  contentJustify,
+                  contentPadding,
+                  task.completed && 'line-through'
+                )}
+              >
+                {/* Title */}
+                <div
+                  className={cn(
+                    'font-medium truncate tracking-tight',
+                    isCompact ? 'text-[12px]' : 'text-[13px]'
+                  )}
+                >
+                  {task.title}
+                </div>
 
-          {/* Time range - show if enough space */}
-          {showDetails && showTimeRange && task.start_time && (
-            <div className="mt-1 text-[11px] tabular-nums text-foreground-muted truncate">
-              {getTimeRange()}
+                {/* Time range - show if enough space */}
+                {showDetails && showTimeRange && task.start_time && (
+                  <div className="mt-1 text-[11px] tabular-nums text-foreground-muted truncate">
+                    {getTimeRange()}
+                  </div>
+                )}
+              </div>
+
+              {/* Reorder button - single swap button */}
+              {(canMoveLeft || canMoveRight) && (
+                <div className={cn(
+                  'absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                )}>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-6 w-6 bg-background/90 hover:bg-background shadow-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      // Swap: prefer right if available, else left
+                      if (canMoveRight) onMoveRight?.();
+                      else if (canMoveLeft) onMoveLeft?.();
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    title="Swap position"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Edit button - appears on hover */}
+              <Button
+                variant="secondary"
+                size="icon"
+                className={cn(
+                  'absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity',
+                  'bg-background/90 hover:bg-background shadow-sm'
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setEditDialogOpen(true);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <Pencil className="w-3 h-3" />
+              </Button>
+
+              {/* Bottom resize handle - changes end time */}
+              <div
+                className={cn(
+                  'absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
+                  'opacity-0 group-hover:opacity-100 transition-opacity',
+                  'bg-gradient-to-t from-background/60 to-transparent',
+                  isResizing && resizeDirection === 'bottom' && 'opacity-100'
+                )}
+                onPointerDown={handleResizeBottomStart}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="w-8 h-1 rounded-full bg-foreground/30" />
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Reorder buttons - only show when there are overlapping tasks */}
-        {(canMoveLeft || canMoveRight) && (
-          <div className={cn(
-            'absolute top-1 left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity'
-          )}>
-            {canMoveLeft && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 bg-background/80 hover:bg-background"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onMoveLeft?.();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                title="Move left"
-              >
-                <ChevronLeft className="w-2.5 h-2.5" />
-              </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[200px]">
+            <p className="font-medium">{task.title}</p>
+            {task.start_time && (
+              <p className="text-xs text-muted-foreground">{getTimeRange()}</p>
             )}
-            {canMoveRight && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 bg-background/80 hover:bg-background"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onMoveRight?.();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                title="Move right"
-              >
-                <ChevronRight className="w-2.5 h-2.5" />
-              </Button>
+            {task.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
             )}
-          </div>
-        )}
-
-        {/* Edit button - appears on hover */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            'absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity',
-            'bg-background/80 hover:bg-background'
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            setEditDialogOpen(true);
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Pencil className="w-3 h-3" />
-        </Button>
-
-        {/* Bottom resize handle - changes end time */}
-        <div
-          className={cn(
-            'absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
-            'opacity-0 group-hover:opacity-100 transition-opacity',
-            'bg-gradient-to-t from-background/60 to-transparent',
-            isResizing && resizeDirection === 'bottom' && 'opacity-100'
-          )}
-          onPointerDown={handleResizeBottomStart}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="w-8 h-1 rounded-full bg-foreground/30" />
-        </div>
-      </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <EditTaskDialog
         open={editDialogOpen}

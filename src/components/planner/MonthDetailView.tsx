@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, getWeek, addMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, getWeek, addMonths, parseISO, isWithinInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useDroppable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface MonthDetailViewProps {
   month: number;
@@ -26,6 +32,7 @@ const WEEKDAYS_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 interface DroppableDayCellProps {
   day: Date;
   tasks: Task[];
+  multiDayTasks: Task[];
   inMonth: boolean;
   today: boolean;
   userId: string | null;
@@ -34,7 +41,7 @@ interface DroppableDayCellProps {
   compact?: boolean;
 }
 
-const DroppableDayCell = memo(({ day, tasks, inMonth, today, userId, onDayClick, onEditTask, compact = false }: DroppableDayCellProps) => {
+const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, userId, onDayClick, onEditTask, compact = false }: DroppableDayCellProps) => {
   const dateStr = format(day, 'yyyy-MM-dd');
   const { isOver, setNodeRef } = useDroppable({ 
     id: dateStr,
@@ -47,6 +54,7 @@ const DroppableDayCell = memo(({ day, tasks, inMonth, today, userId, onDayClick,
   }, [onEditTask]);
 
   const maxTasks = compact ? 1 : 2;
+  const maxMultiDay = compact ? 1 : 1;
 
   return (
     <button
@@ -68,27 +76,73 @@ const DroppableDayCell = memo(({ day, tasks, inMonth, today, userId, onDayClick,
         {format(day, 'd')}
       </div>
       
+      {/* Multi-day tasks */}
+      {multiDayTasks.slice(0, maxMultiDay).map(task => (
+        <TooltipProvider key={task.id} delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditTask(task);
+                }}
+                className={cn(
+                  "text-[7px] sm:text-[8px] lg:text-[9px] px-1 py-0.5 rounded cursor-pointer mb-0.5",
+                  "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20",
+                  "flex items-center gap-0.5"
+                )}
+              >
+                <CalendarDays className="w-2 h-2 flex-shrink-0" />
+                <span className="truncate">{task.title}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[180px]">
+              <p className="font-medium text-sm">{task.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {format(parseISO(task.due_date!), 'MMM d')} - {format(parseISO(task.end_date!), 'MMM d')}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
+      {multiDayTasks.length > maxMultiDay && (
+        <div className="text-[7px] sm:text-[8px] text-foreground-muted">
+          +{multiDayTasks.length - maxMultiDay} multi-day
+        </div>
+      )}
+
       <div className="space-y-0.5">
         {tasks.slice(0, maxTasks).map(task => (
-          <div
-            key={task.id}
-            onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
-            className={cn(
-              "text-[8px] sm:text-[9px] lg:text-[10px] px-1 py-0.5 rounded cursor-pointer hover:ring-1 hover:ring-primary/30 overflow-hidden",
-              task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
-              task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
-              task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
-              task.energy_level === 'recovery' && "bg-energy-recovery/20 text-energy-recovery",
-              task.completed && "line-through opacity-60"
-            )}
-          >
-            <div className="flex items-center gap-1">
-              <span className="truncate flex-1">{task.title}</span>
-              {task.user_id !== userId && (
-                <span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" />
-              )}
-            </div>
-          </div>
+          <TooltipProvider key={task.id} delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
+                  className={cn(
+                    "text-[8px] sm:text-[9px] lg:text-[10px] px-1 py-0.5 rounded cursor-pointer hover:ring-1 hover:ring-primary/30 overflow-hidden",
+                    task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
+                    task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
+                    task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
+                    task.energy_level === 'recovery' && "bg-energy-recovery/20 text-energy-recovery",
+                    task.completed && "line-through opacity-60"
+                  )}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="truncate flex-1">{task.title}</span>
+                    {task.user_id !== userId && (
+                      <span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+                    )}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[180px]">
+                <p className="font-medium text-sm">{task.title}</p>
+                {task.start_time && (
+                  <p className="text-xs text-muted-foreground">{task.start_time} - {task.end_time || ''}</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         ))}
         {tasks.length > maxTasks && (
           <div className="text-[8px] sm:text-[9px] lg:text-[10px] text-foreground-muted">
@@ -137,16 +191,43 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     return allTasks.filter(t => t.due_date && t.due_date >= startStr && t.due_date <= endStr);
   }, [allTasks, calendarStart, calendarEnd]);
 
+  // Separate regular tasks and multi-day tasks
+  const { regularTasks, multiDayTasks } = useMemo(() => {
+    const regular: Task[] = [];
+    const multiDay: Task[] = [];
+    
+    tasks.forEach(t => {
+      if (t.end_date && t.end_date !== t.due_date) {
+        multiDay.push(t);
+      } else {
+        regular.push(t);
+      }
+    });
+    
+    return { regularTasks: regular, multiDayTasks: multiDay };
+  }, [tasks]);
+
   const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    let dayTasks = tasks.filter(t => t.due_date === dateStr);
+    let dayTasks = regularTasks.filter(t => t.due_date === dateStr);
     
     if (energyFilter.length > 0) {
       dayTasks = dayTasks.filter(t => energyFilter.includes(t.energy_level));
     }
     
     return dayTasks;
-  }, [tasks, energyFilter]);
+  }, [regularTasks, energyFilter]);
+
+  // Get multi-day tasks that span a specific day
+  const getMultiDayTasksForDay = useCallback((date: Date) => {
+    return multiDayTasks.filter(t => {
+      if (!t.due_date || !t.end_date) return false;
+      const startDate = parseISO(t.due_date);
+      const endDate = parseISO(t.end_date);
+      return isWithinInterval(date, { start: startDate, end: endDate }) ||
+             isSameDay(date, startDate) || isSameDay(date, endDate);
+    });
+  }, [multiDayTasks]);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -232,6 +313,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
                 key={day.toISOString()}
                 day={day}
                 tasks={getTasksForDay(day)}
+                multiDayTasks={getMultiDayTasksForDay(day)}
                 inMonth={isSameMonth(day, monthDate)}
                 today={isToday(day)}
                 userId={userId}

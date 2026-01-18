@@ -1,8 +1,8 @@
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
-import { format, startOfWeek, addDays, addWeeks, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, isToday, isWithinInterval, parseISO, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import DraggableTask from '@/components/tasks/DraggableTask';
@@ -15,6 +15,12 @@ import {
 } from '@dnd-kit/sortable';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface WeekViewProps {
   startDate: Date;
@@ -27,6 +33,7 @@ interface WeekViewProps {
 interface DroppableDayProps {
   date: Date;
   tasks: Task[];
+  multiDayTasks: Task[];
   currentEnergy: EnergyLevel;
   userId: string | null;
   onDayClick: (date: Date) => void;
@@ -40,6 +47,7 @@ interface DroppableDayProps {
 const DroppableDay = memo(({
   date,
   tasks,
+  multiDayTasks,
   currentEnergy,
   userId,
   onDayClick,
@@ -62,11 +70,10 @@ const DroppableDay = memo(({
     onEditTask(task);
   }, [onEditTask]);
 
-  const maxTasks = compact ? 4 : 6;
+  const maxTasks = compact ? 3 : 5;
   
   // Count tasks with times
   const timedTasks = tasks.filter(t => t.start_time);
-  const untimedTasks = tasks.filter(t => !t.start_time);
 
   return (
     <div
@@ -100,13 +107,13 @@ const DroppableDay = memo(({
             </div>
           </div>
           {/* Task count badge */}
-          {tasks.length > 0 && (
+          {(tasks.length > 0 || multiDayTasks.length > 0) && (
             <div className="flex flex-col items-end gap-0.5">
               <span className={cn(
                 "text-[10px] px-1.5 py-0.5 rounded-full",
                 today ? "bg-highlight/20 text-highlight" : "bg-secondary text-foreground-muted"
               )}>
-                {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+                {tasks.length + multiDayTasks.length} task{tasks.length + multiDayTasks.length !== 1 ? 's' : ''}
               </span>
               {timedTasks.length > 0 && (
                 <div className="flex items-center gap-1 text-[9px] text-foreground-muted">
@@ -118,6 +125,44 @@ const DroppableDay = memo(({
           )}
         </div>
       </button>
+
+      {/* Multi-day tasks indicator */}
+      {multiDayTasks.length > 0 && (
+        <div className="mb-2 space-y-1">
+          {multiDayTasks.slice(0, 2).map(task => (
+            <TooltipProvider key={task.id} delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditTask(task);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] cursor-pointer transition-colors",
+                      "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                    )}
+                  >
+                    <CalendarDays className="w-2.5 h-2.5 flex-shrink-0" />
+                    <span className="truncate">{task.title}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[200px]">
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(parseISO(task.due_date!), 'MMM d')} - {format(parseISO(task.end_date!), 'MMM d')}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ))}
+          {multiDayTasks.length > 2 && (
+            <span className="text-[9px] text-foreground-muted pl-1">
+              +{multiDayTasks.length - 2} more multi-day
+            </span>
+          )}
+        </div>
+      )}
 
       <SortableContext
         items={tasks.map(t => t.id)}
@@ -204,9 +249,25 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     return allTasks.filter(t => t.due_date && t.due_date >= startStr && t.due_date <= endStr);
   }, [allTasks, weekStart]);
 
+  // Separate regular tasks and multi-day tasks
+  const { regularTasks, multiDayTasks } = useMemo(() => {
+    const regular: Task[] = [];
+    const multiDay: Task[] = [];
+    
+    tasks.forEach(t => {
+      if (t.end_date && t.end_date !== t.due_date) {
+        multiDay.push(t);
+      } else {
+        regular.push(t);
+      }
+    });
+    
+    return { regularTasks: regular, multiDayTasks: multiDay };
+  }, [tasks]);
+
   const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    let dayTasks = tasks.filter(t => t.due_date === dateStr);
+    let dayTasks = regularTasks.filter(t => t.due_date === dateStr);
     
     if (energyFilter.length > 0) {
       dayTasks = dayTasks.filter(t => energyFilter.includes(t.energy_level));
@@ -219,7 +280,18 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
       if (a.start_time && b.start_time) return a.start_time.localeCompare(b.start_time);
       return 0;
     });
-  }, [tasks, energyFilter]);
+  }, [regularTasks, energyFilter]);
+
+  // Get multi-day tasks that span a specific day
+  const getMultiDayTasksForDay = useCallback((date: Date) => {
+    return multiDayTasks.filter(t => {
+      if (!t.due_date || !t.end_date) return false;
+      const startDate = parseISO(t.due_date);
+      const endDate = parseISO(t.end_date);
+      return isWithinInterval(date, { start: startDate, end: endDate }) ||
+             isSameDay(date, startDate) || isSameDay(date, endDate);
+    });
+  }, [multiDayTasks]);
 
   const handlePrevWeek = useCallback(() => {
     setCurrentStartDate(prev => addWeeks(prev, -1));
@@ -310,6 +382,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             key={day.toISOString()}
             date={day}
             tasks={getTasksForDay(day)}
+            multiDayTasks={getMultiDayTasksForDay(day)}
             currentEnergy={currentEnergy}
             userId={userId}
             onDayClick={onDayClick}

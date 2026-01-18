@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, isBefore, isAfter, differenceInDays } from 'date-fns';
 import { Task, EnergyLevel } from '@/types';
 import {
   Dialog,
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar as CalendarIcon, MapPin, Users, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Users, Trash2, CalendarDays } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import EnergyPill from '@/components/shared/EnergyPill';
@@ -30,8 +30,6 @@ interface EditTaskDialogProps {
   onDelete?: (taskId: string) => void;
 }
 
-// No longer needed as we use TimeRangeSlider
-
 const EditTaskDialog = ({
   open,
   onOpenChange,
@@ -43,10 +41,13 @@ const EditTaskDialog = ({
   const [description, setDescription] = useState('');
   const [energy, setEnergy] = useState<EnergyLevel>('medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [startTime, setStartTime] = useState('none');
   const [endTime, setEndTime] = useState('none');
   const [location, setLocation] = useState('');
   const [isShared, setIsShared] = useState(false);
+  const [useTime, setUseTime] = useState(false);
+  const [isMultiDay, setIsMultiDay] = useState(false);
 
   useEffect(() => {
     if (open && task) {
@@ -54,10 +55,13 @@ const EditTaskDialog = ({
       setDescription(task.description || '');
       setEnergy(task.energy_level);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+      setEndDate(task.end_date ? new Date(task.end_date) : undefined);
       setStartTime(task.start_time || 'none');
       setEndTime(task.end_time || 'none');
       setLocation(task.location || '');
       setIsShared(task.is_shared || false);
+      setUseTime(!!(task.start_time && task.start_time !== 'none'));
+      setIsMultiDay(!!task.end_date);
     }
   }, [open, task]);
 
@@ -69,8 +73,9 @@ const EditTaskDialog = ({
       description: description.trim() || null,
       energy_level: energy,
       due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
-      start_time: startTime !== 'none' ? startTime : null,
-      end_time: endTime !== 'none' ? endTime : null,
+      end_date: isMultiDay && endDate ? format(endDate, 'yyyy-MM-dd') : null,
+      start_time: useTime && startTime !== 'none' ? startTime : null,
+      end_time: useTime && endTime !== 'none' ? endTime : null,
       location: location.trim() || null,
       is_shared: isShared,
     };
@@ -78,6 +83,11 @@ const EditTaskDialog = ({
     onSave(task.id, updates);
     onOpenChange(false);
   };
+
+  // Calculate duration for multi-day tasks
+  const durationText = isMultiDay && dueDate && endDate
+    ? `${differenceInDays(endDate, dueDate) + 1} days`
+    : null;
 
   const handleDelete = () => {
     if (task && onDelete) {
@@ -145,37 +155,102 @@ const EditTaskDialog = ({
             </div>
 
             {/* Date picker */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <CalendarIcon className="w-3.5 h-3.5" />
-                Due Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal h-11">
-                    {dueDate ? format(dueDate, 'PPP') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={setDueDate}
-                    initialFocus
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  Start Date
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="multi-day" className="text-xs text-foreground-muted cursor-pointer flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Multi-day
+                  </Label>
+                  <Switch
+                    id="multi-day"
+                    checked={isMultiDay}
+                    onCheckedChange={(checked) => {
+                      setIsMultiDay(checked);
+                      if (!checked) setEndDate(undefined);
+                    }}
                   />
-                </PopoverContent>
-              </Popover>
+                </div>
+              </div>
+              <div className={cn("grid gap-2", isMultiDay && "grid-cols-2")}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal h-11">
+                      {dueDate ? format(dueDate, 'PPP') : 'Pick start date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={(d) => {
+                        setDueDate(d);
+                        // If end date is before start date, update it
+                        if (d && endDate && isBefore(endDate, d)) {
+                          setEndDate(d);
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {isMultiDay && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal h-11">
+                        {endDate ? format(endDate, 'PPP') : 'Pick end date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => dueDate ? isBefore(date, dueDate) : false}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+              {durationText && (
+                <p className="text-xs text-foreground-muted">Duration: {durationText}</p>
+              )}
             </div>
 
             {/* Time selection - Visual slider */}
-            <div className="space-y-2">
-              <Label>Time</Label>
-              <TimeRangeSlider
-                startTime={startTime === 'none' ? '09:00' : startTime}
-                endTime={endTime === 'none' ? '10:00' : endTime}
-                onStartTimeChange={setStartTime}
-                onEndTimeChange={setEndTime}
-              />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Time</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-foreground-muted">Schedule time</span>
+                  <Switch
+                    checked={useTime}
+                    onCheckedChange={(checked) => {
+                      setUseTime(checked);
+                      if (!checked) {
+                        setStartTime('none');
+                        setEndTime('none');
+                      } else {
+                        setStartTime('09:00');
+                        setEndTime('10:00');
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              {useTime && (
+                <TimeRangeSlider
+                  startTime={startTime === 'none' ? '09:00' : startTime}
+                  endTime={endTime === 'none' ? '10:00' : endTime}
+                  onStartTimeChange={setStartTime}
+                  onEndTimeChange={setEndTime}
+                />
+              )}
             </div>
 
             {/* Location */}
