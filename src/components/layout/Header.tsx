@@ -5,8 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   Sparkles, 
   Menu, 
-  Sun, 
-  Moon, 
   LogOut, 
   User as UserIcon,
   ChevronDown 
@@ -55,24 +53,7 @@ const Header = memo(({
   onBrainDump
 }: HeaderProps) => {
   const { toast } = useToast();
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const isLight = document.documentElement.classList.contains('light');
-    setTheme(isLight ? 'light' : 'dark');
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    
-    if (newTheme === 'light') {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
-    }
-  }, [theme]);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -136,24 +117,8 @@ const Header = memo(({
         />
       </div>
 
-      {/* Right section - theme + avatar */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={toggleTheme}
-          className={cn(
-            "text-foreground-muted hover:text-foreground",
-            isMobile ? "h-10 w-10" : "h-11 w-11"
-          )}
-        >
-          {theme === 'dark' ? (
-            <Sun className="w-5 h-5" />
-          ) : (
-            <Moon className="w-5 h-5" />
-          )}
-        </Button>
-
+      {/* Right section - avatar only */}
+      <div className="flex items-center flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 

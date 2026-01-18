@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal, Maximize2, Minimize2 } from 'lucide-react';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal, Maximize2, Minimize2, Sun, Moon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform, ZoomLevel } from '@/types';
@@ -798,6 +798,65 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                         )}>{color.label}</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <Separator className="my-1" />
+
+                {/* Theme Mode */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Sun className="w-3.5 h-3.5 text-highlight" />
+                    <Label className="text-xs font-medium">Appearance</Label>
+                  </div>
+                  <p className="text-xs text-foreground-muted">
+                    Choose between light and dark mode
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        document.documentElement.classList.remove('light');
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border transition-all",
+                        !document.documentElement.classList.contains('light')
+                          ? "border-highlight bg-highlight-muted"
+                          : "border-border hover:border-foreground-muted/50"
+                      )}
+                    >
+                      <span className={cn(
+                        "w-8 h-8 rounded-md flex items-center justify-center bg-secondary",
+                        !document.documentElement.classList.contains('light') ? "text-highlight-foreground" : "text-foreground-muted"
+                      )}>
+                        <Moon className="w-4 h-4" />
+                      </span>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        !document.documentElement.classList.contains('light') ? "text-highlight-foreground" : "text-foreground"
+                      )}>Dark</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        document.documentElement.classList.add('light');
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border transition-all",
+                        document.documentElement.classList.contains('light')
+                          ? "border-highlight bg-highlight-muted"
+                          : "border-border hover:border-foreground-muted/50"
+                      )}
+                    >
+                      <span className={cn(
+                        "w-8 h-8 rounded-md flex items-center justify-center bg-secondary",
+                        document.documentElement.classList.contains('light') ? "text-highlight-foreground" : "text-foreground-muted"
+                      )}>
+                        <Sun className="w-4 h-4" />
+                      </span>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        document.documentElement.classList.contains('light') ? "text-highlight-foreground" : "text-foreground"
+                      )}>Light</span>
+                    </button>
                   </div>
                 </div>
 
