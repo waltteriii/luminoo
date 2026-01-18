@@ -221,11 +221,18 @@ const CalendarTask = ({
 
   // Determine layout based on height
   const displayHeight = resizePreviewHeight ?? height;
-  const isCompact = displayHeight < 40;
-  const showDetails = displayHeight >= 60;
-  const showDescription = displayHeight >= 80 && !!task.description;
-  const contentPadding = isCompact ? 'py-0.5' : showDetails ? 'py-2' : 'py-1.5';
-  const contentJustify = showDetails ? 'justify-start' : 'justify-center';
+  const isCompact = displayHeight < 36;
+  const isMedium = displayHeight >= 36 && displayHeight < 60;
+  const isLarge = displayHeight >= 60 && displayHeight < 100;
+  const isExtraLarge = displayHeight >= 100;
+  
+  // Show full title (no truncate) when there's enough vertical space
+  const allowTitleWrap = displayHeight >= 80;
+  const canShowTime = displayHeight >= 48;
+  const showDescription = displayHeight >= 100 && !!task.description;
+  
+  // Calculate max lines for title based on height
+  const titleMaxLines = isExtraLarge ? 3 : isLarge ? 2 : 1;
 
   // Handle double-click to open edit dialog
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -250,59 +257,70 @@ const CalendarTask = ({
               {...listeners}
               onDoubleClick={handleDoubleClick}
               className={cn(
-                'group relative h-full rounded-md border-l-2 ring-1 ring-border/40 shadow-sm transition-[box-shadow,opacity] overflow-hidden',
-                'hover:shadow-md',
+                'group relative h-full rounded-lg border-l-[3px] shadow-sm transition-all overflow-hidden',
+                'hover:shadow-md hover:brightness-105',
                 !isResizing && 'cursor-grab active:cursor-grabbing',
                 energyBorderColors[task.energy_level],
                 energyBgColors[task.energy_level],
-                isDragging && 'opacity-60 shadow-lg ring-1 ring-highlight',
+                isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
                 isResizing && 'ring-2 ring-primary shadow-lg z-50',
                 task.completed && 'opacity-50'
               )}
             >
-              {/* Top resize handle - changes start time */}
+              {/* Top resize handle */}
               <div
                 className={cn(
-                  'absolute top-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
+                  'absolute top-0 left-0 right-0 h-2.5 cursor-ns-resize flex items-center justify-center z-10',
                   'opacity-0 group-hover:opacity-100 transition-opacity',
-                  'bg-gradient-to-b from-background/60 to-transparent',
                   isResizing && resizeDirection === 'top' && 'opacity-100'
                 )}
                 onPointerDown={handleResizeTopStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
-                <div className="w-8 h-1 rounded-full bg-foreground/30" />
+                <div className="w-6 h-0.5 rounded-full bg-foreground/40" />
               </div>
 
+              {/* Main content */}
               <div
                 className={cn(
-                  'h-full flex flex-col leading-snug overflow-hidden',
-                  (canMoveLeft || canMoveRight) ? 'pl-8 pr-2' : 'px-2',
-                  contentJustify,
-                  contentPadding,
-                  task.completed && 'line-through'
+                  'h-full flex flex-col overflow-hidden',
+                  (canMoveLeft || canMoveRight) ? 'pl-7 pr-2.5' : 'px-2.5',
+                  isCompact ? 'py-1 justify-center' : 'pt-2.5 pb-2',
+                  task.completed && 'line-through opacity-70'
                 )}
               >
                 {/* Title */}
                 <div
                   className={cn(
-                    'font-medium truncate tracking-tight',
-                    isCompact ? 'text-[12px]' : 'text-[13px]'
+                    'font-medium leading-tight',
+                    isCompact ? 'text-[11px]' : 'text-[13px]',
+                    allowTitleWrap 
+                      ? `line-clamp-${titleMaxLines}` 
+                      : 'truncate'
                   )}
+                  style={allowTitleWrap ? { 
+                    display: '-webkit-box',
+                    WebkitLineClamp: titleMaxLines,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  } : undefined}
                 >
                   {task.title}
                 </div>
 
-                {/* Time range - show if enough space */}
-                {showDetails && showTimeRange && task.start_time && (
-                  <div className="text-[11px] tabular-nums text-foreground-muted truncate">
+                {/* Time range - subtle, below title */}
+                {canShowTime && showTimeRange && task.start_time && (
+                  <div className={cn(
+                    'text-[10px] font-medium tabular-nums opacity-60 mt-0.5',
+                    isCompact && 'hidden'
+                  )}>
                     {getTimeRange()}
                   </div>
                 )}
 
-                {/* Description - show if task is tall enough */}
+                {/* Description - muted, spaced */}
                 {showDescription && (
-                  <div className="mt-1 text-[11px] text-foreground-muted/80 line-clamp-2 leading-relaxed">
+                  <div className="mt-2 text-[11px] opacity-50 line-clamp-3 leading-relaxed">
                     {task.description}
                   </div>
                 )}
