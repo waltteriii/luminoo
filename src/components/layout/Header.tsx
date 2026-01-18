@@ -96,21 +96,21 @@ const Header = memo(({
         
         {/* Logo - hide on mobile to save space */}
         {!isMobile && (
-          <div className="flex items-center gap-2 group">
+          <div className="flex items-center gap-2">
             <div 
               className={cn(
-                "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300",
-                "group-hover:scale-110 group-hover:rotate-6",
+                "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0",
                 highlightColor === 'blue' && "bg-blue-500",
                 highlightColor === 'purple' && "bg-purple-500",
                 highlightColor === 'green' && "bg-emerald-500",
                 highlightColor === 'orange' && "bg-orange-500",
                 highlightColor === 'pink' && "bg-pink-500",
                 highlightColor === 'cyan' && "bg-cyan-500",
-                !['blue', 'purple', 'green', 'orange', 'pink', 'cyan'].includes(highlightColor) && "bg-primary"
+                highlightColor === 'teal' && "bg-teal-500",
+                !['blue', 'purple', 'green', 'orange', 'pink', 'cyan', 'teal'].includes(highlightColor) && "bg-primary"
               )}
             >
-              <Squirrel className="w-4 h-4 text-white transition-transform duration-300 group-hover:animate-[wiggle_0.3s_ease-in-out]" />
+              <Squirrel className="w-4 h-4 text-white animate-wiggle" />
             </div>
             <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
           </div>
