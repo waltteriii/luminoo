@@ -336,32 +336,72 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 flex-shrink-0">
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
+      {/* Header: Week info + navigation */}
+      <div className={cn(
+        "flex items-center justify-between gap-3",
+        isMobile ? "mb-4" : "mb-6"
+      )}>
+        {/* Left: Back + Week info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack} 
+            className={cn(
+              "flex-shrink-0 gap-1.5",
+              isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
+            )}
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-light text-foreground truncate">
+          
+          <div className="min-w-0 flex flex-col">
+            <h2 className={cn(
+              "font-semibold tracking-tight text-foreground truncate leading-tight",
+              isMobile ? "text-xl" : "text-2xl"
+            )}>
               Week of {format(weekStart, 'MMM d')}
             </h2>
             <div className="flex items-center gap-2">
-              <p className="text-foreground-muted text-sm">{format(weekStart, 'yyyy')}</p>
+              <p className={cn(
+                "text-foreground-muted leading-tight",
+                isMobile ? "text-sm" : "text-base"
+              )}>
+                {format(weekStart, 'yyyy')}
+              </p>
               {weekTaskCount > 0 && (
                 <span className="text-xs text-foreground-muted">
-                  • {completedCount}/{weekTaskCount} completed
+                  • {completedCount}/{weekTaskCount} done
                 </span>
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={handlePrevWeek} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
-            <ChevronLeft className="w-4 h-4" />
+        
+        {/* Right: Nav buttons */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handlePrevWeek} 
+            className={cn(
+              "border-border/50",
+              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
+            )}
+          >
+            <ChevronLeft className="w-5 h-5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleNextWeek} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
-            <ChevronRight className="w-4 h-4" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleNextWeek} 
+            className={cn(
+              "border-border/50",
+              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
+            )}
+          >
+            <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
       </div>
