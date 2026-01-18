@@ -65,68 +65,46 @@ const EnergySelector = memo(({
     }
   };
 
-  // Mobile: simplified layout with just essential elements
+  // Mobile: simplified layout - just energy filters, no quick actions
   if (isMobile) {
     return (
-      <div className="flex items-center gap-2">
-        {/* Quick actions */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
-          onClick={onAddTask}
+      <div className="flex items-center gap-1 bg-secondary rounded-full px-1.5 py-1">
+        <button
+          onClick={handleShowAll}
+          className={cn(
+            "px-2.5 py-1.5 rounded-full text-xs font-medium transition-all min-h-[32px]",
+            showAllActive
+              ? "bg-background text-foreground shadow-sm"
+              : "text-foreground-muted"
+          )}
         >
-          <Plus className="w-5 h-5" />
-        </Button>
+          All
+        </button>
         
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
-          onClick={onBrainDump}
-        >
-          <Sparkles className="w-5 h-5" />
-        </Button>
-
-        {/* Energy filter - compact dots only */}
-        <div className="flex items-center gap-1 bg-secondary rounded-full px-2 py-1.5">
-          <button
-            onClick={handleShowAll}
-            className={cn(
-              "px-2 py-1 rounded-full text-xs font-medium transition-all",
-              showAllActive
-                ? "bg-background text-foreground shadow-sm"
-                : "text-foreground-muted"
-            )}
-          >
-            All
-          </button>
+        {energyOptions.map((option) => {
+          const isFiltered = activeFilters.includes(option.value);
           
-          {energyOptions.map((option) => {
-            const isFiltered = activeFilters.includes(option.value);
-            
-            return (
-              <button
-                key={option.value}
-                onClick={() => handleClick(option.value)}
+          return (
+            <button
+              key={option.value}
+              onClick={() => handleClick(option.value)}
+              className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center transition-all",
+                isFiltered ? "bg-background shadow-sm" : "hover:bg-background/50"
+              )}
+            >
+              <span
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                  isFiltered ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  "w-3.5 h-3.5 rounded-full transition-all",
+                  option.value === 'high' && "bg-energy-high",
+                  option.value === 'medium' && "bg-energy-medium",
+                  option.value === 'low' && "bg-energy-low",
+                  option.value === 'recovery' && "bg-energy-recovery"
                 )}
-              >
-                <span
-                  className={cn(
-                    "w-3 h-3 rounded-full transition-all",
-                    option.value === 'high' && "bg-energy-high",
-                    option.value === 'medium' && "bg-energy-medium",
-                    option.value === 'low' && "bg-energy-low",
-                    option.value === 'recovery' && "bg-energy-recovery"
-                  )}
-                />
-              </button>
-            );
-          })}
-        </div>
+              />
+            </button>
+          );
+        })}
       </div>
     );
   }
