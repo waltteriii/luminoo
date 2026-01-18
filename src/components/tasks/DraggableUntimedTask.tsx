@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { Users } from 'lucide-react';
+import { Users, GripVertical } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 
@@ -67,20 +67,31 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared, isNew }: Dra
     }
   };
 
+  // Drag only via grip handle
+  const gripHandleProps = isEditing ? {} : { ...attributes, ...listeners };
+
   return (
     <div
       ref={setNodeRef}
-      {...(isEditing ? {} : { ...attributes, ...listeners })}
       className={cn(
-        "group flex items-center gap-3 p-4 rounded-xl bg-secondary border-l-[4px] shadow-sm min-h-[56px]",
+        "group flex items-center gap-2 p-4 rounded-xl bg-secondary border-l-[4px] shadow-sm min-h-[56px]",
         energyColors[task.energy_level],
         isDragging && "opacity-50 shadow-lg ring-2 ring-highlight",
         task.completed && "opacity-60",
-        !isEditing && "cursor-grab active:cursor-grabbing hover:shadow-md hover:bg-secondary/80 transition-all",
+        !isEditing && "hover:shadow-md hover:bg-secondary/80 transition-all",
         showGlow && "animate-glow-highlight"
       )}
       onDoubleClick={handleDoubleClick}
     >
+      {/* Grip handle - visual indicator that this needs scheduling */}
+      <div 
+        {...gripHandleProps}
+        className="flex-shrink-0 p-1 -ml-1 rounded touch-none cursor-grab active:cursor-grabbing opacity-50 group-hover:opacity-80 transition-opacity"
+        title="Drag to calendar to schedule"
+      >
+        <GripVertical className="w-4 h-4 text-foreground-muted" />
+      </div>
+
       {isEditing ? (
         <Input
           value={editTitle}

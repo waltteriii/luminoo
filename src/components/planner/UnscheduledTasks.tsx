@@ -325,35 +325,31 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0 min-w-0"
               />
               
-              {/* Quick energy selector - inline dots */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((energy) => (
-                  <button
-                    key={energy}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedEnergy(selectedEnergy === energy ? null : energy);
-                    }}
-                    className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center transition-all",
-                      selectedEnergy === energy && "ring-2 ring-offset-1 ring-offset-card ring-foreground/30 scale-110"
-                    )}
-                    title={`${energy.charAt(0).toUpperCase() + energy.slice(1)} energy`}
-                  >
-                    <span
-                      className={cn(
-                        "w-2.5 h-2.5 rounded-full",
-                        energy === 'high' && "bg-energy-high",
-                        energy === 'medium' && "bg-energy-medium",
-                        energy === 'low' && "bg-energy-low",
-                        energy === 'recovery' && "bg-energy-recovery"
-                      )}
-                    />
-                  </button>
-                ))}
-              </div>
+              {/* Single cycling energy dot - click to cycle through states */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const energyOrder: EnergyLevel[] = ['high', 'medium', 'low', 'recovery'];
+                  const currentEnergy = selectedEnergy || defaultInboxEnergy;
+                  const currentIndex = energyOrder.indexOf(currentEnergy);
+                  const nextIndex = (currentIndex + 1) % energyOrder.length;
+                  setSelectedEnergy(energyOrder[nextIndex]);
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
+                title={`Energy: ${(selectedEnergy || defaultInboxEnergy).charAt(0).toUpperCase() + (selectedEnergy || defaultInboxEnergy).slice(1)} (click to change)`}
+              >
+                <span
+                  className={cn(
+                    "w-3 h-3 rounded-full transition-colors",
+                    (selectedEnergy || defaultInboxEnergy) === 'high' && "bg-energy-high",
+                    (selectedEnergy || defaultInboxEnergy) === 'medium' && "bg-energy-medium",
+                    (selectedEnergy || defaultInboxEnergy) === 'low' && "bg-energy-low",
+                    (selectedEnergy || defaultInboxEnergy) === 'recovery' && "bg-energy-recovery"
+                  )}
+                />
+              </button>
 
-              {/* Calendar quick pick */}
+              {/* Calendar toggle - click opens picker, click when active clears schedule */}
               <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                 <PopoverTrigger asChild>
                   <Button
@@ -361,10 +357,20 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                     size="icon"
                     className={cn(
                       "h-8 w-8 p-0 flex-shrink-0 transition-colors",
-                      selectedDate ? "text-highlight" : "text-foreground-muted hover:text-foreground"
+                      selectedDate ? "text-highlight bg-highlight/10" : "text-foreground-muted hover:text-foreground"
                     )}
-                    onClick={(e) => e.stopPropagation()}
-                    title="Schedule date & time"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // If date is already selected, clicking clears it
+                      if (selectedDate) {
+                        e.preventDefault();
+                        setSelectedDate(undefined);
+                        setSelectedStartTime('');
+                        setSelectedEndTime('');
+                        setShowDatePicker(false);
+                      }
+                    }}
+                    title={selectedDate ? "Click to remove schedule" : "Schedule date & time"}
                   >
                     <Calendar className="w-4 h-4" />
                   </Button>
