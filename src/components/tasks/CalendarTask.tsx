@@ -420,9 +420,9 @@ const CalendarTask = ({
     window.addEventListener('pointerup', handleUp);
   }, [width, minWidth, maxWidth, onWidthChange, onResizeLeft]);
   const displayHeight = resizePreviewHeight ?? height;
-  // Lower threshold for compact - tasks < 28px are compact (was 36)
-  const isCompact = displayHeight < 28;
-  const isMedium = displayHeight >= 28 && displayHeight < 60;
+  // Lower threshold for compact - tasks < 36px are compact (to allow better small task interaction)
+  const isCompact = displayHeight < 36;
+  const isMedium = displayHeight >= 36 && displayHeight < 60;
   const isLarge = displayHeight >= 60 && displayHeight < 100;
   const isExtraLarge = displayHeight >= 100;
   
@@ -434,15 +434,12 @@ const CalendarTask = ({
   // Calculate max lines for title based on height
   const titleMaxLines = isExtraLarge ? 3 : isLarge ? 2 : 1;
 
-  // Handle double-click to open edit dialog (for very small tasks or fallback)
+  // Handle double-click to open edit dialog - ALWAYS opens dialog for all tasks
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    // For very small tasks, open dialog instead of inline edit
-    if (isCompact) {
-      setEditDialogOpen(true);
-    }
-  }, [isCompact]);
+    setEditDialogOpen(true);
+  }, []);
   
   // Handle single click for compact tasks - opens dialog directly
   const handleCompactClick = useCallback((e: React.MouseEvent) => {
@@ -511,10 +508,10 @@ const CalendarTask = ({
   const canResizeHorizontallyRight = canResizeRight || !!onWidthChange;
   
   // For small tasks, show edit button always and make entire task clickable
-  const isVerySmall = displayHeight < 32;
+  const isVerySmall = displayHeight < 40;
   
-  // Minimum height for interaction - clamp to 24px minimum display
-  const minInteractiveHeight = 24;
+  // Minimum height for interaction - clamp to 32px minimum display for easier interaction
+  const minInteractiveHeight = 32;
 
   return (
     <>
@@ -580,20 +577,20 @@ const CalendarTask = ({
                 </div>
               )}
 
-              {/* Top resize handle - larger for small tasks */}
+              {/* Top resize handle - larger for small tasks, always visible for very small */}
               <div
                 className={cn(
                   'absolute top-0 left-0 right-0 cursor-ns-resize flex items-center justify-center z-10',
-                  'opacity-0 group-hover:opacity-100 transition-opacity',
+                  isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity',
                   isResizing && resizeDirection === 'top' && 'opacity-100',
-                  isVerySmall ? 'h-6' : 'h-4'
+                  isVerySmall ? 'h-8' : 'h-5'
                 )}
                 style={{ touchAction: 'none' }}
                 onPointerDown={handleResizeTopStart}
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className={cn("rounded-full bg-foreground/40", isVerySmall ? "w-8 h-1" : "w-6 h-0.5")} />
+                <div className={cn("rounded-full bg-foreground/50", isVerySmall ? "w-12 h-1.5" : "w-8 h-1")} />
               </div>
 
               {/* Main content */}
@@ -750,21 +747,21 @@ const CalendarTask = ({
                 <Pencil className="w-3 h-3" />
               </Button>
 
-              {/* Bottom resize handle - larger for small tasks */}
+              {/* Bottom resize handle - larger for small tasks, always visible for very small */}
               <div
                 className={cn(
                   'absolute bottom-0 left-0 right-0 cursor-ns-resize flex items-center justify-center',
-                  'opacity-0 group-hover:opacity-100 transition-opacity',
+                  isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity',
                   'bg-gradient-to-t from-background/60 to-transparent',
                   isResizing && resizeDirection === 'bottom' && 'opacity-100',
-                  isVerySmall ? 'h-6' : 'h-4'
+                  isVerySmall ? 'h-8' : 'h-5'
                 )}
                 style={{ touchAction: 'none' }}
                 onPointerDown={handleResizeBottomStart}
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className={cn("rounded-full bg-foreground/30", isVerySmall ? "w-10 h-1.5" : "w-8 h-1")} />
+                <div className={cn("rounded-full bg-foreground/50", isVerySmall ? "w-12 h-2" : "w-10 h-1.5")} />
               </div>
             </div>
           </TooltipTrigger>
