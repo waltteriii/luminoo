@@ -328,6 +328,11 @@ const Index = () => {
           highlightColor={userProfile.highlightColor || 'blue'}
           onAddTask={() => setQuickAddOpen(true)}
           onBrainDump={() => setBrainDumpOpen(true)}
+          onLogoClick={() => {
+            setZoomLevel('day');
+            setFocusedDate(new Date());
+            setFocusedMonth(new Date().getMonth());
+          }}
         />
         <div className="flex-1 flex overflow-hidden w-full">
           <Sidebar 

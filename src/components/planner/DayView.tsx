@@ -753,15 +753,15 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         {/* Untimed tasks */}
         <div className={cn(
           "shrink-0",
-          isMobile ? "order-1 w-full" : "w-72"
+          isMobile ? "order-1 w-full" : "w-80"
         )}>
-          <h3 className="text-sm font-medium text-foreground-muted mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             Untimed Tasks
-            {!isMobile && <span className="ml-2 text-xs opacity-60">Drag to schedule</span>}
+            {!isMobile && <span className="ml-2 text-xs text-foreground-muted font-normal">Drag to schedule</span>}
           </h3>
           <div className={cn(
-            "space-y-2",
-            isMobile && "grid grid-cols-2 gap-2 space-y-0"
+            "space-y-3",
+            isMobile && "grid grid-cols-2 gap-3 space-y-0"
           )}>
             {untimedTasks.map(task => (
               <DraggableUntimedTask
@@ -773,7 +773,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               />
             ))}
           </div>
-          <div className="mt-3">
+          <div className="mt-4">
             <QuickAddTask
               onAdd={handleQuickAdd}
               defaultEnergy={currentEnergy}
