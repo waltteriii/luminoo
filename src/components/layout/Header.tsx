@@ -75,13 +75,18 @@ const Header = memo(({
   }, [theme]);
 
   const handleSignOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error signing out",
-        description: error.message,
-        variant: "destructive",
-      });
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) {
+        toast({
+          title: "Error signing out",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      // Force local signout even if network fails
+      await supabase.auth.signOut({ scope: 'local' });
     }
   }, [toast]);
 
@@ -89,31 +94,36 @@ const Header = memo(({
 
   return (
     <header className={cn(
-      "border-b border-border bg-background-elevated flex items-center justify-between gap-2",
-      isMobile ? "h-16 px-2" : "h-14 px-4 lg:px-6"
+      "border-b border-border bg-background-elevated flex items-center justify-between",
+      isMobile ? "h-[60px] px-3 gap-3" : "h-14 px-4 lg:px-6 gap-2"
     )}>
       {/* Left section - hamburger + logo */}
-      <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onToggleSidebar}
-          className="text-foreground-muted hover:text-foreground h-11 w-11"
+          className={cn(
+            "text-foreground-muted hover:text-foreground",
+            isMobile ? "h-10 w-10" : "h-11 w-11"
+          )}
         >
           <Menu className="w-5 h-5" />
         </Button>
         
-        {/* Logo - hide text on mobile */}
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-4 h-4 text-primary-foreground" />
+        {/* Logo - hide on mobile to save space */}
+        {!isMobile && (
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
           </div>
-          <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
-        </div>
+        )}
       </div>
 
-      {/* Center section - Energy selector (takes remaining space) */}
-      <div className="flex-1 flex items-center justify-center min-w-0 overflow-x-auto">
+      {/* Center section - Energy selector */}
+      <div className="flex-1 flex items-center justify-center min-w-0">
         <EnergySelector 
           value={currentEnergy} 
           onChange={onEnergyChange}
@@ -127,12 +137,15 @@ const Header = memo(({
       </div>
 
       {/* Right section - theme + avatar */}
-      <div className="flex items-center gap-0.5 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="text-foreground-muted hover:text-foreground h-11 w-11"
+          className={cn(
+            "text-foreground-muted hover:text-foreground",
+            isMobile ? "h-10 w-10" : "h-11 w-11"
+          )}
         >
           {theme === 'dark' ? (
             <Sun className="w-5 h-5" />
@@ -145,7 +158,10 @@ const Header = memo(({
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="flex items-center gap-2 text-foreground-muted hover:text-foreground h-10 px-2"
+              className={cn(
+                "flex items-center gap-2 text-foreground-muted hover:text-foreground px-2",
+                isMobile ? "h-10" : "h-10"
+              )}
             >
               <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarUrl ? (
