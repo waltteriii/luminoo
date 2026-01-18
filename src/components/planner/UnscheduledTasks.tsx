@@ -327,8 +327,8 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
 
           {/* Task grid - responsive 1/2/3 columns */}
           <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-            {/* New task input - uses highlight color from theme */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card/50 border border-border/50 hover:border-highlight/30 focus-within:border-highlight focus-within:ring-1 focus-within:ring-highlight/20 focus-within:bg-card transition-all min-h-[44px] group">
+            {/* New task input - consistent with task items */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-highlight/50 focus-within:border-highlight transition-all min-h-[44px] group">
               <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-highlight flex-shrink-0 transition-colors" />
               <input
                 ref={newTaskInputRef}
