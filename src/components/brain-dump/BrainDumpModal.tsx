@@ -329,7 +329,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               </span>
             </div>
 
-            <ScrollArea className="flex-1" type="always">
+            <ScrollArea className="flex-1 min-h-0" type="always">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin text-foreground-muted" />
