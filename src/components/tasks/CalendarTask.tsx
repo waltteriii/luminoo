@@ -712,12 +712,6 @@ const CalendarTask = ({
                 </div>
               )}
 
-              {/* Hand icon for drag affordance on small tasks (not resizing) */}
-              {isVerySmall && !isEditingTitle && !isEditingDescription && !isSelected && (
-                <div className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none">
-                  <Hand className="w-3.5 h-3.5 text-foreground/60" />
-                </div>
-              )}
 
               {/* Main content */}
               <div

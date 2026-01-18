@@ -325,29 +325,54 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0 min-w-0"
               />
               
-              {/* Single cycling energy dot - click to cycle through states */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const energyOrder: EnergyLevel[] = ['high', 'medium', 'low', 'recovery'];
-                  const currentEnergy = selectedEnergy || defaultInboxEnergy;
-                  const currentIndex = energyOrder.indexOf(currentEnergy);
-                  const nextIndex = (currentIndex + 1) % energyOrder.length;
-                  setSelectedEnergy(energyOrder[nextIndex]);
-                }}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
-                title={`Energy: ${(selectedEnergy || defaultInboxEnergy).charAt(0).toUpperCase() + (selectedEnergy || defaultInboxEnergy).slice(1)} (click to change)`}
-              >
-                <span
-                  className={cn(
-                    "w-3 h-3 rounded-full transition-colors",
-                    (selectedEnergy || defaultInboxEnergy) === 'high' && "bg-energy-high",
-                    (selectedEnergy || defaultInboxEnergy) === 'medium' && "bg-energy-medium",
-                    (selectedEnergy || defaultInboxEnergy) === 'low' && "bg-energy-low",
-                    (selectedEnergy || defaultInboxEnergy) === 'recovery' && "bg-energy-recovery"
-                  )}
-                />
-              </button>
+              {/* Energy dropdown - same as existing tasks */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
+                    title={`Energy: ${(selectedEnergy || defaultInboxEnergy).charAt(0).toUpperCase() + (selectedEnergy || defaultInboxEnergy).slice(1)} (click to change)`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span
+                      className={cn(
+                        "w-3 h-3 rounded-full transition-colors",
+                        (selectedEnergy || defaultInboxEnergy) === 'high' && "bg-energy-high",
+                        (selectedEnergy || defaultInboxEnergy) === 'medium' && "bg-energy-medium",
+                        (selectedEnergy || defaultInboxEnergy) === 'low' && "bg-energy-low",
+                        (selectedEnergy || defaultInboxEnergy) === 'recovery' && "bg-energy-recovery"
+                      )}
+                    />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40 p-1" align="end" onClick={(e) => e.stopPropagation()}>
+                  <div className="space-y-0.5">
+                    {([
+                      { value: 'high' as EnergyLevel, label: 'High Focus', color: 'bg-energy-high' },
+                      { value: 'medium' as EnergyLevel, label: 'Steady', color: 'bg-energy-medium' },
+                      { value: 'low' as EnergyLevel, label: 'Low Energy', color: 'bg-energy-low' },
+                      { value: 'recovery' as EnergyLevel, label: 'Recovery', color: 'bg-energy-recovery' },
+                    ] as const).map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEnergy(option.value);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-secondary transition-colors",
+                          (selectedEnergy || defaultInboxEnergy) === option.value && "bg-secondary"
+                        )}
+                      >
+                        <span className={cn("w-3 h-3 rounded-full", option.color)} />
+                        <span>{option.label}</span>
+                        {(selectedEnergy || defaultInboxEnergy) === option.value && (
+                          <Check className="w-3 h-3 ml-auto text-primary" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Calendar toggle - click opens picker, click when active clears schedule */}
               <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
@@ -376,6 +401,24 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-3 space-y-3" align="end" onClick={(e) => e.stopPropagation()}>
+                  {/* Header with close button */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Schedule Task</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {
+                        setSelectedDate(undefined);
+                        setSelectedStartTime('');
+                        setSelectedEndTime('');
+                        setShowDatePicker(false);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
                   <CalendarPicker
                     mode="single"
                     selected={selectedDate}
@@ -425,31 +468,16 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                       {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
                     </div>
                   )}
-                  {/* Action buttons for the date picker */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-border">
-                    <Button
-                      size="sm"
-                      className="flex-1 h-8 gap-1.5"
-                      onClick={() => setShowDatePicker(false)}
-                      disabled={!selectedDate}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span className="text-xs">Confirm</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2"
-                      onClick={() => {
-                        setSelectedDate(undefined);
-                        setSelectedStartTime('');
-                        setSelectedEndTime('');
-                        setShowDatePicker(false);
-                      }}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+                  {/* Confirm button */}
+                  <Button
+                    size="sm"
+                    className="w-full h-9 gap-1.5"
+                    onClick={() => setShowDatePicker(false)}
+                    disabled={!selectedDate}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span className="text-xs">Confirm</span>
+                  </Button>
                 </PopoverContent>
               </Popover>
 
