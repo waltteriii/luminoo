@@ -118,7 +118,7 @@ const YearGridView = ({
   const gridClass = useMemo(() => {
     switch (zoomLevel) {
       case 'year':
-        return 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6';
+        return 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-6';
       case 'quarter':
         return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
       case 'month':
@@ -160,12 +160,12 @@ const YearGridView = ({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 lg:space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-light text-foreground">{currentYear}</h1>
-          <p className="text-foreground-muted mt-1">
+          <h1 className="text-2xl lg:text-3xl font-light text-foreground">{currentYear}</h1>
+          <p className="text-foreground-muted text-sm mt-0.5 lg:mt-1">
             {zoomLevel === 'year' && 'Annual Overview'}
             {zoomLevel === 'quarter' && focusedMonth !== null && `Q${Math.floor(focusedMonth / 3) + 1}`}
             {zoomLevel === 'month' && focusedMonth !== null && MONTHS[focusedMonth]}
@@ -183,7 +183,7 @@ const YearGridView = ({
       </div>
 
       {/* Grid */}
-      <div className={cn('grid gap-4', gridClass)}>
+      <div className={cn('grid gap-2 lg:gap-4', gridClass)}>
         {visibleMonths.map((monthIndex) => (
           <DroppableMonthCard
             key={monthIndex}
