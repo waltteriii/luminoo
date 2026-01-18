@@ -7,7 +7,7 @@ import { Clock, Sun } from 'lucide-react';
 import { useDensity } from '@/contexts/DensityContext';
 import {
   TimeRangeMode,
-  DayViewLayout,
+  TimeDisplayMode,
   getTimeOptions,
 } from '@/lib/timeRangeConfig';
 
@@ -131,25 +131,25 @@ const TimeRangeSettingsSection = memo(() => {
 
           <Separator />
 
-          {/* 3) Day View Display Mode */}
+          {/* 3) Time Display Mode - Day/Night/Both */}
           <div className="space-y-2">
-            <Label className="text-xs font-medium">Day View Display Mode</Label>
+            <Label className="text-xs font-medium">Time Display</Label>
             <p className="text-xs text-foreground-muted mb-2">
-              Choose what you want to see in Day view.
+              Choose what hours to show in Day view.
             </p>
             <div className="flex rounded-lg border border-border overflow-hidden">
               {[
-                { value: 'BOTH' as DayViewLayout, label: 'Day + Night' },
-                { value: 'DAY_ONLY' as DayViewLayout, label: 'Day only' },
-                { value: 'NIGHT_ONLY' as DayViewLayout, label: 'Night only' },
+                { value: 'DAY' as TimeDisplayMode, label: 'Day' },
+                { value: 'NIGHT' as TimeDisplayMode, label: 'Night' },
+                { value: 'BOTH' as TimeDisplayMode, label: 'Both' },
               ].map((option, index) => (
                 <button
                   key={option.value}
-                  onClick={() => updateTimeRangeSetting('dayViewLayout', option.value)}
+                  onClick={() => updateTimeRangeSetting('timeDisplayMode', option.value)}
                   className={cn(
-                    "flex-1 py-2 px-3 text-xs font-medium transition-colors",
+                    "flex-1 py-2.5 px-4 text-sm font-medium transition-colors",
                     index > 0 && "border-l border-border",
-                    timeRangeSettings.dayViewLayout === option.value
+                    (timeRangeSettings.timeDisplayMode || 'BOTH') === option.value
                       ? "bg-highlight text-highlight-foreground"
                       : "bg-secondary hover:bg-secondary/80 text-foreground-muted"
                   )}

@@ -1,11 +1,16 @@
 /**
  * Time Range Configuration for Day/Week views
- * Provides utilities for 24-hour and focus mode time display
+ * Provides utilities for unified day/night timeline display
  */
 
 export type TimeRangeMode = 'FOCUS' | 'FULL_24H';
-export type OffHoursDisplay = 'COLLAPSED' | 'DENSE_EXPANDED';
+
+// Simplified display modes: what hours to show on the timeline
+export type TimeDisplayMode = 'DAY' | 'NIGHT' | 'BOTH';
+
+// Legacy types for backward compatibility
 export type DayViewLayout = 'BOTH' | 'DAY_ONLY' | 'NIGHT_ONLY';
+export type OffHoursDisplay = 'COLLAPSED' | 'DENSE_EXPANDED';
 
 // Per-day override for focus hours
 export interface DayTimeOverride {
@@ -18,9 +23,10 @@ export interface TimeRangeSettings {
   weekTimeRangeMode: TimeRangeMode;
   focusStartTime: number; // Hour (0-23), e.g., 8 for 08:00
   focusEndTime: number; // Hour (0-24), e.g., 23 for 23:00
-  offHoursDisplay: OffHoursDisplay;
-  offHoursDenseScaleFactor: number; // e.g., 0.35
-  dayViewLayout: DayViewLayout; // Controls which sections to show
+  dayViewLayout: DayViewLayout; // Legacy - maps to TimeDisplayMode
+  timeDisplayMode: TimeDisplayMode; // New unified display mode
+  offHoursDisplay: OffHoursDisplay; // Legacy
+  offHoursDenseScaleFactor: number; // Legacy
   perDayOverrides: Record<string, DayTimeOverride>; // Key is date string (YYYY-MM-DD)
 }
 
@@ -29,9 +35,10 @@ export const defaultTimeRangeSettings: TimeRangeSettings = {
   weekTimeRangeMode: 'FOCUS',
   focusStartTime: 8, // 08:00
   focusEndTime: 23, // 23:00
-  offHoursDisplay: 'COLLAPSED',
-  offHoursDenseScaleFactor: 0.35,
-  dayViewLayout: 'BOTH',
+  dayViewLayout: 'BOTH', // Legacy
+  timeDisplayMode: 'BOTH', // New: show day + night combined
+  offHoursDisplay: 'COLLAPSED', // Legacy
+  offHoursDenseScaleFactor: 0.35, // Legacy
   perDayOverrides: {},
 };
 
@@ -79,21 +86,24 @@ export interface TimeRangeConfig {
   hours: number[];
   hourHeight: number;
   totalHeight: number;
-  // Off-hours info for Focus mode
-  hasNightBefore: boolean;
-  hasNightAfter: boolean;
-  nightBeforeHours: number; // Count of hours in 00:00–focusStart
-  nightAfterHours: number; // Count of hours in focusEnd–24:00
+  // For night mode that crosses midnight
+  isCrossingMidnight: boolean;
+  // Night segment info (for NIGHT mode)
+  nightSegments?: { startHour: number; endHour: number }[];
 }
 
 /**
- * Calculate the time range configuration for a given view mode
+ * Calculate unified time range based on display mode
+ * Handles Day, Night, Both, and Full 24H modes
  */
-export function getTimeRangeConfig(
+export function getUnifiedTimeRangeConfig(
   mode: TimeRangeMode,
-  settings: TimeRangeSettings,
+  displayMode: TimeDisplayMode,
+  focusStartTime: number,
+  focusEndTime: number,
   baseHourHeight: number
 ): TimeRangeConfig {
+  // Full 24H mode: always show 00:00–24:00
   if (mode === 'FULL_24H') {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     return {
@@ -102,62 +112,212 @@ export function getTimeRangeConfig(
       hours,
       hourHeight: baseHourHeight,
       totalHeight: 24 * baseHourHeight,
-      hasNightBefore: false,
-      hasNightAfter: false,
-      nightBeforeHours: 0,
-      nightAfterHours: 0,
+      isCrossingMidnight: false,
     };
   }
 
-  // Focus mode
-  const { focusStartTime, focusEndTime } = settings;
-  const focusHourCount = focusEndTime - focusStartTime;
-  const hours = Array.from({ length: focusHourCount }, (_, i) => i + focusStartTime);
+  // Focus mode with display mode
+  switch (displayMode) {
+    case 'DAY': {
+      // Show only focus hours (daytime)
+      const dayHourCount = focusEndTime - focusStartTime;
+      const hours = Array.from({ length: dayHourCount }, (_, i) => i + focusStartTime);
+      return {
+        startHour: focusStartTime,
+        endHour: focusEndTime,
+        hours,
+        hourHeight: baseHourHeight,
+        totalHeight: dayHourCount * baseHourHeight,
+        isCrossingMidnight: false,
+      };
+    }
+    
+    case 'NIGHT': {
+      // Show only night hours (off-hours) as one continuous timeline
+      // Night spans from focusEndTime to focusStartTime (crossing midnight)
+      // e.g., 23:00 → 24:00 and 00:00 → 08:00 = 9 hours total
+      const nightBeforeHours = focusStartTime; // 00:00 to focusStart
+      const nightAfterHours = 24 - focusEndTime; // focusEnd to 24:00
+      const totalNightHours = nightBeforeHours + nightAfterHours;
+      
+      // Generate hours: focusEnd to 24, then 0 to focusStart
+      const hours: number[] = [];
+      for (let h = focusEndTime; h < 24; h++) hours.push(h);
+      for (let h = 0; h < focusStartTime; h++) hours.push(h);
+      
+      return {
+        startHour: focusEndTime, // Logical start
+        endHour: focusStartTime + 24, // Logical end (crossing midnight)
+        hours,
+        hourHeight: baseHourHeight,
+        totalHeight: totalNightHours * baseHourHeight,
+        isCrossingMidnight: true,
+        nightSegments: [
+          { startHour: focusEndTime, endHour: 24 },
+          { startHour: 0, endHour: focusStartTime },
+        ],
+      };
+    }
+    
+    case 'BOTH':
+    default: {
+      // Show full 24 hours in focus mode (combined day + night)
+      const hours = Array.from({ length: 24 }, (_, i) => i);
+      return {
+        startHour: 0,
+        endHour: 24,
+        hours,
+        hourHeight: baseHourHeight,
+        totalHeight: 24 * baseHourHeight,
+        isCrossingMidnight: false,
+      };
+    }
+  }
+}
 
+/**
+ * Legacy function - maintained for backward compatibility
+ * Use getUnifiedTimeRangeConfig for new code
+ */
+export function getTimeRangeConfig(
+  mode: TimeRangeMode,
+  settings: TimeRangeSettings,
+  baseHourHeight: number
+): TimeRangeConfig & { hasNightBefore: boolean; hasNightAfter: boolean; nightBeforeHours: number; nightAfterHours: number } {
+  // Convert legacy dayViewLayout to timeDisplayMode
+  const displayMode = layoutToDisplayMode(settings.dayViewLayout);
+  const config = getUnifiedTimeRangeConfig(
+    mode,
+    settings.timeDisplayMode || displayMode,
+    settings.focusStartTime,
+    settings.focusEndTime,
+    baseHourHeight
+  );
+  
   return {
-    startHour: focusStartTime,
-    endHour: focusEndTime,
-    hours,
-    hourHeight: baseHourHeight,
-    totalHeight: focusHourCount * baseHourHeight,
-    hasNightBefore: focusStartTime > 0,
-    hasNightAfter: focusEndTime < 24,
-    nightBeforeHours: focusStartTime,
-    nightAfterHours: 24 - focusEndTime,
+    ...config,
+    hasNightBefore: settings.focusStartTime > 0,
+    hasNightAfter: settings.focusEndTime < 24,
+    nightBeforeHours: settings.focusStartTime,
+    nightAfterHours: 24 - settings.focusEndTime,
   };
 }
 
 /**
- * Calculate the vertical position of a task within the time grid
+ * Convert legacy DayViewLayout to TimeDisplayMode
+ */
+export function layoutToDisplayMode(layout: DayViewLayout): TimeDisplayMode {
+  switch (layout) {
+    case 'DAY_ONLY': return 'DAY';
+    case 'NIGHT_ONLY': return 'NIGHT';
+    case 'BOTH':
+    default: return 'BOTH';
+  }
+}
+
+/**
+ * Convert TimeDisplayMode to legacy DayViewLayout
+ */
+export function displayModeToLayout(mode: TimeDisplayMode): DayViewLayout {
+  switch (mode) {
+    case 'DAY': return 'DAY_ONLY';
+    case 'NIGHT': return 'NIGHT_ONLY';
+    case 'BOTH':
+    default: return 'BOTH';
+  }
+}
+
+/**
+ * Calculate the vertical position of a task within the unified timeline
  * Returns null if the task is entirely outside the visible range
  */
-export function getTaskPositionInRange(
-  startTimeHours: number,
-  endTimeHours: number,
+export function getTaskPositionInUnifiedRange(
+  taskStartHours: number,
+  taskEndHours: number,
   config: TimeRangeConfig
 ): { top: number; height: number; isPartialTop: boolean; isPartialBottom: boolean } | null {
-  // Check if task overlaps with visible range
-  if (endTimeHours <= config.startHour || startTimeHours >= config.endHour) {
+  if (config.isCrossingMidnight && config.nightSegments) {
+    // Night mode: handle midnight crossing
+    const segment1 = config.nightSegments[0]; // focusEnd to 24
+    const segment2 = config.nightSegments[1]; // 0 to focusStart
+    const segment1Hours = segment1.endHour - segment1.startHour;
+    
+    // Check if task is in segment 1 (evening)
+    if (taskStartHours >= segment1.startHour && taskStartHours < segment1.endHour) {
+      const clampedStart = Math.max(taskStartHours, segment1.startHour);
+      const clampedEnd = Math.min(taskEndHours, segment1.endHour);
+      const top = (clampedStart - segment1.startHour) * config.hourHeight;
+      const height = (clampedEnd - clampedStart) * config.hourHeight;
+      return {
+        top,
+        height,
+        isPartialTop: false,
+        isPartialBottom: taskEndHours > segment1.endHour,
+      };
+    }
+    
+    // Check if task is in segment 2 (early morning)
+    if (taskStartHours >= segment2.startHour && taskStartHours < segment2.endHour) {
+      const clampedStart = Math.max(taskStartHours, segment2.startHour);
+      const clampedEnd = Math.min(taskEndHours, segment2.endHour);
+      const top = segment1Hours * config.hourHeight + (clampedStart - segment2.startHour) * config.hourHeight;
+      const height = (clampedEnd - clampedStart) * config.hourHeight;
+      return {
+        top,
+        height,
+        isPartialTop: false,
+        isPartialBottom: taskEndHours > segment2.endHour,
+      };
+    }
+    
+    return null; // Task is in daytime, not visible in night mode
+  }
+  
+  // Standard mode (Day, Both, or Full 24H)
+  if (taskEndHours <= config.startHour || taskStartHours >= config.endHour) {
     return null; // Entirely outside visible range
   }
-
-  // Clamp to visible range
-  const clampedStart = Math.max(startTimeHours, config.startHour);
-  const clampedEnd = Math.min(endTimeHours, config.endHour);
-
+  
+  const clampedStart = Math.max(taskStartHours, config.startHour);
+  const clampedEnd = Math.min(taskEndHours, config.endHour);
   const top = (clampedStart - config.startHour) * config.hourHeight;
   const height = (clampedEnd - clampedStart) * config.hourHeight;
-
+  
   return {
     top,
     height,
-    isPartialTop: startTimeHours < config.startHour,
-    isPartialBottom: endTimeHours > config.endHour,
+    isPartialTop: taskStartHours < config.startHour,
+    isPartialBottom: taskEndHours > config.endHour,
   };
 }
 
+// Legacy alias
+export const getTaskPositionInRange = getTaskPositionInUnifiedRange;
+
 /**
- * Check if a time (in hours) falls within off-hours
+ * Check if a time (in hours) is in daytime (focus hours)
+ */
+export function isInDaytime(
+  timeHours: number,
+  focusStartTime: number,
+  focusEndTime: number
+): boolean {
+  return timeHours >= focusStartTime && timeHours < focusEndTime;
+}
+
+/**
+ * Check if a time (in hours) is in nighttime (off-hours)
+ */
+export function isInNighttime(
+  timeHours: number,
+  focusStartTime: number,
+  focusEndTime: number
+): boolean {
+  return timeHours < focusStartTime || timeHours >= focusEndTime;
+}
+
+/**
+ * Legacy function for backward compatibility
  */
 export function isInOffHours(
   timeHours: number,
@@ -169,7 +329,7 @@ export function isInOffHours(
 }
 
 /**
- * Get tasks that fall within a specific off-hours range
+ * Legacy function for backward compatibility
  */
 export function getTasksInOffHours<T extends { start_time?: string | null; end_time?: string | null }>(
   tasks: T[],
@@ -196,6 +356,23 @@ export function yPositionToHour(
   y: number,
   config: TimeRangeConfig
 ): number {
+  if (config.isCrossingMidnight && config.nightSegments) {
+    // Night mode with midnight crossing
+    const segment1 = config.nightSegments[0];
+    const segment1Hours = segment1.endHour - segment1.startHour;
+    const segment1Height = segment1Hours * config.hourHeight;
+    
+    if (y < segment1Height) {
+      // In segment 1 (evening)
+      return segment1.startHour + Math.floor(y / config.hourHeight);
+    } else {
+      // In segment 2 (early morning)
+      const segment2 = config.nightSegments[1];
+      const yInSegment2 = y - segment1Height;
+      return segment2.startHour + Math.floor(yInSegment2 / config.hourHeight);
+    }
+  }
+  
   const hour = Math.floor(y / config.hourHeight) + config.startHour;
   return Math.max(config.startHour, Math.min(config.endHour - 1, hour));
 }
@@ -204,8 +381,9 @@ export function yPositionToHour(
  * Format hour for display (e.g., 0 -> "12 AM", 13 -> "1 PM")
  */
 export function formatHourLabel(hour: number): string {
-  if (hour === 0 || hour === 24) return '12 AM';
-  if (hour === 12) return '12 PM';
-  if (hour < 12) return `${hour} AM`;
-  return `${hour - 12} PM`;
+  const normalizedHour = hour % 24;
+  if (normalizedHour === 0) return '12 AM';
+  if (normalizedHour === 12) return '12 PM';
+  if (normalizedHour < 12) return `${normalizedHour} AM`;
+  return `${normalizedHour - 12} PM`;
 }
