@@ -13,10 +13,10 @@ interface UnscheduledTasksProps {
   onScheduleTask: (taskId: string, date: Date) => void;
 }
 
-// Multi-column: show more tasks on wider screens
-const MAX_VISIBLE_TASKS_DESKTOP = 6;
-const MAX_VISIBLE_TASKS_TABLET = 4;
-const MAX_VISIBLE_TASKS_MOBILE = 3;
+// Show 7 tasks (fills grid nicely), with fade on last if more exist
+const MAX_VISIBLE_TASKS_DESKTOP = 7;
+const MAX_VISIBLE_TASKS_TABLET = 5;
+const MAX_VISIBLE_TASKS_MOBILE = 4;
 
 const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -315,7 +315,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
           {/* Task grid with new task input in first column slot */}
           <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
             {/* New task input - same width as task items */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[44px]">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/50 hover:border-primary/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all min-h-[44px]">
               <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
               <input
                 ref={newTaskInputRef}
@@ -333,40 +333,51 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
               />
             </div>
             
-            {/* Task list */}
-            {visibleTasks.map(task => (
-              <InboxTaskItem
-                key={task.id}
-                task={task}
-                onSchedule={handleScheduleTask}
-                onEnergyChange={handleEnergyChange}
-                onTitleChange={handleTitleChange}
-                onDelete={handleDeleteTask}
-              />
-            ))}
+            {/* Task list with fade effect on last item if overflow */}
+            {visibleTasks.map((task, index) => {
+              const isLastVisible = index === visibleTasks.length - 1;
+              const shouldFade = isLastVisible && isOverflowing && !expanded;
+              
+              return (
+                <div 
+                  key={task.id} 
+                  className={cn(
+                    "relative",
+                    shouldFade && "after:absolute after:inset-0 after:bg-gradient-to-t after:from-background after:via-background/60 after:to-transparent after:pointer-events-none after:rounded-lg"
+                  )}
+                >
+                  <InboxTaskItem
+                    task={task}
+                    onSchedule={handleScheduleTask}
+                    onEnergyChange={handleEnergyChange}
+                    onTitleChange={handleTitleChange}
+                    onDelete={handleDeleteTask}
+                  />
+                </div>
+              );
+            })}
           </div>
 
-          {/* Overflow indicator */}
+          {/* Overflow indicator - simpler, cleaner */}
           {isOverflowing && (
             <button
               onClick={() => setExpanded(v => !v)}
               className={cn(
-                "w-full flex items-center justify-center gap-2 py-3 rounded text-xs transition-colors min-h-[44px]",
+                "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[40px]",
                 expanded
-                  ? "text-foreground-muted hover:text-foreground"
-                  : "bg-highlight-muted text-highlight-foreground hover:bg-highlight/20"
+                  ? "text-foreground-muted hover:text-foreground hover:bg-secondary/50"
+                  : "bg-highlight-muted/50 text-highlight-foreground hover:bg-highlight-muted"
               )}
             >
               {expanded ? (
                 <>
-                  <ChevronUp className="w-4 h-4" />
+                  <ChevronUp className="w-3.5 h-3.5" />
                   Show less
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-4 h-4" />
-                  +{hiddenCount} more tasks — clear your inbox!
-                  <ChevronDown className="w-4 h-4" />
+                  +{hiddenCount} more
+                  <ChevronDown className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
