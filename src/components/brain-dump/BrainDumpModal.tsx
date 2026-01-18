@@ -218,8 +218,8 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] min-h-0 overflow-hidden flex flex-col"> 
-        <DialogHeader>
+      <DialogContent className="max-w-2xl h-[85vh] p-0 gap-0 overflow-hidden flex flex-col"> 
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
@@ -245,8 +245,8 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
         </DialogHeader>
 
         {step === 'input' ? (
-          <div className="flex-1 flex flex-col gap-4">
-            <p className="text-sm text-foreground-muted">
+          <div className="flex-1 flex flex-col gap-4 px-6 pb-6 min-h-0">
+            <p className="text-sm text-foreground-muted shrink-0">
               Write everything on your mind. AI will detect tasks, energy levels, dates, and emotional context.
             </p>
             
@@ -257,7 +257,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               className="flex-1 min-h-[200px] resize-none"
             />
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 shrink-0">
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
@@ -281,15 +281,15 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             </div>
           </div>
         ) : step === 'review' ? (
-          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {summary && (
-              <div className="p-3 bg-primary/10 rounded-lg text-sm text-foreground-muted shrink-0">
+              <div className="mx-6 mb-4 p-3 bg-primary/10 rounded-lg text-sm text-foreground-muted shrink-0">
                 <span className="font-medium text-foreground">Summary:</span> {summary}
               </div>
             )}
 
-            <ScrollArea className="flex-1 min-h-0" type="always">
-              <div className="space-y-2 pr-4 pb-2">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6">
+              <div className="space-y-2 pb-4">
                 {parsedItems.map((item, index) => (
                   <ParsedItemCard
                     key={index}
@@ -300,9 +300,9 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                   />
                 ))}
               </div>
-            </ScrollArea>
+            </div>
 
-            <div className="flex justify-between items-center pt-2 border-t border-border shrink-0">
+            <div className="flex justify-between items-center px-6 py-4 border-t border-border shrink-0 bg-background">
               <Button variant="ghost" onClick={() => setStep('input')}>
                 ← Back to edit
               </Button>
@@ -318,8 +318,8 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex items-center gap-2 px-6 pb-4 shrink-0">
               <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="gap-1">
                 <ArrowLeft className="w-4 h-4" />
                 Back
@@ -329,7 +329,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               </span>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0" type="always">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin text-foreground-muted" />
@@ -341,7 +341,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                   <p className="text-sm">Start dumping your thoughts!</p>
                 </div>
               ) : (
-                <div className="space-y-3 pr-4 pb-2">
+                <div className="space-y-3">
                   {history.map((dump) => (
                     <div
                       key={dump.id}
@@ -392,7 +392,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                   ))}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
         )}
       </DialogContent>
