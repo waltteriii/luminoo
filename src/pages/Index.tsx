@@ -22,6 +22,7 @@ interface UserProfile {
   nicheKeywords: string[];
   audienceDescription: string | null;
   avatarUrl: string | null;
+  defaultView: ZoomLevel | null;
 }
 
 const Index = () => {
@@ -74,18 +75,31 @@ const Index = () => {
   const loadUserProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('creator_type, platforms, niche_keywords, audience_description, avatar_url')
+      .select('creator_type, platforms, niche_keywords, audience_description, avatar_url, default_view')
       .eq('id', userId)
       .maybeSingle();
 
     if (data) {
-      setUserProfile({
+      const profile = {
         creatorType: data.creator_type,
         platforms: (data.platforms || []) as Platform[],
         nicheKeywords: data.niche_keywords || [],
         audienceDescription: data.audience_description,
-        avatarUrl: data.avatar_url
-      });
+        avatarUrl: data.avatar_url,
+        defaultView: ((data as any).default_view as ZoomLevel) || null
+      };
+      setUserProfile(profile);
+      
+      // Set the default view if configured
+      if (profile.defaultView) {
+        setZoomLevel(profile.defaultView);
+        // Set appropriate focus based on view
+        if (profile.defaultView === 'month') {
+          setFocusedMonth(new Date().getMonth());
+        } else if (profile.defaultView === 'week' || profile.defaultView === 'day') {
+          setFocusedDate(new Date());
+        }
+      }
     }
   };
 
@@ -187,9 +201,22 @@ const Index = () => {
 
   const handleProfileClose = (open: boolean) => {
     setProfileOpen(open);
-    // Reload profile when modal closes to sync avatar
+    // Reload profile when modal closes to sync avatar and default view
     if (!open && user) {
       loadUserProfile(user.id);
+    }
+  };
+
+  const handleDefaultViewChange = (view: ZoomLevel) => {
+    setZoomLevel(view);
+    // Set appropriate focus based on view
+    if (view === 'year') {
+      setFocusedMonth(null);
+      setFocusedDate(null);
+    } else if (view === 'month') {
+      setFocusedMonth(new Date().getMonth());
+    } else if (view === 'week' || view === 'day') {
+      setFocusedDate(new Date());
     }
   };
 
@@ -266,6 +293,7 @@ const Index = () => {
           open={profileOpen}
           onOpenChange={handleProfileClose}
           userId={user.id}
+          onDefaultViewChange={handleDefaultViewChange}
         />
 
         <TrendingTopicsModal

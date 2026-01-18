@@ -6,10 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2 } from 'lucide-react';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { CreatorType, Platform } from '@/types';
+import { CreatorType, Platform, ZoomLevel } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ interface ProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
+  onDefaultViewChange?: (view: ZoomLevel) => void;
 }
 
 interface SharedCalendar {
@@ -41,6 +42,13 @@ const creatorTypes: { value: CreatorType; label: string; icon: React.ReactNode }
   { value: 'content_creator', label: 'Content Creator', icon: <Video className="w-4 h-4" /> },
   { value: 'entrepreneur', label: 'Entrepreneur', icon: <Briefcase className="w-4 h-4" /> },
   { value: 'other', label: 'Other', icon: <Plus className="w-4 h-4" /> },
+];
+
+const defaultViews: { value: ZoomLevel; label: string; icon: React.ReactNode }[] = [
+  { value: 'year', label: 'Year', icon: <LayoutGrid className="w-4 h-4" /> },
+  { value: 'month', label: 'Month', icon: <Calendar className="w-4 h-4" /> },
+  { value: 'week', label: 'Week', icon: <CalendarDays className="w-4 h-4" /> },
+  { value: 'day', label: 'Day', icon: <Clock className="w-4 h-4" /> },
 ];
 
 const PRESET_PLATFORMS = [
@@ -100,7 +108,7 @@ const ALL_TIMEZONES = [
   { value: 'Africa/Johannesburg', label: 'Johannesburg', keywords: ['south africa', 'johannesburg', 'africa'] },
 ];
 
-const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
+const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: ProfileModalProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -118,6 +126,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
   const [timezonePopoverOpen, setTimezonePopoverOpen] = useState(false);
   const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([]);
   const [currentTime, setCurrentTime] = useState('');
+  const [defaultView, setDefaultView] = useState<ZoomLevel>('year');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -182,6 +191,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
         setNicheKeywords(data.niche_keywords || []);
         setPlatforms(data.platforms || []);
         setTimezone((data as any).timezone || 'UTC');
+        setDefaultView(((data as any).default_view as ZoomLevel) || 'year');
         // Extract "More about you" from audience description if it exists
         const desc = data.audience_description || '';
         if (desc.includes('\n\nMore about me:')) {
@@ -277,11 +287,17 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
           niche_keywords: nicheKeywords,
           platforms: platforms,
           timezone: timezone,
+          default_view: defaultView,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', userId);
 
       if (error) throw error;
+
+      // Notify parent about default view change
+      if (onDefaultViewChange) {
+        onDefaultViewChange(defaultView);
+      }
 
       toast({
         title: "Profile saved",
@@ -347,7 +363,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden group">
         <DialogHeader className="px-6 py-4 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-primary" />
@@ -380,7 +396,7 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea className="flex-1 min-h-0 pr-1">
               {/* Profile Tab */}
               <TabsContent value="profile" className="px-6 py-8 space-y-8 mt-0">
                 {/* Avatar and Name - FIRST */}
@@ -468,6 +484,31 @@ const ProfileModal = ({ open, onOpenChange, userId }: ProfileModalProps) => {
                       </ScrollArea>
                     </PopoverContent>
                   </Popover>
+                </div>
+
+                {/* Default View Preference */}
+                <div className="space-y-3">
+                  <Label>Default View on Login</Label>
+                  <p className="text-xs text-foreground-muted -mt-1">
+                    Choose which calendar view to show when you open the app
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {defaultViews.map(view => (
+                      <button
+                        key={view.value}
+                        onClick={() => setDefaultView(view.value)}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
+                          defaultView === view.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50 text-foreground-muted"
+                        )}
+                      >
+                        {view.icon}
+                        <span className="text-xs">{view.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Creator Type */}
