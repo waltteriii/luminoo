@@ -149,6 +149,11 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
         },
+        "wiggle": {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "25%": { transform: "rotate(-8deg)" },
+          "75%": { transform: "rotate(8deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -159,6 +164,7 @@ export default {
         "slide-up": "slide-up 0.4s ease-out forwards",
         "slide-down": "slide-down 0.3s ease-out forwards",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
+        "wiggle": "wiggle 0.3s ease-in-out",
       },
       transitionDuration: {
         "150": "150ms",
