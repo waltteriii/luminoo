@@ -386,23 +386,25 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
                   const taskHeight = Math.max(pos.height - 2, 22);
                   
-                  // Reorder handlers for this specific group
+                  // Reorder handlers - use sequential indices for clear ordering
                   const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
-                    // Swap display_order with left neighbor
+                    // Swap positions by exchanging display_order values
                     const leftTask = group[columnIdx - 1];
-                    const leftOrder = leftTask.display_order || 0;
-                    const currentOrder = task.display_order || 0;
-                    updateTask(task.id, { display_order: leftOrder });
-                    updateTask(leftTask.id, { display_order: currentOrder });
+                    // Use columnIdx as base to ensure distinct values
+                    const newLeftOrder = columnIdx * 10;
+                    const newCurrentOrder = (columnIdx - 1) * 10;
+                    updateTask(task.id, { display_order: newCurrentOrder });
+                    updateTask(leftTask.id, { display_order: newLeftOrder });
                   } : undefined;
                   
                   const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
-                    // Swap display_order with right neighbor
+                    // Swap positions by exchanging display_order values
                     const rightTask = group[columnIdx + 1];
-                    const rightOrder = rightTask.display_order || 0;
-                    const currentOrder = task.display_order || 0;
-                    updateTask(task.id, { display_order: rightOrder });
-                    updateTask(rightTask.id, { display_order: currentOrder });
+                    // Use columnIdx as base to ensure distinct values
+                    const newRightOrder = columnIdx * 10;
+                    const newCurrentOrder = (columnIdx + 1) * 10;
+                    updateTask(task.id, { display_order: newCurrentOrder });
+                    updateTask(rightTask.id, { display_order: newRightOrder });
                   } : undefined;
 
                   return (

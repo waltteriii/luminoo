@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { normalizeTime, parseTimeToHours, formatHoursToTime } from '@/lib/timeUtils';
 import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
-import { Pencil, ArrowLeftRight } from 'lucide-react';
+import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useRef } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
@@ -299,28 +299,45 @@ const CalendarTask = ({
                 )}
               </div>
 
-              {/* Reorder button - single swap button */}
+              {/* Reorder buttons - left and right for precise control */}
               {(canMoveLeft || canMoveRight) && (
                 <div className={cn(
-                  'absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                  'absolute top-1 left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity'
                 )}>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-6 w-6 bg-background/90 hover:bg-background shadow-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      // Swap: prefer right if available, else left
-                      if (canMoveRight) onMoveRight?.();
-                      else if (canMoveLeft) onMoveLeft?.();
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    title="Swap position"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5" />
-                  </Button>
+                  {canMoveLeft && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6 bg-background/95 hover:bg-primary hover:text-primary-foreground shadow-md transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onMoveLeft?.();
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      title="Move left"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {canMoveRight && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6 bg-background/95 hover:bg-primary hover:text-primary-foreground shadow-md transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onMoveRight?.();
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      title="Move right"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               )}
 
