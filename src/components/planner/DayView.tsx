@@ -498,26 +498,35 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   // Track new untimed tasks for glow animation
   const prevUntimedTaskIds = useRef<Set<string>>(new Set());
+  const prevUntimedCount = useRef<number>(0);
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     const currentIds = new Set(untimedTasks.map(t => t.id));
-    const newIds = new Set<string>();
+    const currentCount = untimedTasks.length;
     
-    currentIds.forEach(id => {
-      if (!prevUntimedTaskIds.current.has(id)) {
-        newIds.add(id);
+    // Only detect new tasks when count INCREASES (not on delete or edit)
+    if (currentCount > prevUntimedCount.current) {
+      const newIds = new Set<string>();
+      
+      currentIds.forEach(id => {
+        if (!prevUntimedTaskIds.current.has(id)) {
+          newIds.add(id);
+        }
+      });
+      
+      if (newIds.size > 0) {
+        setNewTaskIds(newIds);
+        // Clear after animation
+        const timer = setTimeout(() => setNewTaskIds(new Set()), 1600);
+        prevUntimedTaskIds.current = currentIds;
+        prevUntimedCount.current = currentCount;
+        return () => clearTimeout(timer);
       }
-    });
-    
-    if (newIds.size > 0) {
-      setNewTaskIds(newIds);
-      // Clear after animation
-      const timer = setTimeout(() => setNewTaskIds(new Set()), 1600);
-      return () => clearTimeout(timer);
     }
     
     prevUntimedTaskIds.current = currentIds;
+    prevUntimedCount.current = currentCount;
   }, [untimedTasks]);
 
   const hours = useMemo(() => Array.from({ length: 17 }, (_, i) => i + 6), []);
