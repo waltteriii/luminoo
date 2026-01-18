@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, isBefore, isAfter, differenceInDays } from 'date-fns';
+import { format, isBefore, differenceInDays } from 'date-fns';
 import { Task, EnergyLevel } from '@/types';
 import {
   Dialog,
@@ -13,14 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar as CalendarIcon, MapPin, Users, Trash2, CalendarDays } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Users, Trash2, CalendarDays, Pencil } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import EnergyPill from '@/components/shared/EnergyPill';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import TimeRangeSlider from './TimeRangeSlider';
+import TaskTimeSelector from './TaskTimeSelector';
 
 interface EditTaskDialogProps {
   open: boolean;
@@ -42,8 +42,8 @@ const EditTaskDialog = ({
   const [energy, setEnergy] = useState<EnergyLevel>('medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState('none');
-  const [endTime, setEndTime] = useState('none');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [location, setLocation] = useState('');
   const [isShared, setIsShared] = useState(false);
   const [useTime, setUseTime] = useState(false);
@@ -56,30 +56,38 @@ const EditTaskDialog = ({
       setEnergy(task.energy_level);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
       setEndDate(task.end_date ? new Date(task.end_date) : undefined);
-      setStartTime(task.start_time || 'none');
-      setEndTime(task.end_time || 'none');
       setLocation(task.location || '');
       setIsShared(task.is_shared || false);
-      setUseTime(!!(task.start_time && task.start_time !== 'none'));
       setIsMultiDay(!!task.end_date);
+      
+      const hasTime = !!(task.start_time && task.start_time !== 'none');
+      setUseTime(hasTime);
+      
+      if (hasTime) {
+        setStartTime(task.start_time?.slice(0, 5) || '09:00');
+        setEndTime(task.end_time?.slice(0, 5) || '10:00');
+      } else {
+        setStartTime('09:00');
+        setEndTime('10:00');
+      }
     }
   }, [open, task]);
 
   const handleSave = () => {
     if (!task || !title.trim()) return;
-    
+
     const updates: Partial<Task> = {
       title: title.trim(),
       description: description.trim() || null,
       energy_level: energy,
       due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
       end_date: isMultiDay && endDate ? format(endDate, 'yyyy-MM-dd') : null,
-      start_time: useTime && startTime !== 'none' ? startTime : null,
-      end_time: useTime && endTime !== 'none' ? endTime : null,
+      start_time: useTime ? startTime : null,
+      end_time: useTime ? endTime : null,
       location: location.trim() || null,
       is_shared: isShared,
     };
-    
+
     onSave(task.id, updates);
     onOpenChange(false);
   };
@@ -102,50 +110,54 @@ const EditTaskDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle>Edit Task</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="w-5 h-5 text-primary" />
+            Edit Task
+          </DialogTitle>
           <DialogDescription>
             Update task details and scheduling
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] px-6">
-          <div className="space-y-6 pb-6">
+          <div className="space-y-5 pb-6">
             {/* Task title */}
             <div className="space-y-2">
-              <Label htmlFor="edit-title">Title</Label>
+              <Label htmlFor="edit-title" className="text-foreground-muted">Title</Label>
               <Input
                 id="edit-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
+                className="focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Description (optional)</Label>
+              <Label htmlFor="edit-description" className="text-foreground-muted">Description (optional)</Label>
               <Textarea
                 id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add notes or details..."
-                className="min-h-[80px] resize-none"
+                className="min-h-[80px] resize-none focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
             </div>
 
             {/* Energy level selector */}
-            <div className="space-y-3">
-              <Label>Energy Level</Label>
-              <div className="flex gap-3">
+            <div className="space-y-2.5">
+              <Label className="text-foreground-muted">Energy Level</Label>
+              <div className="flex gap-2.5">
                 {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((e) => (
                   <button
                     key={e}
                     onClick={() => setEnergy(e)}
                     className={cn(
-                      "transition-all rounded-full",
-                      energy === e 
-                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
-                        : "opacity-60 hover:opacity-100"
+                      'transition-all rounded-full',
+                      energy === e
+                        ? 'ring-2 ring-primary/70 ring-offset-2 ring-offset-background'
+                        : 'opacity-50 hover:opacity-80'
                     )}
                   >
                     <EnergyPill energy={e} />
@@ -154,10 +166,10 @@ const EditTaskDialog = ({
               </div>
             </div>
 
-            {/* Date picker */}
+            {/* Date picker with multi-day option */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-1.5">
+                <Label className="flex items-center gap-1.5 text-foreground-muted">
                   <CalendarIcon className="w-3.5 h-3.5" />
                   Start Date
                 </Label>
@@ -172,14 +184,16 @@ const EditTaskDialog = ({
                     onCheckedChange={(checked) => {
                       setIsMultiDay(checked);
                       if (!checked) setEndDate(undefined);
+                      else if (dueDate && !endDate) setEndDate(dueDate);
                     }}
                   />
                 </div>
               </div>
-              <div className={cn("grid gap-2", isMultiDay && "grid-cols-2")}>
+              <div className={cn('grid gap-2', isMultiDay && 'grid-cols-2')}>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal h-11">
+                    <Button variant="outline" className="w-full justify-start text-left font-normal h-10">
+                      <CalendarIcon className="w-4 h-4 mr-2 opacity-50" />
                       {dueDate ? format(dueDate, 'PPP') : 'Pick start date'}
                     </Button>
                   </PopoverTrigger>
@@ -189,19 +203,20 @@ const EditTaskDialog = ({
                       selected={dueDate}
                       onSelect={(d) => {
                         setDueDate(d);
-                        // If end date is before start date, update it
                         if (d && endDate && isBefore(endDate, d)) {
                           setEndDate(d);
                         }
                       }}
                       initialFocus
+                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
                 {isMultiDay && (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal h-11">
+                      <Button variant="outline" className="w-full justify-start text-left font-normal h-10">
+                        <CalendarIcon className="w-4 h-4 mr-2 opacity-50" />
                         {endDate ? format(endDate, 'PPP') : 'Pick end date'}
                       </Button>
                     </PopoverTrigger>
@@ -212,6 +227,7 @@ const EditTaskDialog = ({
                         onSelect={setEndDate}
                         disabled={(date) => dueDate ? isBefore(date, dueDate) : false}
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -222,40 +238,36 @@ const EditTaskDialog = ({
               )}
             </div>
 
-            {/* Time selection - Visual slider */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Time</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-foreground-muted">Schedule time</span>
-                  <Switch
-                    checked={useTime}
-                    onCheckedChange={(checked) => {
-                      setUseTime(checked);
-                      if (!checked) {
-                        setStartTime('none');
-                        setEndTime('none');
-                      } else {
-                        setStartTime('09:00');
-                        setEndTime('10:00');
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              {useTime && (
-                <TimeRangeSlider
-                  startTime={startTime === 'none' ? '09:00' : startTime}
-                  endTime={endTime === 'none' ? '10:00' : endTime}
+            {/* Time selection toggle */}
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-foreground-muted">Schedule specific time</Label>
+              <Switch
+                checked={useTime}
+                onCheckedChange={(checked) => {
+                  setUseTime(checked);
+                  if (!checked) {
+                    setStartTime('09:00');
+                    setEndTime('10:00');
+                  }
+                }}
+              />
+            </div>
+
+            {/* Time slider with clickable times */}
+            {useTime && (
+              <div className="rounded-xl border border-border/50 p-4 bg-secondary/20">
+                <TaskTimeSelector
+                  startTime={startTime}
+                  endTime={endTime}
                   onStartTimeChange={setStartTime}
                   onEndTimeChange={setEndTime}
                 />
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Location */}
             <div className="space-y-2">
-              <Label htmlFor="edit-location" className="flex items-center gap-1.5">
+              <Label htmlFor="edit-location" className="flex items-center gap-1.5 text-foreground-muted">
                 <MapPin className="w-3.5 h-3.5" />
                 Location
               </Label>
@@ -264,13 +276,13 @@ const EditTaskDialog = ({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Add a location (optional)"
-                className="h-11"
+                className="h-10 focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
             </div>
 
             {/* Share toggle */}
-            <div className="flex items-center justify-between py-2">
-              <Label htmlFor="edit-share" className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center justify-between py-1">
+              <Label htmlFor="edit-share" className="flex items-center gap-2 text-foreground-muted cursor-pointer">
                 <Users className="w-4 h-4" />
                 Share this task
               </Label>
@@ -285,8 +297,8 @@ const EditTaskDialog = ({
 
         <DialogFooter className="flex-col sm:flex-row gap-2 px-6 py-4 border-t border-border bg-background">
           {onDelete && (
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDelete}
               className="gap-2 sm:mr-auto"
             >

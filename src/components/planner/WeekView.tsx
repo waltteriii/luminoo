@@ -311,7 +311,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     energy: EnergyLevel,
     startTime?: string,
     endTime?: string,
-    options?: { description?: string; location?: string; isShared?: boolean }
+    options?: { description?: string; location?: string; isShared?: boolean; endDate?: string }
   ) => {
     await addTask({
       title,
@@ -322,6 +322,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
       description: options?.description,
       location: options?.location,
       is_shared: options?.isShared,
+      end_date: options?.endDate,
     });
   }, [addTask, createDialogDate]);
 

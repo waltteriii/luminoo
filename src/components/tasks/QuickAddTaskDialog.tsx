@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format, isBefore, differenceInDays } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +9,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { EnergyLevel } from '@/types';
 import EnergyPill from '@/components/shared/EnergyPill';
+import TaskTimeSelector from './TaskTimeSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -18,15 +23,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { Calendar, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Calendar, CalendarDays, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface QuickAddTaskDialogProps {
   open: boolean;
@@ -34,12 +32,6 @@ interface QuickAddTaskDialogProps {
   userId: string;
   defaultEnergy?: EnergyLevel;
 }
-
-const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
-  const hour = Math.floor(i / 2) + 6;
-  const minute = (i % 2) * 30;
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-});
 
 const QuickAddTaskDialog = ({
   open,
@@ -50,18 +42,30 @@ const QuickAddTaskDialog = ({
   const [title, setTitle] = useState('');
   const [energy, setEnergy] = useState<EnergyLevel>(defaultEnergy);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
-  const [startTime, setStartTime] = useState<string>('');
-  const [endTime, setEndTime] = useState<string>('');
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [useTime, setUseTime] = useState(false);
+  const [isMultiDay, setIsMultiDay] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    setEnergy(defaultEnergy);
-  }, [defaultEnergy]);
+    if (open) {
+      setEnergy(defaultEnergy);
+      setTitle('');
+      setSelectedDate(undefined);
+      setEndDate(undefined);
+      setStartTime('09:00');
+      setEndTime('10:00');
+      setUseTime(false);
+      setIsMultiDay(false);
+    }
+  }, [open, defaultEnergy]);
 
   const handleConfirm = async () => {
     if (!title.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from('tasks').insert({
@@ -69,8 +73,9 @@ const QuickAddTaskDialog = ({
         title: title.trim(),
         energy_level: energy,
         due_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null,
-        start_time: startTime && startTime !== 'none' ? startTime : null,
-        end_time: endTime && endTime !== 'none' ? endTime : null,
+        end_date: isMultiDay && endDate ? format(endDate, 'yyyy-MM-dd') : null,
+        start_time: selectedDate && useTime ? startTime : null,
+        end_time: selectedDate && useTime ? endTime : null,
       });
 
       if (error) throw error;
@@ -80,11 +85,6 @@ const QuickAddTaskDialog = ({
         description: selectedDate ? `Scheduled for ${format(selectedDate, 'MMM d')}` : 'Added to inbox',
       });
 
-      setTitle('');
-      setEnergy(defaultEnergy);
-      setSelectedDate(undefined);
-      setStartTime('');
-      setEndTime('');
       onOpenChange(false);
     } catch (err) {
       console.error('Create task error:', err);
@@ -104,115 +104,175 @@ const QuickAddTaskDialog = ({
     }
   };
 
+  // Calculate duration for multi-day tasks
+  const durationText = isMultiDay && selectedDate && endDate
+    ? `${differenceInDays(endDate, selectedDate) + 1} days`
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add Task</DialogTitle>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5 text-primary" />
+            Add Task
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Task title */}
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="What do you want to do?"
-            autoFocus
-            className="text-base"
-          />
-
-          {/* Energy selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-foreground-muted">Energy:</span>
-            <div className="flex gap-1">
-              {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setEnergy(e)}
-                  className={`transition-transform ${energy === e ? 'scale-110 ring-2 ring-primary ring-offset-2 rounded-full' : 'opacity-60 hover:opacity-100'}`}
-                >
-                  <EnergyPill energy={e} />
-                </button>
-              ))}
+        <ScrollArea className="max-h-[60vh] px-6">
+          <div className="space-y-5 pb-6">
+            {/* Task title */}
+            <div className="space-y-2">
+              <Label htmlFor="quick-title" className="text-foreground-muted">Task Name</Label>
+              <Input
+                id="quick-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="What do you want to do?"
+                autoFocus
+                className="text-base focus:ring-1 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              />
             </div>
-          </div>
 
-          {/* Date picker */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-foreground-muted">When:</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {selectedDate ? format(selectedDate, 'MMM d, yyyy') : 'Pick date (optional)'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarPicker
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
+            {/* Energy selector */}
+            <div className="space-y-2.5">
+              <Label className="text-foreground-muted">Energy Level</Label>
+              <div className="flex gap-2.5">
+                {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((e) => (
+                  <button
+                    key={e}
+                    onClick={() => setEnergy(e)}
+                    className={cn(
+                      'transition-all rounded-full',
+                      energy === e
+                        ? 'ring-2 ring-primary/70 ring-offset-2 ring-offset-background'
+                        : 'opacity-50 hover:opacity-80'
+                    )}
+                  >
+                    <EnergyPill energy={e} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date picker */}
+            <div className="space-y-2">
+              <Label className="text-foreground-muted">When</Label>
+              <div className="flex gap-2 items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-10">
+                      <Calendar className="w-4 h-4 mr-2 opacity-50" />
+                      {selectedDate ? format(selectedDate, 'MMM d, yyyy') : 'Pick date (optional)'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(d) => {
+                        setSelectedDate(d);
+                        if (d && endDate && isBefore(endDate, d)) {
+                          setEndDate(d);
+                        }
+                      }}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {selectedDate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDate(undefined);
+                      setEndDate(undefined);
+                      setIsMultiDay(false);
+                      setUseTime(false);
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Multi-day option (only if date selected) */}
             {selectedDate && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedDate(undefined)}
-                className="text-xs"
-              >
-                Clear
-              </Button>
+              <>
+                <div className="flex items-center justify-between py-1">
+                  <Label htmlFor="quick-multi-day" className="flex items-center gap-2 text-foreground-muted cursor-pointer">
+                    <CalendarDays className="w-4 h-4" />
+                    Multi-day task
+                  </Label>
+                  <Switch
+                    id="quick-multi-day"
+                    checked={isMultiDay}
+                    onCheckedChange={(checked) => {
+                      setIsMultiDay(checked);
+                      if (checked && !endDate) {
+                        setEndDate(selectedDate);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* End date picker for multi-day */}
+                {isMultiDay && (
+                  <div className="space-y-2">
+                    <Label className="text-foreground-muted">End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal h-10">
+                          <Calendar className="w-4 h-4 mr-2 opacity-50" />
+                          {endDate ? format(endDate, 'PPP') : 'Pick end date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarPicker
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          disabled={(date) => selectedDate ? isBefore(date, selectedDate) : false}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    {durationText && (
+                      <p className="text-xs text-foreground-muted">Duration: {durationText}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Time toggle */}
+                <div className="flex items-center justify-between py-1">
+                  <Label className="text-foreground-muted">Schedule specific time</Label>
+                  <Switch
+                    checked={useTime}
+                    onCheckedChange={setUseTime}
+                  />
+                </div>
+
+                {/* Time selector */}
+                {useTime && (
+                  <div className="rounded-xl border border-border/50 p-4 bg-secondary/20">
+                    <TaskTimeSelector
+                      startTime={startTime}
+                      endTime={endTime}
+                      onStartTimeChange={setStartTime}
+                      onEndTimeChange={setEndTime}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
+        </ScrollArea>
 
-          {/* Time selectors (only if date is selected) */}
-          {selectedDate && (
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-foreground-muted mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Start
-                </label>
-                <Select value={startTime} onValueChange={setStartTime}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Start time" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    <SelectItem value="none">No time</SelectItem>
-                    {TIME_OPTIONS.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-foreground-muted mb-1 block">End</label>
-                <Select value={endTime} onValueChange={setEndTime}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="End time" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    <SelectItem value="none">No time</SelectItem>
-                    {TIME_OPTIONS.filter(t => !startTime || startTime === 'none' || t > startTime).map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t border-border bg-background">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
