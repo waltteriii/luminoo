@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { ViewMode, ZoomLevel, EnergyLevel } from '@/types';
 import YearGridView from './YearGridView';
 import CircularView from './CircularView';
@@ -36,18 +37,38 @@ const PlannerView = ({
 }: PlannerViewProps) => {
   const currentYear = new Date().getFullYear();
 
+  // Track Day view layout reset capability
+  const [canResetLayout, setCanResetLayout] = useState(false);
+  const [resetLayoutFn, setResetLayoutFn] = useState<(() => void) | null>(null);
+
+  const handleLayoutResetChange = useCallback((canReset: boolean, resetFn: () => void) => {
+    setCanResetLayout(canReset);
+    // Store as a function to avoid React calling it during setState
+    setResetLayoutFn(() => resetFn);
+  }, []);
+
+  const handleResetLayout = useCallback(() => {
+    resetLayoutFn?.();
+  }, [resetLayoutFn]);
+
   // Day view
   if (zoomLevel === 'day' && focusedDate) {
     return (
       <div className="h-full p-6 lg:p-8">
         <div className="flex items-center justify-between mb-4">
-          <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
+          <ViewSelector
+            zoomLevel={zoomLevel}
+            onZoomLevelChange={onZoomLevelChange}
+            canResetLayout={canResetLayout}
+            onResetLayout={handleResetLayout}
+          />
         </div>
         <DayView
           date={focusedDate}
           currentEnergy={currentEnergy}
           energyFilter={energyFilter}
           onBack={onZoomOut}
+          onLayoutResetChange={handleLayoutResetChange}
         />
       </div>
     );
