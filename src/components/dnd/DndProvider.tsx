@@ -160,7 +160,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     // Handle drop to memory panel
     if (overId === 'memory-panel' || overData?.type === 'memory') {
       const task = activeData?.task as Task;
-      if (task && (activeData?.type === 'inbox-task' || activeData?.type === 'calendar-task')) {
+      if (task && (activeData?.type === 'inbox-task' || activeData?.type === 'calendar-task' || activeData?.type === 'night-task')) {
         await updateTask(task.id, { 
           location: 'memory',
           due_date: null,
@@ -170,6 +170,74 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         onTaskScheduled?.();
         return;
       }
+    }
+
+    // Handle drop onto night section
+    if (overData?.type === 'night-section') {
+      const task = activeData?.task as Task;
+      const section = overData.section as 'night-before' | 'night-after';
+      
+      if (task && (activeData?.type === 'calendar-task' || activeData?.type === 'inbox-task')) {
+        // Move to night hours - use default night time based on section
+        // Night-before: use 2:00 AM, Night-after: use 23:00 or later based on settings
+        const nightHour = section === 'night-before' ? 2 : 23;
+        const start = `${String(nightHour).padStart(2, '0')}:00:00`;
+        const end = `${String(nightHour + 1).padStart(2, '0')}:00:00`;
+        
+        await updateTask(task.id, {
+          start_time: start,
+          end_time: end,
+        } as any);
+        onTaskScheduled?.();
+        return;
+      }
+    }
+
+    // Night task being dragged => can go to day time slots or other locations
+    if (activeData?.type === 'night-task') {
+      const task = activeData.task as Task;
+
+      // Dropped on a time slot (day view) - schedule to that hour
+      if (overData?.type === 'time-slot') {
+        const hour = overData.hour as number;
+        const date = overData.date as Date | undefined;
+        const nextDate = date || (task.due_date ? parse(task.due_date, 'yyyy-MM-dd', new Date()) : new Date());
+        const nextDueDate = format(nextDate, 'yyyy-MM-dd');
+        
+        // Preserve duration if possible
+        let durationHours = 1;
+        if (task.start_time && task.end_time) {
+          const [sh, sm] = task.start_time.split(':').map(Number);
+          const [eh, em] = task.end_time.split(':').map(Number);
+          durationHours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+        }
+        
+        const endHour = Math.min(hour + durationHours, 24);
+        const start = `${String(hour).padStart(2, '0')}:00:00`;
+        const end = `${String(Math.floor(endHour)).padStart(2, '0')}:${String(Math.round((endHour % 1) * 60)).padStart(2, '0')}:00`;
+        
+        await updateTask(task.id, {
+          due_date: nextDueDate,
+          start_time: start,
+          end_time: end,
+        } as any);
+        onTaskScheduled?.();
+        return;
+      }
+
+      // Dropped on a day (week/month view)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(overId)) {
+        const date = parse(overId, 'yyyy-MM-dd', new Date());
+        const nextDueDate = format(date, 'yyyy-MM-dd');
+        
+        await updateTask(task.id, {
+          due_date: nextDueDate,
+        } as any);
+        onTaskScheduled?.();
+        return;
+      }
+
+      return;
     }
 
     // Inbox task being dragged (unscheduled) => schedule immediately without dialog
@@ -246,6 +314,29 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         if (overTask?.start_time) {
           nextHour = parseInt(overTask.start_time.split(':')[0]);
         }
+      } else if (overData?.type === 'night-section') {
+        // Moving from day to night section
+        const section = overData.section as 'night-before' | 'night-after';
+        const nightHour = section === 'night-before' ? 2 : 23;
+        
+        // Preserve duration
+        let durationHours = 1;
+        if (task.start_time && task.end_time) {
+          const [sh, sm] = task.start_time.split(':').map(Number);
+          const [eh, em] = task.end_time.split(':').map(Number);
+          durationHours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+        }
+        
+        const endHour = nightHour + durationHours;
+        const start = `${String(nightHour).padStart(2, '0')}:00:00`;
+        const end = `${String(Math.floor(endHour)).padStart(2, '0')}:${String(Math.round((endHour % 1) * 60)).padStart(2, '0')}:00`;
+        
+        await updateTask(task.id, {
+          start_time: start,
+          end_time: end,
+        } as any);
+        onTaskScheduled?.();
+        return;
       }
 
       if (!nextDate) return;
