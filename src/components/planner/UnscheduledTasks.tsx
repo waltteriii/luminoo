@@ -13,10 +13,13 @@ interface UnscheduledTasksProps {
   onScheduleTask: (taskId: string, date: Date) => void;
 }
 
-// Responsive task counts: 1 col = 4, 2 cols = 6, 3 cols = 9 (fills grid evenly)
-const MAX_VISIBLE_MOBILE = 4;   // 1 column × 4 rows
-const MAX_VISIBLE_TABLET = 6;   // 2 columns × 3 rows
-const MAX_VISIBLE_DESKTOP = 9;  // 3 columns × 3 rows
+// Smart grid: show complete rows only (accounting for new task input taking 1 slot)
+// 3 cols × 3 rows = 9 slots → 8 tasks + input
+// 2 cols × 3 rows = 6 slots → 5 tasks + input
+// 1 col × 4 rows = 4 slots → 3 tasks + input
+const ROWS_MOBILE = 4;
+const ROWS_TABLET = 3;
+const ROWS_DESKTOP = 3;
 
 const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -34,7 +37,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Responsive max visible tasks based on breakpoints
+  // Responsive columns and max visible tasks
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
   useEffect(() => {
@@ -43,11 +46,27 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Match Tailwind breakpoints: lg = 1024, 2xl = 1536
-  const maxVisible = useMemo(() => {
-    if (windowWidth >= 1536) return MAX_VISIBLE_DESKTOP;  // 3 columns
-    if (windowWidth >= 1024) return MAX_VISIBLE_TABLET;   // 2 columns
-    return MAX_VISIBLE_MOBILE;                            // 1 column
+  // Calculate columns and max visible to fill complete rows
+  const { columns, maxVisible } = useMemo(() => {
+    let cols: number;
+    let rows: number;
+    
+    if (windowWidth >= 1536) {
+      cols = 3;
+      rows = ROWS_DESKTOP;
+    } else if (windowWidth >= 1024) {
+      cols = 2;
+      rows = ROWS_TABLET;
+    } else {
+      cols = 1;
+      rows = ROWS_MOBILE;
+    }
+    
+    // Total slots minus 1 for the new task input
+    const totalSlots = cols * rows;
+    const maxTasks = totalSlots - 1;
+    
+    return { columns: cols, maxVisible: maxTasks };
   }, [windowWidth]);
 
   useEffect(() => {
