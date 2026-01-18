@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { GripVertical, Calendar, Clock, Users, Check, X } from 'lucide-react';
+import { GripVertical, Calendar, Clock, Users, Check, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -25,6 +25,7 @@ interface InboxTaskItemProps {
   onSchedule: (taskId: string, date: string, startTime?: string, endTime?: string) => void;
   onEnergyChange?: (taskId: string, energy: EnergyLevel) => void;
   onTitleChange?: (taskId: string, title: string) => void;
+  onDelete?: (taskId: string) => void;
 }
 
 const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
@@ -40,7 +41,7 @@ const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
   { value: 'recovery', label: 'Recovery' },
 ];
 
-const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: InboxTaskItemProps) => {
+const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDelete }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -336,6 +337,22 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange }: Inbo
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Delete button */}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              title="Delete task"
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          )}
         </div>
       )}
     </div>
