@@ -1,15 +1,15 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 
 interface SwipeOptions {
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
-  threshold?: number; // minimum distance for swipe
+  threshold?: number;
   enabled?: boolean;
 }
 
 /**
- * Hook for detecting horizontal swipe gestures (touch + trackpad)
- * Used for navigating between days/weeks/months/years
+ * Optimized hook for horizontal swipe gestures (touch + trackpad).
+ * Uses passive listeners and debouncing for smooth 60fps performance.
  */
 export function useSwipeNavigation({
   onSwipeLeft,
@@ -17,90 +17,75 @@ export function useSwipeNavigation({
   threshold = 50,
   enabled = true,
 }: SwipeOptions) {
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
   const lastWheelTime = useRef<number>(0);
   const accumulatedDeltaX = useRef<number>(0);
-  const isScrolling = useRef<boolean | null>(null);
-
-  const handleSwipe = useCallback(() => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
-    
-    const deltaX = touchStartX.current - touchEndX.current;
-    const absX = Math.abs(deltaX);
-    
-    if (absX > threshold) {
-      if (deltaX > 0) {
-        // Swiped left -> go forward (next day/week/month)
-        onSwipeLeft?.();
-      } else {
-        // Swiped right -> go back (previous day/week/month)
-        onSwipeRight?.();
-      }
-    }
-  }, [onSwipeLeft, onSwipeRight, threshold]);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (!enabled) return;
-    touchStartX.current = e.touches[0].clientX;
-    touchEndX.current = null;
-    isScrolling.current = null;
+    const touch = e.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    isHorizontalSwipe.current = null;
   }, [enabled]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!enabled || touchStartX.current === null) return;
+    if (!enabled) return;
     
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    
-    // Determine scroll direction on first move
-    if (isScrolling.current === null) {
-      const deltaX = Math.abs(currentX - touchStartX.current);
-      const deltaY = Math.abs(currentY - (e.touches[0].clientY || 0));
-      // If vertical movement is greater, it's a scroll
-      isScrolling.current = deltaY > deltaX;
-    }
-    
-    // Only track horizontal if not scrolling
-    if (!isScrolling.current) {
-      touchEndX.current = currentX;
+    // Determine swipe direction on first significant move
+    if (isHorizontalSwipe.current === null) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartX.current);
+      const deltaY = Math.abs(touch.clientY - touchStartY.current);
+      
+      // Need at least 10px movement to determine direction
+      if (deltaX > 10 || deltaY > 10) {
+        isHorizontalSwipe.current = deltaX > deltaY * 1.5; // Bias toward horizontal
+      }
     }
   }, [enabled]);
 
-  const handleTouchEnd = useCallback(() => {
-    if (!enabled) return;
-    if (!isScrolling.current) {
-      handleSwipe();
-    }
-    touchStartX.current = null;
-    touchEndX.current = null;
-    isScrolling.current = null;
-  }, [enabled, handleSwipe]);
-
-  // Trackpad horizontal scroll (wheel event with deltaX)
-  const handleWheel = useCallback((e: WheelEvent) => {
-    if (!enabled) return;
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (!enabled || !isHorizontalSwipe.current) return;
     
-    // Only handle horizontal scroll (trackpad swipe)
-    // Ignore if shift is pressed (manual horizontal scroll)
-    if (e.shiftKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touchStartX.current - touch.clientX;
+    
+    if (Math.abs(deltaX) > threshold) {
+      if (deltaX > 0) {
+        onSwipeLeft?.();
+      } else {
+        onSwipeRight?.();
+      }
+    }
+    
+    isHorizontalSwipe.current = null;
+  }, [enabled, onSwipeLeft, onSwipeRight, threshold]);
+
+  const handleWheel = useCallback((e: WheelEvent) => {
+    if (!enabled || e.shiftKey) return;
+    
+    // Only handle horizontal trackpad gestures
+    const absX = Math.abs(e.deltaX);
+    const absY = Math.abs(e.deltaY);
+    if (absY > absX) return;
     
     const now = Date.now();
-    
-    // Reset accumulator if too much time passed
-    if (now - lastWheelTime.current > 200) {
+    if (now - lastWheelTime.current > 150) {
       accumulatedDeltaX.current = 0;
     }
     
     accumulatedDeltaX.current += e.deltaX;
     lastWheelTime.current = now;
     
-    // Trigger swipe when threshold is reached
-    if (Math.abs(accumulatedDeltaX.current) > threshold * 2) {
+    const swipeThreshold = threshold * 1.5;
+    if (Math.abs(accumulatedDeltaX.current) > swipeThreshold) {
       if (accumulatedDeltaX.current > 0) {
-        onSwipeLeft?.(); // Scroll right = go forward
+        onSwipeLeft?.();
       } else {
-        onSwipeRight?.(); // Scroll left = go back
+        onSwipeRight?.();
       }
       accumulatedDeltaX.current = 0;
     }
@@ -109,10 +94,13 @@ export function useSwipeNavigation({
   const bindToElement = useCallback((element: HTMLElement | null) => {
     if (!element || !enabled) return () => {};
     
-    element.addEventListener('touchstart', handleTouchStart, { passive: true });
-    element.addEventListener('touchmove', handleTouchMove, { passive: true });
-    element.addEventListener('touchend', handleTouchEnd, { passive: true });
-    element.addEventListener('wheel', handleWheel, { passive: true });
+    // Use passive listeners for better scroll performance
+    const options = { passive: true } as const;
+    
+    element.addEventListener('touchstart', handleTouchStart, options);
+    element.addEventListener('touchmove', handleTouchMove, options);
+    element.addEventListener('touchend', handleTouchEnd, options);
+    element.addEventListener('wheel', handleWheel, options);
     
     return () => {
       element.removeEventListener('touchstart', handleTouchStart);

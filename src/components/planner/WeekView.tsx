@@ -77,51 +77,50 @@ const DroppableDay = memo(({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-xl border border-border bg-card p-2 transition-all flex flex-col min-h-[160px]",
-        compact && "min-h-[120px]",
+        "rounded-xl border border-border bg-card p-2.5 sm:p-3 transition-all flex flex-col",
+        "min-h-[140px] sm:min-h-[160px]",
         today && "border-highlight ring-1 ring-highlight/30 bg-highlight/5",
         isOver && "ring-2 ring-highlight bg-highlight-muted",
         !isOver && !today && "hover:bg-highlight-muted/50 hover:border-highlight/30"
       )}
     >
-      {/* Day header */}
+      {/* Day header - touch-friendly */}
       <button
         onClick={() => onDayClick(date)}
         className={cn(
-          "w-full text-left hover:text-highlight transition-colors mb-2",
+          "w-full text-left hover:text-highlight transition-colors mb-2 touch-manipulation",
+          "min-h-[36px] flex items-start justify-between",
           today && "text-highlight"
         )}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[10px] text-foreground-muted uppercase tracking-wide">
-              {format(date, 'EEE')}
-            </div>
-            <div className={cn(
-              "text-lg font-semibold leading-tight",
-              today ? "text-highlight" : "text-foreground"
-            )}>
-              {format(date, 'd')}
-            </div>
+        <div>
+          <div className="text-[11px] sm:text-xs text-foreground-muted uppercase tracking-wide">
+            {format(date, 'EEE')}
           </div>
-          {/* Task count badge */}
-          {(tasks.length > 0 || multiDayTasks.length > 0) && (
-            <div className="flex flex-col items-end gap-0.5">
-              <span className={cn(
-                "text-[10px] px-1.5 py-0.5 rounded-full",
-                today ? "bg-highlight/20 text-highlight" : "bg-secondary text-foreground-muted"
-              )}>
-                {tasks.length + multiDayTasks.length} task{tasks.length + multiDayTasks.length !== 1 ? 's' : ''}
-              </span>
-              {timedTasks.length > 0 && (
-                <div className="flex items-center gap-1 text-[9px] text-foreground-muted">
-                  <Clock className="w-2.5 h-2.5 flex-shrink-0" />
-                  <span>{timedTasks.length} scheduled</span>
-                </div>
-              )}
-            </div>
-          )}
+          <div className={cn(
+            "text-xl sm:text-lg font-semibold leading-tight",
+            today ? "text-highlight" : "text-foreground"
+          )}>
+            {format(date, 'd')}
+          </div>
         </div>
+        {/* Task count badge */}
+        {(tasks.length > 0 || multiDayTasks.length > 0) && (
+          <div className="flex flex-col items-end gap-0.5">
+            <span className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-full",
+              today ? "bg-highlight/20 text-highlight" : "bg-secondary text-foreground-muted"
+            )}>
+              {tasks.length + multiDayTasks.length}
+            </span>
+            {timedTasks.length > 0 && (
+              <div className="flex items-center gap-1 text-[9px] text-foreground-muted">
+                <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                <span>{timedTasks.length}</span>
+              </div>
+            )}
+          </div>
+        )}
       </button>
 
       {/* Multi-day tasks indicator */}
@@ -137,11 +136,12 @@ const DroppableDay = memo(({
                       onEditTask(task);
                     }}
                     className={cn(
-                      "flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] cursor-pointer transition-colors",
-                      "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                      "flex items-center gap-1 px-1.5 py-1 rounded text-[10px] cursor-pointer transition-colors touch-manipulation",
+                      "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20",
+                      "min-h-[28px]"
                     )}
                   >
-                    <CalendarDays className="w-2.5 h-2.5 flex-shrink-0" />
+                    <CalendarDays className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{task.title}</span>
                   </div>
                 </TooltipTrigger>
@@ -156,7 +156,7 @@ const DroppableDay = memo(({
           ))}
           {multiDayTasks.length > 2 && (
             <span className="text-[9px] text-foreground-muted pl-1">
-              +{multiDayTasks.length - 2} more multi-day
+              +{multiDayTasks.length - 2} more
             </span>
           )}
         </div>
@@ -166,7 +166,7 @@ const DroppableDay = memo(({
         items={tasks.map(t => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-1 flex-1">
+        <div className="flex flex-col gap-1.5 flex-1">
           {tasks.slice(0, maxTasks).map(task => (
             <DraggableTask
               key={task.id}
@@ -182,23 +182,23 @@ const DroppableDay = memo(({
           {tasks.length > maxTasks && (
             <button 
               onClick={() => onDayClick(date)}
-              className="text-[10px] text-foreground-muted hover:text-primary pl-1 py-0.5"
+              className="text-[11px] text-foreground-muted hover:text-primary pl-1 py-1 touch-manipulation min-h-[28px]"
             >
               +{tasks.length - maxTasks} more
             </button>
           )}
         </div>
         
-        {/* Add task button */}
+        {/* Add task button - touch-friendly */}
         <div className="mt-auto pt-2 border-t border-border/50">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onOpenCreateDialog(date)}
-            className="w-full h-8 text-xs gap-1.5 text-foreground-muted hover:text-foreground border border-dashed border-border hover:border-primary/50"
+            className="w-full h-10 min-h-[40px] text-xs gap-1.5 text-foreground-muted hover:text-foreground border border-dashed border-border hover:border-primary/50 touch-manipulation"
           >
             <Plus className="w-3.5 h-3.5" />
-            Add task
+            <span>Add</span>
           </Button>
         </div>
       </SortableContext>
@@ -337,37 +337,24 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   return (
     <div className="animate-fade-in">
       {/* Header: Week info + navigation */}
-      <div className={cn(
-        "flex items-center justify-between gap-3",
-        isMobile ? "mb-4" : "mb-6"
-      )}>
+      <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
         {/* Left: Back + Week info */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={onBack} 
-            className={cn(
-              "flex-shrink-0 gap-1.5",
-              isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
-            )}
+            className="flex-shrink-0 h-11 w-11 min-h-[44px] min-w-[44px] p-0 touch-manipulation"
           >
             <ChevronLeft className="w-5 h-5" />
-            <span className="hidden lg:inline text-sm">Back</span>
           </Button>
           
           <div className="min-w-0 flex flex-col">
-            <h2 className={cn(
-              "font-semibold tracking-tight text-foreground truncate leading-tight",
-              isMobile ? "text-xl" : "text-2xl"
-            )}>
+            <h2 className="font-semibold tracking-tight text-foreground truncate leading-tight text-lg sm:text-2xl">
               Week of {format(weekStart, 'MMM d')}
             </h2>
             <div className="flex items-center gap-2">
-              <p className={cn(
-                "text-foreground-muted leading-tight",
-                isMobile ? "text-sm" : "text-base"
-              )}>
+              <p className="text-foreground-muted leading-tight text-sm">
                 {format(weekStart, 'yyyy')}
               </p>
               {weekTaskCount > 0 && (
@@ -379,16 +366,13 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
           </div>
         </div>
         
-        {/* Right: Nav buttons */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Right: Nav buttons - touch-friendly */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handlePrevWeek} 
-            className={cn(
-              "border-border/50",
-              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
-            )}
+            className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 border-border/50 touch-manipulation"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
@@ -396,10 +380,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             variant="outline" 
             size="sm" 
             onClick={handleNextWeek} 
-            className={cn(
-              "border-border/50",
-              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
-            )}
+            className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 border-border/50 touch-manipulation"
           >
             <ChevronRight className="w-5 h-5" />
           </Button>
@@ -408,7 +389,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
 
       {/* Responsive grid: 2 cols on mobile, 7 on desktop */}
       <div className={cn(
-        "grid gap-3",
+        "grid gap-2 sm:gap-3",
         isMobile ? "grid-cols-2" : "grid-cols-7"
       )}>
         {weekDays.map((day) => (
