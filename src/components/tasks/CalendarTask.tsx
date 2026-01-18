@@ -173,34 +173,47 @@ const CalendarTask = ({
   const handleResizeBottomStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setIsResizing(true);
     setResizeDirection('bottom');
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = height;
-    
+
+    let raf: number | null = null;
+    let pendingHeight = height;
+
+    const applyPreview = () => {
+      raf = null;
+      setResizePreviewHeight(pendingHeight);
+    };
+
     const handleMove = (ev: PointerEvent) => {
       const deltaY = ev.clientY - resizeStartY.current;
-      const newHeight = Math.max(22, resizeStartHeight.current + deltaY);
-      setResizePreviewHeight(newHeight);
+      pendingHeight = Math.max(22, resizeStartHeight.current + deltaY);
+      if (raf === null) raf = requestAnimationFrame(applyPreview);
     };
-    
+
     const handleUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
-      
+
+      if (raf !== null) {
+        cancelAnimationFrame(raf);
+        raf = null;
+      }
+
       const deltaY = ev.clientY - resizeStartY.current;
       const newEndTime = calculateNewEndTime(deltaY);
-      
+
       if (newEndTime && newEndTime !== task.end_time) {
         onUpdate({ end_time: newEndTime });
       }
-      
+
       setIsResizing(false);
       setResizeDirection(null);
       setResizePreviewHeight(null);
     };
-    
+
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewEndTime, task.end_time, onUpdate]);
@@ -209,37 +222,52 @@ const CalendarTask = ({
   const handleResizeTopStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setIsResizing(true);
     setResizeDirection('top');
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = height;
     resizeStartTop.current = 0; // Will be adjusted visually
-    
+
+    let raf: number | null = null;
+    let pendingHeight = height;
+    let pendingTop = 0;
+
+    const applyPreview = () => {
+      raf = null;
+      setResizePreviewHeight(pendingHeight);
+      setResizePreviewTop(pendingTop);
+    };
+
     const handleMove = (ev: PointerEvent) => {
       const deltaY = ev.clientY - resizeStartY.current;
-      const newHeight = Math.max(22, resizeStartHeight.current - deltaY);
-      setResizePreviewHeight(newHeight);
-      setResizePreviewTop(deltaY);
+      pendingHeight = Math.max(22, resizeStartHeight.current - deltaY);
+      pendingTop = deltaY;
+      if (raf === null) raf = requestAnimationFrame(applyPreview);
     };
-    
+
     const handleUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
-      
+
+      if (raf !== null) {
+        cancelAnimationFrame(raf);
+        raf = null;
+      }
+
       const deltaY = ev.clientY - resizeStartY.current;
       const newStartTime = calculateNewStartTime(deltaY);
-      
+
       if (newStartTime && newStartTime !== task.start_time) {
         onUpdate({ start_time: newStartTime });
       }
-      
+
       setIsResizing(false);
       setResizeDirection(null);
       setResizePreviewHeight(null);
       setResizePreviewTop(null);
     };
-    
+
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewStartTime, task.start_time, onUpdate]);

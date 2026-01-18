@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import * as React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -8,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronUp, ChevronDown } from 'lucide-react';
 
 interface TaskTimeSelectorProps {
   startTime: string;
@@ -31,276 +31,385 @@ const generateTimeOptions = (minHour: number, maxHour: number) => {
   return options;
 };
 
-const TaskTimeSelector = ({
-  startTime,
-  endTime,
-  onStartTimeChange,
-  onEndTimeChange,
-  minHour = 0,
-  maxHour = 23,
-}: TaskTimeSelectorProps) => {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState<'start' | 'end' | 'range' | null>(null);
-  const [dragOffset, setDragOffset] = useState(0);
+type DragType = 'start' | 'end' | 'range';
 
-  const displayMinHour = 6;
-  const displayMaxHour = 22;
-  const totalDisplayHours = displayMaxHour - displayMinHour;
+type DragState = {
+  type: DragType;
+  pointerId: number;
+  startHour: number;
+  endHour: number;
+  durationHours: number;
+  rangeOffsetHours: number; // pointer hour - startHour at drag start
+};
 
-  const timeOptions = generateTimeOptions(minHour, maxHour);
+const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>(
+  ({
+    startTime,
+    endTime,
+    onStartTimeChange,
+    onEndTimeChange,
+    minHour = 0,
+    maxHour = 23,
+  }, ref) => {
+    const trackRef = useRef<HTMLDivElement>(null);
 
-  const getHourFromTime = (time: string): number => {
-    if (!time || time === 'none') return displayMinHour;
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours + minutes / 60;
-  };
+    // Slider display window (UX choice)
+    const displayMinHour = 6;
+    const displayMaxHour = 22;
+    const totalDisplayHours = displayMaxHour - displayMinHour;
 
-  const formatHour = (hour: number): string => {
-    const h = Math.floor(hour);
-    const m = Math.round((hour - h) * 60);
-    const clampedM = Math.round(m / 15) * 15;
-    const finalM = clampedM === 60 ? 0 : clampedM;
-    const finalH = clampedM === 60 ? h + 1 : h;
-    return `${Math.max(0, Math.min(23, finalH)).toString().padStart(2, '0')}:${finalM.toString().padStart(2, '0')}`;
-  };
+    const timeOptions = useMemo(() => generateTimeOptions(minHour, maxHour), [minHour, maxHour]);
 
-  const formatDisplayTime = (time: string): string => {
-    if (!time || time === 'none') return '--';
-    try {
-      return format(new Date(`2000-01-01T${time}`), 'h:mm a');
-    } catch {
-      return time;
-    }
-  };
+    const [dragType, setDragType] = useState<DragType | null>(null);
 
-  const startHour = getHourFromTime(startTime);
-  const endHour = getHourFromTime(endTime);
-  const durationMinutes = Math.round((endHour - startHour) * 60);
+    // Local draft values prevent "shrinking" caused by intermediate parent state updates.
+    const [draftStartTime, setDraftStartTime] = useState(startTime);
+    const [draftEndTime, setDraftEndTime] = useState(endTime);
 
-  // Clamp display positions to slider bounds
-  const clampedStart = Math.max(displayMinHour, Math.min(displayMaxHour, startHour));
-  const clampedEnd = Math.max(displayMinHour, Math.min(displayMaxHour, endHour));
+    const dragStateRef = useRef<DragState | null>(null);
+    const rafRef = useRef<number | null>(null);
+    const pendingRef = useRef<{ start: string; end: string } | null>(null);
 
-  const startPercent = ((clampedStart - displayMinHour) / totalDisplayHours) * 100;
-  const endPercent = ((clampedEnd - displayMinHour) / totalDisplayHours) * 100;
-  const rangeWidth = Math.max(0, endPercent - startPercent);
+    useEffect(() => {
+      if (dragType) return;
+      setDraftStartTime(startTime);
+      setDraftEndTime(endTime);
+    }, [startTime, endTime, dragType]);
 
-  const getHourFromPosition = (clientX: number): number => {
-    if (!trackRef.current) return displayMinHour;
-    const rect = trackRef.current.getBoundingClientRect();
-    const percent = (clientX - rect.left) / rect.width;
-    const hour = displayMinHour + percent * totalDisplayHours;
-    // Snap to 15-minute increments
-    const snapped = Math.round(hour * 4) / 4;
-    return Math.max(displayMinHour, Math.min(displayMaxHour, snapped));
-  };
+    const getHourFromTime = (time: string): number => {
+      if (!time || time === 'none') return displayMinHour;
+      const [hours, minutes] = time.split(':').map(Number);
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) return displayMinHour;
+      return hours + minutes / 60;
+    };
 
-  const handlePointerDown = (type: 'start' | 'end' | 'range') => (e: React.PointerEvent) => {
-    e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    setIsDragging(type);
+    const clampHourToDay = (hour: number) => Math.max(minHour, Math.min(maxHour, hour));
 
-    if (type === 'range') {
+    const formatHour = (hour: number): string => {
+      const h = Math.floor(hour);
+      const m = Math.round((hour - h) * 60);
+      const clampedM = Math.round(m / 15) * 15;
+      const finalM = clampedM === 60 ? 0 : clampedM;
+      const finalH = clampedM === 60 ? h + 1 : h;
+
+      const clampedH = clampHourToDay(finalH);
+      return `${clampedH.toString().padStart(2, '0')}:${finalM.toString().padStart(2, '0')}`;
+    };
+
+    const formatDisplayTime = (time: string): string => {
+      if (!time || time === 'none') return '--';
+      try {
+        return format(new Date(`2000-01-01T${time}`), 'h:mm a');
+      } catch {
+        return time;
+      }
+    };
+
+    const effectiveStartHour = getHourFromTime(draftStartTime);
+    const effectiveEndHour = getHourFromTime(draftEndTime);
+    const durationMinutes = Math.max(0, Math.round((effectiveEndHour - effectiveStartHour) * 60));
+
+    // Clamp display positions to slider bounds
+    const clampedStart = Math.max(displayMinHour, Math.min(displayMaxHour, effectiveStartHour));
+    const clampedEnd = Math.max(displayMinHour, Math.min(displayMaxHour, effectiveEndHour));
+
+    const startPercent = ((clampedStart - displayMinHour) / totalDisplayHours) * 100;
+    const endPercent = ((clampedEnd - displayMinHour) / totalDisplayHours) * 100;
+    const rangeWidth = Math.max(0, endPercent - startPercent);
+
+    const getHourFromPosition = (clientX: number): number => {
+      if (!trackRef.current) return displayMinHour;
+      const rect = trackRef.current.getBoundingClientRect();
+      const percent = (clientX - rect.left) / rect.width;
+      const hour = displayMinHour + percent * totalDisplayHours;
+      // Snap to 15-minute increments
+      const snapped = Math.round(hour * 4) / 4;
+      return Math.max(displayMinHour, Math.min(displayMaxHour, snapped));
+    };
+
+    const applyPendingDraft = () => {
+      rafRef.current = null;
+      if (!pendingRef.current) return;
+      const next = pendingRef.current;
+      pendingRef.current = null;
+      setDraftStartTime(next.start);
+      setDraftEndTime(next.end);
+    };
+
+    const setDraftThrottled = (start: string, end: string) => {
+      pendingRef.current = { start, end };
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(applyPendingDraft);
+      }
+    };
+
+    const endDrag = () => {
+      setDragType(null);
+      dragStateRef.current = null;
+
+      // Commit final times to parent state
+      onStartTimeChange(draftStartTime);
+      onEndTimeChange(draftEndTime);
+
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      pendingRef.current = null;
+    };
+
+    const startDrag = (type: DragType) => (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const pointerId = e.pointerId;
+      const pointerHour = getHourFromPosition(e.clientX);
+
+      const startHour = getHourFromTime(draftStartTime);
+      const endHour = getHourFromTime(draftEndTime);
+      const durationHours = Math.max(0.25, endHour - startHour);
+
+      dragStateRef.current = {
+        type,
+        pointerId,
+        startHour,
+        endHour,
+        durationHours,
+        rangeOffsetHours: pointerHour - startHour,
+      };
+
+      setDragType(type);
+
+      const handleMove = (ev: PointerEvent) => {
+        const state = dragStateRef.current;
+        if (!state || state.pointerId !== pointerId) return;
+
+        const hour = getHourFromPosition(ev.clientX);
+
+        if (state.type === 'start') {
+          const newStart = Math.min(hour, state.endHour - 0.25);
+          const start = formatHour(newStart);
+          const end = formatHour(state.endHour);
+          setDraftThrottled(start, end);
+        } else if (state.type === 'end') {
+          const newEnd = Math.max(hour, state.startHour + 0.25);
+          const start = formatHour(state.startHour);
+          const end = formatHour(newEnd);
+          setDraftThrottled(start, end);
+        } else {
+          // range drag - keep duration constant
+          const duration = state.durationHours;
+          let newStart = hour - state.rangeOffsetHours;
+          let newEnd = newStart + duration;
+
+          if (newStart < displayMinHour) {
+            newStart = displayMinHour;
+            newEnd = displayMinHour + duration;
+          }
+          if (newEnd > displayMaxHour) {
+            newEnd = displayMaxHour;
+            newStart = displayMaxHour - duration;
+          }
+
+          setDraftThrottled(formatHour(newStart), formatHour(newEnd));
+        }
+      };
+
+      const handleUp = (ev: PointerEvent) => {
+        if (dragStateRef.current?.pointerId !== pointerId) return;
+        window.removeEventListener('pointermove', handleMove);
+        window.removeEventListener('pointerup', handleUp);
+        endDrag();
+      };
+
+      window.addEventListener('pointermove', handleMove);
+      window.addEventListener('pointerup', handleUp);
+    };
+
+    // Hour markers for display
+    const hourMarkers = useMemo(
+      () => Array.from({ length: totalDisplayHours + 1 }, (_, i) => displayMinHour + i),
+      [totalDisplayHours],
+    );
+
+    const formatDuration = (mins: number) => {
+      if (mins < 60) return `${mins} min`;
+      const hours = Math.floor(mins / 60);
+      const remainingMins = mins % 60;
+      if (remainingMins === 0) return `${hours}h`;
+      return `${hours}h ${remainingMins}m`;
+    };
+
+    const handleClickTrack = (e: React.MouseEvent) => {
+      if (dragType) return;
       const hour = getHourFromPosition(e.clientX);
-      setDragOffset(hour - startHour);
-    }
-  };
+      const startH = getHourFromTime(draftStartTime);
+      const endH = getHourFromTime(draftEndTime);
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
+      const distToStart = Math.abs(hour - startH);
+      const distToEnd = Math.abs(hour - endH);
 
-    const hour = getHourFromPosition(e.clientX);
-
-    if (isDragging === 'start') {
-      const newStart = Math.min(hour, endHour - 0.25);
-      onStartTimeChange(formatHour(newStart));
-    } else if (isDragging === 'end') {
-      const newEnd = Math.max(hour, startHour + 0.25);
-      onEndTimeChange(formatHour(newEnd));
-    } else if (isDragging === 'range') {
-      const duration = endHour - startHour;
-      let newStart = hour - dragOffset;
-      let newEnd = newStart + duration;
-
-      if (newStart < displayMinHour) {
-        newStart = displayMinHour;
-        newEnd = displayMinHour + duration;
+      if (distToStart < distToEnd) {
+        const newStart = Math.min(hour, endH - 0.25);
+        const nextStart = formatHour(newStart);
+        setDraftStartTime(nextStart);
+        onStartTimeChange(nextStart);
+      } else {
+        const newEnd = Math.max(hour, startH + 0.25);
+        const nextEnd = formatHour(newEnd);
+        setDraftEndTime(nextEnd);
+        onEndTimeChange(nextEnd);
       }
-      if (newEnd > displayMaxHour) {
-        newEnd = displayMaxHour;
-        newStart = displayMaxHour - duration;
-      }
+    };
 
-      onStartTimeChange(formatHour(newStart));
-      onEndTimeChange(formatHour(newEnd));
-    }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    setIsDragging(null);
-  };
-
-  // Hour markers for display
-  const hourMarkers = Array.from({ length: totalDisplayHours + 1 }, (_, i) => displayMinHour + i);
-
-  // Format duration display
-  const formatDuration = (mins: number) => {
-    if (mins < 60) return `${mins} min`;
-    const hours = Math.floor(mins / 60);
-    const remainingMins = mins % 60;
-    if (remainingMins === 0) return `${hours}h`;
-    return `${hours}h ${remainingMins}m`;
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Time display with clickable selectors */}
-      <div className="flex justify-between items-center">
-        <div className="text-center">
-          <div className="text-xs text-foreground-muted mb-1">Start</div>
-          <Select value={startTime} onValueChange={onStartTimeChange}>
-            <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-primary transition-colors focus:ring-0 focus:ring-offset-0">
-              <SelectValue>{formatDisplayTime(startTime)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              {timeOptions.map((time) => (
-                <SelectItem 
-                  key={time} 
-                  value={time}
-                  disabled={time >= endTime}
-                >
-                  {formatDisplayTime(time)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex-1 text-center">
-          <div className="text-xs text-foreground-muted mb-1">Duration</div>
-          <div className="text-sm font-medium text-foreground-muted">
-            {formatDuration(durationMinutes)}
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="text-xs text-foreground-muted mb-1">End</div>
-          <Select value={endTime} onValueChange={onEndTimeChange}>
-            <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-primary transition-colors focus:ring-0 focus:ring-offset-0">
-              <SelectValue>{formatDisplayTime(endTime)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              {timeOptions.map((time) => (
-                <SelectItem 
-                  key={time} 
-                  value={time}
-                  disabled={time <= startTime}
-                >
-                  {formatDisplayTime(time)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Slider track */}
-      <div className="relative pt-5 pb-2">
-        {/* Hour markers */}
-        <div className="absolute top-0 left-0 right-0 flex justify-between">
-          {hourMarkers.filter((_, i) => i % 2 === 0).map((hour) => (
-            <div
-              key={hour}
-              className="text-[10px] text-foreground-subtle"
-              style={{
-                position: 'absolute',
-                left: `${((hour - displayMinHour) / totalDisplayHours) * 100}%`,
-                transform: 'translateX(-50%)',
+    return (
+      <div ref={ref} className="space-y-4">
+        {/* Time display with clickable selectors */}
+        <div className="flex justify-between items-center">
+          <div className="text-center">
+            <div className="text-xs text-foreground-muted mb-1">Start</div>
+            <Select
+              value={draftStartTime}
+              onValueChange={(val) => {
+                setDraftStartTime(val);
+                onStartTimeChange(val);
               }}
             >
-              {format(new Date(2000, 0, 1, hour), 'ha')}
+              <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-primary transition-colors focus:ring-0 focus:ring-offset-0">
+                <SelectValue>{formatDisplayTime(draftStartTime)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                {timeOptions.map((time) => (
+                  <SelectItem key={time} value={time} disabled={time >= draftEndTime}>
+                    {formatDisplayTime(time)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1 text-center">
+            <div className="text-xs text-foreground-muted mb-1">Duration</div>
+            <div className="text-sm font-medium text-foreground-muted">{formatDuration(durationMinutes)}</div>
+          </div>
+
+          <div className="text-center">
+            <div className="text-xs text-foreground-muted mb-1">End</div>
+            <Select
+              value={draftEndTime}
+              onValueChange={(val) => {
+                setDraftEndTime(val);
+                onEndTimeChange(val);
+              }}
+            >
+              <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-primary transition-colors focus:ring-0 focus:ring-offset-0">
+                <SelectValue>{formatDisplayTime(draftEndTime)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                {timeOptions.map((time) => (
+                  <SelectItem key={time} value={time} disabled={time <= draftStartTime}>
+                    {formatDisplayTime(time)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Slider track */}
+        <div className="relative pt-5 pb-2">
+          {/* Hour markers */}
+          <div className="absolute top-0 left-0 right-0 flex justify-between">
+            {hourMarkers
+              .filter((_, i) => i % 2 === 0)
+              .map((hour) => (
+                <div
+                  key={hour}
+                  className="text-[10px] text-foreground-subtle"
+                  style={{
+                    position: 'absolute',
+                    left: `${((hour - displayMinHour) / totalDisplayHours) * 100}%`,
+                    transform: 'translateX(-50%)',
+                  }}
+                >
+                  {format(new Date(2000, 0, 1, hour), 'ha')}
+                </div>
+              ))}
+          </div>
+
+          {/* Track */}
+          <div
+            ref={trackRef}
+            className="relative h-9 bg-secondary/60 rounded-lg cursor-pointer touch-none"
+            onClick={handleClickTrack}
+          >
+            {/* Selected range */}
+            <div
+              className={cn(
+                'absolute top-0 bottom-0 bg-primary/25 rounded cursor-grab active:cursor-grabbing transition-colors touch-none',
+                dragType === 'range' && 'bg-primary/35'
+              )}
+              style={{
+                left: `${startPercent}%`,
+                width: `${rangeWidth}%`,
+              }}
+              onPointerDown={startDrag('range')}
+            />
+
+            {/* Start handle */}
+            <div
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-primary rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
+                dragType === 'start' && 'scale-110 shadow-lg'
+              )}
+              style={{ left: `calc(${startPercent}% - 8px)` }}
+              onPointerDown={startDrag('start')}
+            >
+              <div className="w-0.5 h-4 bg-primary-foreground/60 rounded-full" />
             </div>
+
+            {/* End handle */}
+            <div
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-primary rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
+                dragType === 'end' && 'scale-110 shadow-lg'
+              )}
+              style={{ left: `calc(${endPercent}% - 8px)` }}
+              onPointerDown={startDrag('end')}
+            >
+              <div className="w-0.5 h-4 bg-primary-foreground/60 rounded-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Quick duration buttons */}
+        <div className="flex gap-2 justify-center">
+          {[15, 30, 60, 120, 180].map((mins) => (
+            <button
+              key={mins}
+              onClick={() => {
+                const startH = getHourFromTime(draftStartTime);
+                const newEnd = startH + mins / 60;
+                if (newEnd <= displayMaxHour) {
+                  const nextEnd = formatHour(newEnd);
+                  setDraftEndTime(nextEnd);
+                  onEndTimeChange(nextEnd);
+                }
+              }}
+              className={cn(
+                'px-3 py-1.5 text-xs rounded-lg border border-border/60 hover:bg-secondary transition-colors',
+                durationMinutes === mins && 'bg-primary/15 border-primary/40 text-primary'
+              )}
+            >
+              {mins < 60 ? `${mins}m` : `${mins / 60}h`}
+            </button>
           ))}
         </div>
-
-        {/* Track */}
-        <div
-          ref={trackRef}
-          className="relative h-9 bg-secondary/60 rounded-lg cursor-pointer touch-none"
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onClick={(e) => {
-            if (isDragging) return;
-            const hour = getHourFromPosition(e.clientX);
-            const distToStart = Math.abs(hour - startHour);
-            const distToEnd = Math.abs(hour - endHour);
-            if (distToStart < distToEnd) {
-              onStartTimeChange(formatHour(Math.min(hour, endHour - 0.25)));
-            } else {
-              onEndTimeChange(formatHour(Math.max(hour, startHour + 0.25)));
-            }
-          }}
-        >
-          {/* Selected range */}
-          <div
-            className={cn(
-              'absolute top-0 bottom-0 bg-primary/25 rounded cursor-grab active:cursor-grabbing transition-colors touch-none',
-              isDragging === 'range' && 'bg-primary/35'
-            )}
-            style={{
-              left: `${startPercent}%`,
-              width: `${rangeWidth}%`,
-            }}
-            onPointerDown={handlePointerDown('range')}
-          />
-
-          {/* Start handle */}
-          <div
-            className={cn(
-              'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-primary rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
-              isDragging === 'start' && 'scale-110 shadow-lg'
-            )}
-            style={{ left: `calc(${startPercent}% - 8px)` }}
-            onPointerDown={handlePointerDown('start')}
-          >
-            <div className="w-0.5 h-4 bg-primary-foreground/60 rounded-full" />
-          </div>
-
-          {/* End handle */}
-          <div
-            className={cn(
-              'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-primary rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
-              isDragging === 'end' && 'scale-110 shadow-lg'
-            )}
-            style={{ left: `calc(${endPercent}% - 8px)` }}
-            onPointerDown={handlePointerDown('end')}
-          >
-            <div className="w-0.5 h-4 bg-primary-foreground/60 rounded-full" />
-          </div>
-        </div>
       </div>
+    );
+  },
+);
 
-      {/* Quick duration buttons */}
-      <div className="flex gap-2 justify-center">
-        {[15, 30, 60, 120, 180].map((mins) => (
-          <button
-            key={mins}
-            onClick={() => {
-              const newEnd = startHour + mins / 60;
-              if (newEnd <= 23) {
-                onEndTimeChange(formatHour(newEnd));
-              }
-            }}
-            className={cn(
-              'px-3 py-1.5 text-xs rounded-lg border border-border/60 hover:bg-secondary transition-colors',
-              durationMinutes === mins && 'bg-primary/15 border-primary/40 text-primary'
-            )}
-          >
-            {mins < 60 ? `${mins}m` : `${mins / 60}h`}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
+TaskTimeSelector.displayName = 'TaskTimeSelector';
 
 export default TaskTimeSelector;

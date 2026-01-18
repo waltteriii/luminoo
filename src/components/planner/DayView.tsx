@@ -3,7 +3,7 @@ import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { parseTimeToHours } from '@/lib/timeUtils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import CalendarTask from '@/components/tasks/CalendarTask';
@@ -126,6 +126,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   // For single tasks: width + left offset. For groups: just widths that sum to 100%
   const [taskWidths, setTaskWidths] = useState<Record<string, number>>({});
   const [taskLefts, setTaskLefts] = useState<Record<string, number>>({});
+
+  const canResetLayout = useMemo(
+    () => Object.keys(taskWidths).length > 0 || Object.keys(taskLefts).length > 0,
+    [taskWidths, taskLefts]
+  );
+
+  const handleResetLayout = useCallback(() => {
+    setTaskWidths({});
+    setTaskLefts({});
+  }, []);
 
   // Helper to get widths for a group - ensures they always sum to 100%
   const getGroupWidths = useCallback((group: Task[]): number[] => {
@@ -454,6 +464,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
           </div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResetLayout}
+            disabled={!canResetLayout}
+            className="min-w-[44px] min-h-[44px] p-0 sm:p-2"
+            title="Reset layout"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={handlePrevDay} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
             <ChevronLeft className="w-4 h-4" />
           </Button>
