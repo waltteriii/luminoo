@@ -70,11 +70,14 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
     const rafRef = useRef<number | null>(null);
     const pendingRef = useRef<{ start: string; end: string } | null>(null);
     const suppressClickRef = useRef(false);
+    // Track the latest draft values for endDrag since React state may be stale
+    const latestDraftRef = useRef({ start: startTime, end: endTime });
 
     useEffect(() => {
       if (dragType) return;
       setDraftStartTime(startTime);
       setDraftEndTime(endTime);
+      latestDraftRef.current = { start: startTime, end: endTime };
     }, [startTime, endTime, dragType]);
 
     const getHourFromTime = (time: string): number => {
@@ -135,10 +138,13 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       pendingRef.current = null;
       setDraftStartTime(next.start);
       setDraftEndTime(next.end);
+      latestDraftRef.current = { start: next.start, end: next.end };
     };
 
     const setDraftThrottled = (start: string, end: string) => {
       pendingRef.current = { start, end };
+      // Also update latestDraftRef immediately so endDrag always has latest values
+      latestDraftRef.current = { start, end };
       if (rafRef.current === null) {
         rafRef.current = requestAnimationFrame(applyPendingDraft);
       }
@@ -148,8 +154,8 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       setDragType(null);
       dragStateRef.current = null;
 
-      // Flush any pending RAF update so we commit the latest values
-      const final = pendingRef.current ?? { start: draftStartTime, end: draftEndTime };
+      // Use latestDraftRef which is always up-to-date (not React state which may be stale)
+      const final = pendingRef.current ?? latestDraftRef.current;
 
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
@@ -159,6 +165,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
 
       setDraftStartTime(final.start);
       setDraftEndTime(final.end);
+      latestDraftRef.current = { start: final.start, end: final.end };
 
       // Commit final times to parent state
       onStartTimeChange(final.start);
@@ -273,11 +280,13 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
         const newStart = Math.min(hour, endH - 0.25);
         const nextStart = formatHour(newStart);
         setDraftStartTime(nextStart);
+        latestDraftRef.current = { start: nextStart, end: latestDraftRef.current.end };
         onStartTimeChange(nextStart);
       } else {
         const newEnd = Math.max(hour, startH + 0.25);
         const nextEnd = formatHour(newEnd);
         setDraftEndTime(nextEnd);
+        latestDraftRef.current = { start: latestDraftRef.current.start, end: nextEnd };
         onEndTimeChange(nextEnd);
       }
     };
@@ -292,6 +301,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
               value={draftStartTime}
               onValueChange={(val) => {
                 setDraftStartTime(val);
+                latestDraftRef.current = { start: val, end: latestDraftRef.current.end };
                 onStartTimeChange(val);
               }}
             >
@@ -319,6 +329,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
               value={draftEndTime}
               onValueChange={(val) => {
                 setDraftEndTime(val);
+                latestDraftRef.current = { start: latestDraftRef.current.start, end: val };
                 onEndTimeChange(val);
               }}
             >
@@ -413,6 +424,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
                 if (newEnd <= displayMaxHour) {
                   const nextEnd = formatHour(newEnd);
                   setDraftEndTime(nextEnd);
+                  latestDraftRef.current = { start: latestDraftRef.current.start, end: nextEnd };
                   onEndTimeChange(nextEnd);
                 }
               }}

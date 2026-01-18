@@ -288,7 +288,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       setDragEndHour(clampedHour);
     };
 
-    const onUp = () => {
+    const onUp = async () => {
       window.removeEventListener('mousemove', onMove);
 
       if (!moved) {
@@ -301,13 +301,17 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       const rangeStart = Math.min(startHour, endHour);
       const rangeEnd = Math.max(startHour, endHour) + 1;
 
-      const timeRange = {
-        start: `${rangeStart.toString().padStart(2, '0')}:00`,
-        end: `${rangeEnd.toString().padStart(2, '0')}:00`,
-      };
+      const startTimeStr = `${rangeStart.toString().padStart(2, '0')}:00`;
+      const endTimeStr = `${rangeEnd.toString().padStart(2, '0')}:00`;
 
-      setCreateTimeRange(timeRange);
-      setShowCreateDialog(true);
+      // Create task immediately with default title (user can double-click to edit)
+      await addTask({
+        title: 'New Task',
+        energy_level: currentEnergy,
+        due_date: dateStr,
+        start_time: startTimeStr,
+        end_time: endTimeStr,
+      });
 
       setIsDraggingToCreate(false);
       setDragStartHour(null);
@@ -316,17 +320,19 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp, { once: true });
-  }, [isMobile, isDraggingToCreate]);
+  }, [isMobile, isDraggingToCreate, addTask, currentEnergy, dateStr]);
 
-  // Mobile: tap to add at hour
-  const handleTapToAdd = useCallback((hour: number) => {
+  // Mobile: tap to add at hour - create task immediately
+  const handleTapToAdd = useCallback(async (hour: number) => {
     if (!isMobile) return;
-    setCreateTimeRange({
-      start: `${hour.toString().padStart(2, '0')}:00`,
-      end: `${(hour + 1).toString().padStart(2, '0')}:00`,
+    await addTask({
+      title: 'New Task',
+      energy_level: currentEnergy,
+      due_date: dateStr,
+      start_time: `${hour.toString().padStart(2, '0')}:00`,
+      end_time: `${(hour + 1).toString().padStart(2, '0')}:00`,
     });
-    setShowCreateDialog(true);
-  }, [isMobile]);
+  }, [isMobile, addTask, currentEnergy, dateStr]);
 
   const handleQuickAdd = useCallback(async (task: {
     title: string;
