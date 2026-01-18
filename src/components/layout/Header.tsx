@@ -2,15 +2,7 @@ import { memo, useCallback, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  Squirrel, 
-  Menu, 
-  LogOut, 
-  User as UserIcon,
-  ChevronDown,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { Squirrel, Menu, LogOut, User as UserIcon, ChevronDown, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,12 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel } from '@/types';
 import EnergySelector from '@/components/planner/NewEnergySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HeaderProps {
   user: User;
@@ -87,7 +74,7 @@ const Header = memo(({
   return (
     <header className={cn(
       "border-b border-border bg-background-elevated flex items-center justify-between",
-      isMobile ? "h-[60px] px-3 gap-3" : "h-14 px-4 lg:px-6 gap-2"
+      "h-14 px-3 sm:px-4 lg:px-6 gap-2 sm:gap-3"
     )}>
       {/* Left section - hamburger + logo */}
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -98,23 +85,20 @@ const Header = memo(({
             e.stopPropagation();
             onToggleSidebar();
           }}
-          className={cn(
-            "text-foreground-muted hover:text-foreground",
-            isMobile ? "h-10 w-10" : "h-11 w-11"
-          )}
+          className="h-11 w-11 min-h-[44px] min-w-[44px] text-foreground-muted hover:text-foreground touch-manipulation"
         >
           <Menu className="w-5 h-5" />
         </Button>
         
-        {/* Logo - clickable to go home */}
+        {/* Logo - hidden on mobile for space */}
         {!isMobile && (
           <button 
             onClick={onLogoClick}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity touch-manipulation"
           >
             <div 
               className={cn(
-                "group w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer",
+                "group w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
                 highlightColor === 'blue' && "bg-blue-500",
                 highlightColor === 'purple' && "bg-purple-500",
                 highlightColor === 'green' && "bg-emerald-500",
@@ -127,7 +111,7 @@ const Header = memo(({
             >
               <Squirrel className="w-4 h-4 text-white group-hover:animate-squirrel-hello" />
             </div>
-            <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
+            <span className="font-medium text-foreground text-sm hidden lg:block">Luminoo</span>
           </button>
         )}
       </div>
@@ -147,20 +131,16 @@ const Header = memo(({
       </div>
 
       {/* Right section - theme toggle + avatar */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Theme Toggle */}
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         <ThemeToggle />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className={cn(
-                "flex items-center gap-2 text-foreground-muted hover:text-foreground px-2",
-                isMobile ? "h-10" : "h-10"
-              )}
+              className="flex items-center gap-2 text-foreground-muted hover:text-foreground h-11 px-2 min-h-[44px] touch-manipulation"
             >
-              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -169,21 +149,21 @@ const Header = memo(({
               </div>
               {!isMobile && (
                 <>
-                  <span className="text-sm max-w-[80px] truncate">{displayName}</span>
+                  <span className="text-sm max-w-[80px] truncate hidden sm:inline">{displayName}</span>
                   <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
                 </>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={onProfileClick} className="text-foreground-muted cursor-pointer min-h-[40px]">
+            <DropdownMenuItem onClick={onProfileClick} className="text-foreground-muted cursor-pointer min-h-[44px] touch-manipulation">
               <UserIcon className="w-4 h-4 mr-2" />
               Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={handleSignOut}
-              className="text-destructive focus:text-destructive min-h-[40px]"
+              className="text-destructive focus:text-destructive min-h-[44px] touch-manipulation"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign out
@@ -229,12 +209,12 @@ const ThemeToggle = memo(() => {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="h-9 w-9 text-foreground-muted hover:text-foreground"
+            className="h-11 w-11 min-h-[44px] min-w-[44px] text-foreground-muted hover:text-foreground touch-manipulation"
           >
             {theme === 'dark' ? (
-              <Sun className="w-4 h-4" />
+              <Sun className="w-5 h-5" />
             ) : (
-              <Moon className="w-4 h-4" />
+              <Moon className="w-5 h-5" />
             )}
           </Button>
         </TooltipTrigger>
