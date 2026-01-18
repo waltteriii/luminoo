@@ -327,9 +327,9 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
 
           {/* Task grid - responsive 1/2/3 columns */}
           <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-            {/* New task input - same width as task items */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 focus-within:bg-card transition-all min-h-[44px] group">
-              <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-primary flex-shrink-0 transition-colors" />
+            {/* New task input - uses highlight color from theme */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card/50 border border-border/50 hover:border-highlight/30 focus-within:border-highlight focus-within:ring-1 focus-within:ring-highlight/20 focus-within:bg-card transition-all min-h-[44px] group">
+              <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-highlight flex-shrink-0 transition-colors" />
               <input
                 ref={newTaskInputRef}
                 value={newTaskTitle}
@@ -363,7 +363,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
           {isOverflowing && (
             <button
               onClick={() => setExpanded(v => !v)}
-              className="w-full flex items-center justify-center gap-1 py-2 text-xs text-primary hover:text-primary/80 transition-colors"
+              className="w-full flex items-center justify-center gap-1 py-2 text-xs text-highlight hover:text-highlight/80 transition-colors"
             >
               {expanded ? (
                 <>
@@ -372,7 +372,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 </>
               ) : (
                 <>
-                  <span>+{hiddenCount} more</span>
+                  <span>+{hiddenCount} more · clean your inbox</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </>
               )}
