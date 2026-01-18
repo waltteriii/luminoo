@@ -149,7 +149,7 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared, isNew }: Dra
         onOpenChange={setEditDialogOpen}
         task={task}
         onSave={(_, updates) => onUpdate(updates)}
-        onDelete={onDelete ? () => onDelete(task.id) : undefined}
+        onDelete={onDelete ? () => onDelete() : undefined}
       />
     </>
   );
