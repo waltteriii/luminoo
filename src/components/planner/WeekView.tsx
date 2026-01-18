@@ -65,7 +65,8 @@ const DroppableDay = ({
       className={cn(
         "rounded-lg border border-border bg-card px-1.5 py-1 transition-all flex flex-col",
         today && "border-primary ring-1 ring-primary/20",
-        isOver && "ring-2 ring-primary bg-primary/5"
+        isOver && "ring-2 ring-highlight bg-highlight-muted",
+        !isOver && "hover:bg-highlight-muted/50 hover:border-highlight/30"
       )}
     >
       <button

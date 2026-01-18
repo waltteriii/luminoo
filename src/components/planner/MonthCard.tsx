@@ -42,7 +42,7 @@ const MonthCard = ({
       onClick={onClick}
       className={cn(
         "group relative rounded-xl border transition-all duration-200 cursor-pointer",
-        "bg-card hover:bg-card/80 border-border hover:border-border/80",
+        "bg-card hover:bg-highlight-muted/50 border-border hover:border-highlight/30",
         isCurrentMonth && "ring-1 ring-primary/50",
         isCompact && "p-4 min-h-[120px]",
         !isCompact && !isExpanded && "p-6 min-h-[200px]",

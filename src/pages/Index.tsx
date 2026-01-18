@@ -23,6 +23,7 @@ interface UserProfile {
   audienceDescription: string | null;
   avatarUrl: string | null;
   defaultView: ZoomLevel | null;
+  highlightColor: string | null;
 }
 
 const Index = () => {
@@ -75,7 +76,7 @@ const Index = () => {
   const loadUserProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('creator_type, platforms, niche_keywords, audience_description, avatar_url, default_view')
+      .select('creator_type, platforms, niche_keywords, audience_description, avatar_url, default_view, highlight_color')
       .eq('id', userId)
       .maybeSingle();
 
@@ -86,9 +87,15 @@ const Index = () => {
         nicheKeywords: data.niche_keywords || [],
         audienceDescription: data.audience_description,
         avatarUrl: data.avatar_url,
-        defaultView: ((data as any).default_view as ZoomLevel) || null
+        defaultView: ((data as any).default_view as ZoomLevel) || null,
+        highlightColor: ((data as any).highlight_color as string) || 'blue'
       };
       setUserProfile(profile);
+      
+      // Apply highlight color
+      if (profile.highlightColor) {
+        document.documentElement.setAttribute('data-highlight', profile.highlightColor);
+      }
       
       // Set the default view if configured
       if (profile.defaultView) {

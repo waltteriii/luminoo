@@ -274,6 +274,7 @@ export type Database = {
           default_view: string | null
           display_name: string | null
           email: string | null
+          highlight_color: string | null
           id: string
           niche_keywords: string[] | null
           onboarding_completed: boolean | null
@@ -290,6 +291,7 @@ export type Database = {
           default_view?: string | null
           display_name?: string | null
           email?: string | null
+          highlight_color?: string | null
           id: string
           niche_keywords?: string[] | null
           onboarding_completed?: boolean | null
@@ -306,6 +308,7 @@ export type Database = {
           default_view?: string | null
           display_name?: string | null
           email?: string | null
+          highlight_color?: string | null
           id?: string
           niche_keywords?: string[] | null
           onboarding_completed?: boolean | null
