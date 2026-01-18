@@ -9,17 +9,26 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
+  DragMoveEvent,
 } from '@dnd-kit/core';
 import { Task, EnergyLevel } from '@/types';
 import { parse, format, addMinutes } from 'date-fns';
 import { useTasksContext } from '@/contexts/TasksContext';
 import ScheduleConfirmDialog from '@/components/tasks/ScheduleConfirmDialog';
 
-interface DndContextValue {
-  activeTask: Task | null;
+interface DragOverInfo {
+  groupTasks: Task[];
+  targetColumnIndex: number;
+  groupTop: number;
+  groupHeight: number;
 }
 
-const DndProviderContext = createContext<DndContextValue>({ activeTask: null });
+interface DndContextValue {
+  activeTask: Task | null;
+  dragOverInfo: DragOverInfo | null;
+}
+
+const DndProviderContext = createContext<DndContextValue>({ activeTask: null, dragOverInfo: null });
 
 export const useDndContext = () => useContext(DndProviderContext);
 
@@ -31,6 +40,7 @@ interface DndProviderProps {
 const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
   const { updateTask } = useTasksContext();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [dragOverInfo, setDragOverInfo] = useState<DragOverInfo | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [taskToSchedule, setTaskToSchedule] = useState<Task | null>(null);
   const [targetDate, setTargetDate] = useState<Date | null>(null);
@@ -58,15 +68,79 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     }
   }, []);
 
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const { over } = event;
+    
+    // Check if hovering over a reorder drop zone
+    if (over && typeof over.id === 'string' && over.id.startsWith('reorder-zone-')) {
+      const data = over.data.current;
+      if (data?.type === 'reorder-zone') {
+        setDragOverInfo({
+          groupTasks: data.groupTasks,
+          targetColumnIndex: data.columnIndex,
+          groupTop: data.groupTop,
+          groupHeight: data.groupHeight,
+        });
+        return;
+      }
+    }
+    
+    setDragOverInfo(null);
+  }, []);
+
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
+    setDragOverInfo(null);
 
     if (!over) return;
 
     const activeData = active.data.current;
     const overData = over.data.current;
     const overId = over.id as string;
+
+    // Handle drop on reorder zone - reorder tasks within a group
+    if (overData?.type === 'reorder-zone') {
+      const task = activeData?.task as Task;
+      const groupTasks = overData.groupTasks as Task[];
+      const targetColumnIndex = overData.columnIndex as number;
+      
+      if (task && groupTasks) {
+        // Find current position of dragged task
+        const currentIndex = groupTasks.findIndex(t => t.id === task.id);
+        if (currentIndex === -1) return;
+        
+        // Calculate new position
+        let newIndex = targetColumnIndex;
+        if (targetColumnIndex > currentIndex) {
+          newIndex = targetColumnIndex - 1;
+        }
+        
+        if (newIndex === currentIndex) return;
+        
+        // Update display_order for all affected tasks
+        const updatePromises: Promise<unknown>[] = [];
+        groupTasks.forEach((t, idx) => {
+          let newOrder: number;
+          if (t.id === task.id) {
+            newOrder = newIndex * 10;
+          } else if (idx < currentIndex && idx >= newIndex) {
+            // Tasks that need to shift right
+            newOrder = (idx + 1) * 10;
+          } else if (idx > currentIndex && idx <= newIndex) {
+            // Tasks that need to shift left
+            newOrder = (idx - 1) * 10;
+          } else {
+            newOrder = idx * 10;
+          }
+          updatePromises.push(updateTask(t.id, { display_order: newOrder }));
+        });
+        
+        await Promise.all(updatePromises);
+        onTaskScheduled?.();
+        return;
+      }
+    }
 
     // Handle drop to memory panel
     if (overId === 'memory-panel' || overData?.type === 'memory') {
@@ -219,11 +293,12 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
   }, [onTaskScheduled, updateTask]);
 
   return (
-    <DndProviderContext.Provider value={{ activeTask }}>
+    <DndProviderContext.Provider value={{ activeTask, dragOverInfo }}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
       >
         {children}
