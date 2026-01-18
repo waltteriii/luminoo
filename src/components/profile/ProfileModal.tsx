@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal, Maximize2, Minimize2, Sun, Moon } from 'lucide-react';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal, Maximize2, Minimize2, Sun, Moon, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform, ZoomLevel } from '@/types';
@@ -15,7 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { useDensity, UIDensity } from '@/contexts/DensityContext';
+import { useDensity, UIDensity, ViewType } from '@/contexts/DensityContext';
+import { Switch } from '@/components/ui/switch';
 
 interface ProfileModalProps {
   open: boolean;
@@ -166,6 +167,67 @@ const DensitySection = () => {
               density === option.value ? "text-highlight-foreground/80" : "text-foreground-muted"
             )}>{option.description}</span>
           </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Tooltip settings section component
+const TooltipSettingsSection = () => {
+  const { tooltipSettings, setTooltipSettings } = useDensity();
+  
+  const viewOptions: { view: ViewType; label: string; icon: React.ReactNode }[] = [
+    { view: 'year', label: 'Year View', icon: <LayoutGrid className="w-4 h-4" /> },
+    { view: 'month', label: 'Month View', icon: <Calendar className="w-4 h-4" /> },
+    { view: 'week', label: 'Week View', icon: <CalendarDays className="w-4 h-4" /> },
+    { view: 'day', label: 'Day View', icon: <Clock className="w-4 h-4" /> },
+  ];
+  
+  const handleToggle = (view: ViewType) => {
+    setTooltipSettings({
+      ...tooltipSettings,
+      [view]: !tooltipSettings[view],
+    });
+  };
+  
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <MessageSquare className="w-3.5 h-3.5 text-highlight" />
+        <Label className="text-xs font-medium">Task Hover Tooltips</Label>
+      </div>
+      <p className="text-xs text-foreground-muted">
+        Choose which calendar views show detailed tooltips when hovering over tasks
+      </p>
+      <div className="space-y-2">
+        {viewOptions.map(option => (
+          <div
+            key={option.view}
+            className={cn(
+              "flex items-center justify-between p-3 rounded-lg border transition-all",
+              tooltipSettings[option.view]
+                ? "border-highlight/50 bg-highlight-muted/30"
+                : "border-border"
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className={cn(
+                "w-7 h-7 rounded-md flex items-center justify-center",
+                tooltipSettings[option.view] ? "bg-highlight/20 text-highlight-foreground" : "bg-secondary text-foreground-muted"
+              )}>
+                {option.icon}
+              </span>
+              <span className={cn(
+                "text-sm font-medium",
+                tooltipSettings[option.view] ? "text-foreground" : "text-foreground-muted"
+              )}>{option.label}</span>
+            </div>
+            <Switch
+              checked={tooltipSettings[option.view]}
+              onCheckedChange={() => handleToggle(option.view)}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -864,6 +926,11 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
 
                 {/* UI Density */}
                 <DensitySection />
+
+                <Separator className="my-1" />
+
+                {/* Task Hover Tooltips */}
+                <TooltipSettingsSection />
 
                 <Separator className="my-1" />
 

@@ -9,6 +9,7 @@ import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDensity } from '@/contexts/DensityContext';
 import {
   Tooltip,
   TooltipContent,
