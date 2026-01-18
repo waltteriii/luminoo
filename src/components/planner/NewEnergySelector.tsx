@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel } from '@/types';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface EnergySelectorProps {
   value: EnergyLevel;
@@ -20,14 +22,14 @@ interface EnergySelectorProps {
   onBrainDump?: () => void;
 }
 
-const energyOptions: { value: EnergyLevel; label: string; description: string }[] = [
-  { value: 'high', label: 'High Focus', description: 'Deep work, complex tasks' },
-  { value: 'medium', label: 'Steady', description: 'Regular tasks, creative work' },
-  { value: 'low', label: 'Low Energy', description: 'Routine tasks, admin' },
-  { value: 'recovery', label: 'Recovery', description: 'Rest, reflection' },
+const energyOptions: { value: EnergyLevel; label: string; shortLabel: string; description: string }[] = [
+  { value: 'high', label: 'High Focus', shortLabel: 'High', description: 'Deep work, complex tasks' },
+  { value: 'medium', label: 'Steady', shortLabel: 'Med', description: 'Regular tasks, creative work' },
+  { value: 'low', label: 'Low Energy', shortLabel: 'Low', description: 'Routine tasks, admin' },
+  { value: 'recovery', label: 'Recovery', shortLabel: 'Rest', description: 'Rest, reflection' },
 ];
 
-const EnergySelector = ({ 
+const EnergySelector = memo(({ 
   value, 
   onChange, 
   onFilterClick, 
@@ -37,6 +39,8 @@ const EnergySelector = ({
   onAddTask,
   onBrainDump
 }: EnergySelectorProps) => {
+  const isMobile = useIsMobile();
+
   const handleClick = (energy: EnergyLevel) => {
     if (onFilterClick) {
       onFilterClick(energy);
@@ -46,7 +50,6 @@ const EnergySelector = ({
   };
 
   const handleDoubleClick = (energy: EnergyLevel) => {
-    // Double-click shows only this energy level
     if (onViewInbox) {
       onViewInbox(energy);
     } else {
@@ -64,15 +67,15 @@ const EnergySelector = ({
 
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {/* Quick action buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-foreground-muted hover:text-foreground hover:bg-primary/10"
+                className="h-8 w-8 sm:h-8 sm:w-8 text-foreground-muted hover:text-foreground hover:bg-primary/10"
                 onClick={onAddTask}
               >
                 <Plus className="w-4 h-4" />
@@ -88,7 +91,7 @@ const EnergySelector = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-foreground-muted hover:text-foreground hover:bg-primary/10"
+                className="h-8 w-8 sm:h-8 sm:w-8 text-foreground-muted hover:text-foreground hover:bg-primary/10"
                 onClick={onBrainDump}
               >
                 <Sparkles className="w-4 h-4" />
@@ -100,18 +103,18 @@ const EnergySelector = ({
           </Tooltip>
         </div>
 
-        <div className="w-px h-6 bg-border" />
+        <div className="w-px h-6 bg-border hidden sm:block" />
 
         {/* Energy filter buttons */}
         <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5">
-          {/* Show All button */}
+          {/* Show All button - hidden on mobile, shows just "All" */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleShowAll}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200",
-                  "text-sm font-medium",
+                  "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-md transition-all duration-200",
+                  "text-xs sm:text-sm font-medium",
                   showAllActive
                     ? "bg-background text-foreground shadow-sm"
                     : "text-foreground-muted hover:text-foreground hover:bg-background/50"
@@ -136,8 +139,8 @@ const EnergySelector = ({
                     onClick={() => handleClick(option.value)}
                     onDoubleClick={() => handleDoubleClick(option.value)}
                     className={cn(
-                      "relative flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200",
-                      "text-sm font-medium",
+                      "relative flex items-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-1.5 rounded-md transition-all duration-200",
+                      "text-xs sm:text-sm font-medium min-w-[32px] sm:min-w-0 justify-center sm:justify-start",
                       isOnlyActive
                         ? "bg-background text-foreground shadow-sm"
                         : isFiltered
@@ -147,7 +150,7 @@ const EnergySelector = ({
                   >
                     <span
                       className={cn(
-                        "w-2.5 h-2.5 rounded-full transition-all",
+                        "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all flex-shrink-0",
                         isFiltered && "ring-2 ring-offset-1 ring-offset-secondary",
                         option.value === 'high' && "bg-energy-high",
                         option.value === 'medium' && "bg-energy-medium",
@@ -159,7 +162,9 @@ const EnergySelector = ({
                         option.value === 'recovery' && isFiltered && "ring-energy-recovery/50"
                       )}
                     />
+                    {/* Show short labels on small screens, full labels on larger */}
                     <span className="hidden sm:inline">{option.label}</span>
+                    <span className="sm:hidden text-[10px]">{isMobile ? '' : option.shortLabel}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
@@ -173,6 +178,8 @@ const EnergySelector = ({
       </div>
     </TooltipProvider>
   );
-};
+});
+
+EnergySelector.displayName = 'EnergySelector';
 
 export default EnergySelector;

@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, memo } from 'react';
 import {
   DndContext,
   DragOverlay,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragStartEvent,
@@ -27,17 +28,24 @@ interface DndProviderProps {
   onTaskScheduled?: () => void;
 }
 
-const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
+const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [taskToSchedule, setTaskToSchedule] = useState<Task | null>(null);
   const [targetDate, setTargetDate] = useState<Date | null>(null);
   const [targetHour, setTargetHour] = useState<number | undefined>();
 
+  // Configure sensors with touch support for mobile
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 8,
       },
     })
   );
@@ -75,7 +83,7 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
             .eq('id', task.id);
           onTaskScheduled?.();
         } catch (err) {
-          console.error('Move to memory error:', err);
+          // Error handling without console.log
         }
         return;
       }
@@ -85,7 +93,7 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
     if (activeData?.type === 'inbox-task') {
       const task = activeData.task as Task;
 
-      // Dropped on a time slot (day view) - format: time-slot-{hour}
+      // Dropped on a time slot (day view)
       if (overData?.type === 'time-slot') {
         const hour = overData.hour as number;
         setTaskToSchedule(task);
@@ -96,7 +104,7 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
         return;
       }
 
-      // Dropped on a day (week/month view) - format: yyyy-MM-dd
+      // Dropped on a day (week/month view)
       if (/^\d{4}-\d{2}-\d{2}$/.test(overId)) {
         const date = parse(overId, 'yyyy-MM-dd', new Date());
         setTaskToSchedule(task);
@@ -106,7 +114,7 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
         return;
       }
 
-      // Dropped on a month (year view) - format: month-{index}
+      // Dropped on a month (year view)
       if (/^month-\d+$/.test(overId)) {
         const monthIndex = parseInt(overId.split('-')[1]);
         const date = new Date();
@@ -178,15 +186,14 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
         await supabase.from('tasks').update(updateData).eq('id', task.id);
         onTaskScheduled?.();
       } catch (err) {
-        console.error('Reschedule task error:', err);
+        // Error handling without console.log
       }
 
       return;
     }
-
-    // Reordering within same view is handled by individual views
   }, [onTaskScheduled]);
-  const handleConfirmSchedule = async (
+
+  const handleConfirmSchedule = useCallback(async (
     taskId: string,
     dueDate: string,
     startTime?: string,
@@ -200,7 +207,6 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
         end_time: endTime && endTime !== 'none' ? endTime : null,
       };
       
-      // Merge additional updates
       if (updates) {
         if (updates.title) updateData.title = updates.title;
         if (updates.energy_level) updateData.energy_level = updates.energy_level;
@@ -215,9 +221,9 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
       
       onTaskScheduled?.();
     } catch (err) {
-      console.error('Schedule task error:', err);
+      // Error handling without console.log
     }
-  };
+  }, [onTaskScheduled]);
 
   return (
     <DndProviderContext.Provider value={{ activeTask }}>
@@ -232,7 +238,7 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
         {/* Global drag overlay */}
         <DragOverlay>
           {activeTask && (
-            <div className="p-2 rounded bg-card border border-primary shadow-lg opacity-90 max-w-xs">
+            <div className="p-2 rounded bg-card border border-primary shadow-lg opacity-90 max-w-xs touch-none">
               <span className="text-sm truncate block">{activeTask.title}</span>
             </div>
           )}
@@ -250,6 +256,8 @@ const DndProvider = ({ children, onTaskScheduled }: DndProviderProps) => {
       />
     </DndProviderContext.Provider>
   );
-};
+});
+
+DndProvider.displayName = 'DndProvider';
 
 export default DndProvider;

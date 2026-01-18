@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { format, addDays } from 'date-fns';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import EnergyPill from '@/components/shared/EnergyPill';
 import {
   Select,
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface InboxTaskItemProps {
   task: Task;
@@ -41,7 +42,7 @@ const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
   { value: 'recovery', label: 'Recovery' },
 ];
 
-const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDelete }: InboxTaskItemProps) => {
+const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, onDelete }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -49,6 +50,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const {
     attributes,
@@ -73,7 +75,6 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
-      // If we have a click position, set the cursor there instead of selecting all
       if (clickPosition !== null) {
         inputRef.current.setSelectionRange(clickPosition, clickPosition);
         setClickPosition(null);
@@ -81,14 +82,11 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
     }
   }, [isEditing, clickPosition]);
 
-  const handleDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLSpanElement>) => {
     e.stopPropagation();
     
-    // Get the click position relative to the text
     const target = e.currentTarget;
     const text = task.title;
-    
-    // Calculate approximate character position based on click
     const rect = target.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const charWidth = rect.width / text.length;
@@ -98,39 +96,39 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
     setEditTitle(task.title);
     setClickPosition(clampedPosition);
     setIsEditing(true);
-  };
+  }, [task.title]);
 
-  const handleSaveTitle = () => {
+  const handleSaveTitle = useCallback(() => {
     const trimmed = editTitle.trim();
     if (trimmed && trimmed !== task.title && onTitleChange) {
       onTitleChange(task.id, trimmed);
     }
     setIsEditing(false);
-  };
+  }, [editTitle, task.id, task.title, onTitleChange]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditTitle(task.title);
     setIsEditing(false);
-  };
+  }, [task.title]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSaveTitle();
     } else if (e.key === 'Escape') {
       handleCancelEdit();
     }
-  };
+  }, [handleSaveTitle, handleCancelEdit]);
 
-  const handleQuickSchedule = (daysFromNow: number) => {
+  const handleQuickSchedule = useCallback((daysFromNow: number) => {
     const date = addDays(new Date(), daysFromNow);
     onSchedule(task.id, format(date, 'yyyy-MM-dd'));
-  };
+  }, [task.id, onSchedule]);
 
-  const handleDateSelect = (date: Date | undefined) => {
+  const handleDateSelect = useCallback((date: Date | undefined) => {
     setSelectedDate(date);
-  };
+  }, []);
 
-  const handleConfirmSchedule = () => {
+  const handleConfirmSchedule = useCallback(() => {
     if (selectedDate) {
       onSchedule(
         task.id,
@@ -143,9 +141,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
       setSelectedStartTime('');
       setSelectedEndTime('');
     }
-  };
-
-  
+  }, [selectedDate, selectedStartTime, selectedEndTime, task.id, onSchedule]);
 
   return (
     <div
@@ -154,11 +150,12 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
       {...attributes}
       {...listeners}
       className={cn(
-        "group flex items-center gap-2 p-2 rounded bg-card border border-border transition-all cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-70 shadow-lg ring-2 ring-primary"
+        "group flex items-center gap-2 p-2 rounded bg-card border border-border transition-all touch-none",
+        isDragging && "opacity-70 shadow-lg ring-2 ring-primary",
+        !isDragging && "cursor-grab active:cursor-grabbing"
       )}
     >
-      {/* Drag handle icon - visual indicator */}
+      {/* Drag handle */}
       <GripVertical className="w-4 h-4 text-foreground-muted flex-shrink-0" />
 
       {/* Task title and energy */}
@@ -177,24 +174,24 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-8 w-8 p-0"
               onClick={(e) => {
                 e.stopPropagation();
                 handleSaveTitle();
               }}
             >
-              <Check className="w-3 h-3 text-primary" />
+              <Check className="w-4 h-4 text-primary" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-8 w-8 p-0"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCancelEdit();
               }}
             >
-              <X className="w-3 h-3 text-foreground-muted" />
+              <X className="w-4 h-4 text-foreground-muted" />
             </Button>
           </div>
         ) : (
@@ -207,11 +204,11 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
           </span>
         )}
 
-        {/* Clickable energy pill to change energy */}
+        {/* Energy pill */}
         {!isEditing && (
           <Popover>
             <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <button className="cursor-pointer hover:opacity-80">
+              <button className="cursor-pointer hover:opacity-80 min-w-[44px] min-h-[44px] flex items-center justify-center -m-2">
                 <EnergyPill energy={task.energy_level} />
               </button>
             </PopoverTrigger>
@@ -224,7 +221,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
                     onEnergyChange?.(task.id, option.value);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-secondary transition-colors",
+                    "w-full flex items-center gap-2 px-2 py-2 text-xs rounded hover:bg-secondary transition-colors min-h-[44px]",
                     task.energy_level === option.value && "bg-secondary"
                   )}
                 >
@@ -244,19 +241,22 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
           </Popover>
         )}
 
-        {task.is_shared && <Users className="w-3 h-3 text-primary" />}
+        {task.is_shared && <Users className="w-3 h-3 text-primary flex-shrink-0" />}
       </div>
 
-      {/* Quick schedule buttons */}
+      {/* Action buttons - always visible on mobile */}
       {!isEditing && (
         <div
-          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={cn(
+            "flex items-center gap-1 transition-opacity",
+            isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
           onClick={(e) => e.stopPropagation()}
         >
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-xs"
+            className="h-8 px-2 text-xs min-w-[44px]"
             onClick={(e) => {
               e.stopPropagation();
               handleQuickSchedule(0);
@@ -264,17 +264,19 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
           >
             Today
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickSchedule(1);
-            }}
-          >
-            Tomorrow
-          </Button>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickSchedule(1);
+              }}
+            >
+              Tomorrow
+            </Button>
+          )}
 
           {/* Full date/time picker */}
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -282,10 +284,10 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0"
+                className="h-8 w-8 p-0 min-w-[44px] min-h-[44px]"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Calendar className="w-3 h-3" />
+                <Calendar className="w-4 h-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
@@ -304,7 +306,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
                       Start
                     </label>
                     <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-xs">
                         <SelectValue placeholder="Start time" />
                       </SelectTrigger>
                       <SelectContent className="max-h-48">
@@ -320,7 +322,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
                   <div className="flex-1">
                     <label className="text-xs text-foreground-muted mb-1 block">End</label>
                     <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-xs">
                         <SelectValue placeholder="End time" />
                       </SelectTrigger>
                       <SelectContent className="max-h-48">
@@ -337,7 +339,7 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
                 <Button
                   onClick={handleConfirmSchedule}
                   disabled={!selectedDate}
-                  className="w-full"
+                  className="w-full min-h-[44px]"
                   size="sm"
                 >
                   Schedule {selectedDate && `for ${format(selectedDate, 'MMM d')}`}
@@ -347,26 +349,27 @@ const InboxTaskItem = ({ task, onSchedule, onEnergyChange, onTitleChange, onDele
             </PopoverContent>
           </Popover>
 
-          {/* Delete button - with more margin for easier access */}
+          {/* Delete button */}
           {onDelete && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 ml-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="h-8 w-8 p-0 min-w-[44px] min-h-[44px] text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(task.id);
               }}
               title="Delete task"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
             </Button>
           )}
         </div>
       )}
     </div>
   );
-};
+});
+
+InboxTaskItem.displayName = 'InboxTaskItem';
 
 export default InboxTaskItem;
-
