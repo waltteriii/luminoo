@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { GripVertical, Check, MoreHorizontal, Pencil, Trash2, Users, MapPin, Clock } from 'lucide-react';
+import { Check, MoreHorizontal, Pencil, Trash2, Users, MapPin, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -120,7 +120,8 @@ const DraggableTask = ({
     onUpdate({ energy_level: energy });
   };
 
-  const dragProps = enableFullDrag && !isEditing ? { ...attributes, ...listeners } : {};
+  // Always make full card draggable in compact mode (week view)
+  const dragProps = (enableFullDrag || compact) && !isEditing ? { ...attributes, ...listeners } : {};
 
   if (compact) {
     return (
@@ -129,23 +130,14 @@ const DraggableTask = ({
         style={style}
         {...dragProps}
         className={cn(
-          'group flex items-center gap-0.5 pl-1.5 pr-1 py-0.5 rounded text-xs bg-secondary border-l-2 h-full',
+          'group flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs bg-secondary border-l-2 h-full',
           energyColors[task.energy_level],
           isDragging && 'opacity-50 shadow-lg',
           task.completed && 'opacity-60',
-          enableFullDrag && !isEditing && 'cursor-grab active:cursor-grabbing'
+          !isEditing && 'cursor-grab active:cursor-grabbing'
         )}
-        onDoubleClick={disableDoubleClickEdit ? undefined : handleDoubleClick}
+        onDoubleClick={handleDoubleClick}
       >
-        {!enableFullDrag && (
-          <button
-            {...attributes}
-            {...listeners}
-            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing flex-shrink-0 -ml-0.5"
-          >
-            <GripVertical className="w-2.5 h-2.5 text-foreground-muted" />
-          </button>
-        )}
 
         <div className="flex-1 min-w-0 flex flex-col">
           {isEditing ? (
@@ -239,15 +231,6 @@ const DraggableTask = ({
         task.completed && 'opacity-60'
       )}
     >
-      {/* Drag handle */}
-      <button
-        {...attributes}
-        {...listeners}
-        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
-      >
-        <GripVertical className="w-4 h-4 text-foreground-muted" />
-      </button>
-
       {/* Checkbox */}
       <button
         onClick={handleToggleComplete}

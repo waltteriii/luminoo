@@ -80,12 +80,21 @@ const CalendarTask = ({
   const [resizePreviewHeight, setResizePreviewHeight] = useState<number | null>(null);
   const [resizePreviewTop, setResizePreviewTop] = useState<number | null>(null);
   const [resizePreviewWidth, setResizePreviewWidth] = useState<number | null>(null);
+  
+  // Inline editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editDescription, setEditDescription] = useState(task.description || '');
+  
   const resizeStartY = useRef<number>(0);
   const resizeStartX = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
   const resizeStartTop = useRef<number>(0);
   const resizeStartWidth = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     attributes,
@@ -96,7 +105,7 @@ const CalendarTask = ({
   } = useDraggable({
     id: task.id,
     data: { type: 'calendar-task', task },
-    disabled: isResizing,
+    disabled: isResizing || isEditingTitle || isEditingDescription,
   });
 
   const style = transform
@@ -424,18 +433,75 @@ const CalendarTask = ({
   // Calculate max lines for title based on height
   const titleMaxLines = isExtraLarge ? 3 : isLarge ? 2 : 1;
 
-  // Handle double-click to open edit dialog
+  // Handle double-click to open edit dialog (for very small tasks or fallback)
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setEditDialogOpen(true);
-  }, []);
+    // For very small tasks, open dialog instead of inline edit
+    if (isCompact) {
+      setEditDialogOpen(true);
+    }
+  }, [isCompact]);
+
+  // Handle inline title editing
+  const handleTitleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCompact) {
+      setEditTitle(task.title);
+      setIsEditingTitle(true);
+      setTimeout(() => titleInputRef.current?.focus(), 0);
+    }
+  }, [task.title, isCompact]);
+
+  const handleTitleSave = useCallback(() => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== task.title) {
+      onUpdate({ title: trimmed });
+    }
+    setIsEditingTitle(false);
+  }, [editTitle, task.title, onUpdate]);
+
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleTitleSave();
+    } else if (e.key === 'Escape') {
+      setEditTitle(task.title);
+      setIsEditingTitle(false);
+    }
+  }, [handleTitleSave, task.title]);
+
+  // Handle inline description editing
+  const handleDescriptionClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditDescription(task.description || '');
+    setIsEditingDescription(true);
+    setTimeout(() => descriptionInputRef.current?.focus(), 0);
+  }, [task.description]);
+
+  const handleDescriptionSave = useCallback(() => {
+    const trimmed = editDescription.trim();
+    if (trimmed !== (task.description || '')) {
+      onUpdate({ description: trimmed || null });
+    }
+    setIsEditingDescription(false);
+  }, [editDescription, task.description, onUpdate]);
+
+  const handleDescriptionKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setEditDescription(task.description || '');
+      setIsEditingDescription(false);
+    }
+    // Allow Enter for new lines in textarea
+  }, [task.description]);
 
   // Calculate display width
   const displayWidth = resizePreviewWidth ?? width;
   // Can resize horizontally if we have split-pane handlers OR legacy handler
   const canResizeHorizontallyLeft = canResizeLeft || !!onWidthChange;
   const canResizeHorizontallyRight = canResizeRight || !!onWidthChange;
+  
+  // For small tasks, show edit button always
+  const isVerySmall = displayHeight < 32;
 
   return (
     <>
@@ -520,27 +586,45 @@ const CalendarTask = ({
                   task.completed && 'line-through opacity-70'
                 )}
               >
-                {/* Title */}
-                <div
-                  className={cn(
-                    'font-medium leading-tight',
-                    isCompact ? 'text-[11px]' : 'text-[13px]',
-                    allowTitleWrap 
-                      ? `line-clamp-${titleMaxLines}` 
-                      : 'truncate'
-                  )}
-                  style={allowTitleWrap ? { 
-                    display: '-webkit-box',
-                    WebkitLineClamp: titleMaxLines,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
-                  } : undefined}
-                >
-                  {task.title}
-                </div>
+                {/* Title - click to edit inline (except for compact/small tasks) */}
+                {isEditingTitle ? (
+                  <input
+                    ref={titleInputRef}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={handleTitleKeyDown}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="bg-transparent border-none outline-none text-[13px] font-medium leading-tight w-full p-0 focus:ring-0"
+                    autoFocus
+                  />
+                ) : (
+                  <div
+                    onClick={!isCompact ? handleTitleClick : undefined}
+                    className={cn(
+                      'font-medium leading-tight',
+                      isCompact ? 'text-[11px]' : 'text-[13px]',
+                      !isCompact && 'cursor-text hover:bg-foreground/5 rounded px-0.5 -mx-0.5',
+                      allowTitleWrap 
+                        ? `line-clamp-${titleMaxLines}` 
+                        : 'truncate'
+                    )}
+                    style={allowTitleWrap ? { 
+                      display: '-webkit-box',
+                      WebkitLineClamp: titleMaxLines,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    } : undefined}
+                    title={isCompact ? "Double-click to edit" : "Click to edit"}
+                  >
+                    {task.title}
+                  </div>
+                )}
 
                 {/* Time range - subtle, below title */}
-                {canShowTime && showTimeRange && task.start_time && (
+                {canShowTime && showTimeRange && task.start_time && !isEditingTitle && (
                   <div className={cn(
                     'text-[10px] font-medium tabular-nums opacity-60 mt-0.5',
                     isCompact && 'hidden'
@@ -549,11 +633,39 @@ const CalendarTask = ({
                   </div>
                 )}
 
-                {/* Description - muted, spaced */}
+                {/* Description - click to edit inline, expands based on height */}
                 {showDescription && (
-                  <div className="mt-2 text-[11px] opacity-50 line-clamp-3 leading-relaxed">
-                    {task.description}
-                  </div>
+                  isEditingDescription ? (
+                    <textarea
+                      ref={descriptionInputRef}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      onBlur={handleDescriptionSave}
+                      onKeyDown={handleDescriptionKeyDown}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className="mt-2 text-[11px] opacity-70 leading-relaxed w-full bg-transparent border border-border/50 rounded p-1 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      style={{ 
+                        height: Math.max(48, Math.min(displayHeight - 60, 120)) + 'px'
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <div 
+                      onClick={handleDescriptionClick}
+                      className="mt-2 text-[11px] opacity-50 leading-relaxed cursor-text hover:opacity-70 transition-opacity"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: Math.max(2, Math.floor((displayHeight - 60) / 14)),
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                      title="Click to edit description"
+                    >
+                      {task.description || 'Add description...'}
+                    </div>
+                  )
                 )}
               </div>
 
@@ -599,13 +711,14 @@ const CalendarTask = ({
                 </div>
               )}
 
-              {/* Edit button - appears on hover */}
+              {/* Edit button - appears on hover, always visible for very small tasks */}
               <Button
                 variant="secondary"
                 size="icon"
                 className={cn(
-                  'absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity',
-                  'bg-background/90 hover:bg-background shadow-sm'
+                  'absolute top-1 right-1 h-6 w-6 transition-opacity',
+                  'bg-background/90 hover:bg-background shadow-sm',
+                  isVerySmall ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 )}
                 onClick={(e) => {
                   e.stopPropagation();

@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { Users, GripVertical } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 
@@ -59,17 +59,14 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
       ref={setNodeRef}
       {...(isEditing ? {} : { ...attributes, ...listeners })}
       className={cn(
-        "group flex items-center gap-2 p-2 rounded bg-secondary border-l-2",
+        "group flex items-center gap-2.5 p-3 rounded-lg bg-secondary border-l-[3px] shadow-sm min-h-[48px]",
         energyColors[task.energy_level],
         isDragging && "opacity-50 shadow-lg",
         task.completed && "opacity-60",
-        !isEditing && "cursor-grab active:cursor-grabbing"
+        !isEditing && "cursor-grab active:cursor-grabbing hover:shadow-md hover:bg-secondary/80 transition-all"
       )}
       onDoubleClick={handleDoubleClick}
     >
-      {/* Drag handle icon - visual indicator only */}
-      <GripVertical className="w-3 h-3 text-foreground-muted flex-shrink-0" />
-      
       {isEditing ? (
         <Input
           value={editTitle}
@@ -78,14 +75,14 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}
           autoFocus
-          className="h-6 text-xs flex-1"
+          className="h-7 text-sm flex-1"
         />
       ) : (
-        <span className={cn("text-xs truncate flex-1", task.completed && "line-through")}>
+        <span className={cn("text-sm truncate flex-1", task.completed && "line-through")}>
           {task.title}
         </span>
       )}
-      {isShared && <Users className="w-3 h-3 text-primary" />}
+      {isShared && <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
     </div>
   );
 };
