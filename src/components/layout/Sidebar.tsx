@@ -114,7 +114,7 @@ const Sidebar = ({
           </div>
         </div>
 
-        {/* Storage */}
+        {/* Storage - Hidden for now
         <div className="space-y-2">
           <span className="caption">Storage</span>
           <div className="space-y-1">
@@ -132,6 +132,7 @@ const Sidebar = ({
             </Button>
           </div>
         </div>
+        */}
 
         {/* Today Button */}
         <Button 
