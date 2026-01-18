@@ -364,6 +364,7 @@ export type Database = {
           created_at: string
           description: string | null
           detected_from_brain_dump: boolean | null
+          display_order: number | null
           due_date: string | null
           emotional_note: string | null
           end_date: string | null
@@ -387,6 +388,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           detected_from_brain_dump?: boolean | null
+          display_order?: number | null
           due_date?: string | null
           emotional_note?: string | null
           end_date?: string | null
@@ -410,6 +412,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           detected_from_brain_dump?: boolean | null
+          display_order?: number | null
           due_date?: string | null
           emotional_note?: string | null
           end_date?: string | null

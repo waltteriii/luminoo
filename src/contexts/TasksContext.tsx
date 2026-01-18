@@ -141,6 +141,7 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
         suggested_timeframe: taskData.suggested_timeframe ?? null,
         time_model: taskData.time_model ?? null,
         urgency: taskData.urgency ?? null,
+        display_order: taskData.display_order ?? 0,
       };
 
       // Optimistic update

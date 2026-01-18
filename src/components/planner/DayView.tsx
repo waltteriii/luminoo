@@ -3,7 +3,7 @@ import { format, startOfDay, addHours, addDays, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { parseTimeToHours } from '@/lib/timeUtils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import CalendarTask from '@/components/tasks/CalendarTask';
@@ -14,6 +14,12 @@ import { useDroppable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DayViewProps {
   date: Date;
@@ -181,7 +187,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     title: string,
     energy: EnergyLevel,
     startTime?: string,
-    endTime?: string
+    endTime?: string,
+    options?: { description?: string; location?: string; isShared?: boolean }
   ) => {
     await addTask({
       title,
@@ -189,6 +196,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       due_date: dateStr,
       start_time: startTime,
       end_time: endTime,
+      description: options?.description,
+      location: options?.location,
+      is_shared: options?.isShared,
     });
     setShowCreateDialog(false);
     setCreateTimeRange(null);
@@ -244,7 +254,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     const sortedTasks = [...timedTasks].sort((a, b) => {
       const posA = getTaskPosition(a);
       const posB = getTaskPosition(b);
-      return (posA?.startHour || 0) - (posB?.startHour || 0);
+      // First by start time
+      const startDiff = (posA?.startHour || 0) - (posB?.startHour || 0);
+      if (startDiff !== 0) return startDiff;
+      // Then by display_order for same start time
+      return (a.display_order || 0) - (b.display_order || 0);
     });
 
     for (const task of sortedTasks) {
@@ -267,6 +281,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         groups.push([task]);
       }
     }
+
+    // Sort each group by display_order for reordering
+    groups.forEach(group => {
+      group.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    });
 
     return groups;
   }, [timedTasks, getTaskPosition]);
@@ -357,19 +376,39 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
             {/* Positioned tasks */}
             <div className={cn("absolute inset-0 pr-2 pointer-events-none", isMobile ? "ml-12" : "ml-14")}>
-              {overlappingGroups.map((group) => {
+              {overlappingGroups.map((group, groupIdx) => {
                 const columnWidth = 100 / group.length;
+                const isMultiTask = group.length > 1;
 
                 return group.map((task, columnIdx) => {
                   const pos = getTaskPosition(task);
                   if (!pos) return null;
 
                   const taskHeight = Math.max(pos.height - 2, 22);
+                  
+                  // Reorder handlers for this specific group
+                  const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
+                    // Swap display_order with left neighbor
+                    const leftTask = group[columnIdx - 1];
+                    const leftOrder = leftTask.display_order || 0;
+                    const currentOrder = task.display_order || 0;
+                    updateTask(task.id, { display_order: leftOrder });
+                    updateTask(leftTask.id, { display_order: currentOrder });
+                  } : undefined;
+                  
+                  const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
+                    // Swap display_order with right neighbor
+                    const rightTask = group[columnIdx + 1];
+                    const rightOrder = rightTask.display_order || 0;
+                    const currentOrder = task.display_order || 0;
+                    updateTask(task.id, { display_order: rightOrder });
+                    updateTask(rightTask.id, { display_order: currentOrder });
+                  } : undefined;
 
                   return (
                     <div
                       key={task.id}
-                      className="absolute task-item pointer-events-auto"
+                      className="absolute task-item pointer-events-auto group/task"
                       style={{
                         top: `${pos.top + 1}px`,
                         height: `${taskHeight}px`,
@@ -386,6 +425,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         isShared={task.user_id !== userId}
                         showTimeRange={pos.duration >= 1}
                         height={taskHeight}
+                        canMoveLeft={!!handleMoveLeft}
+                        canMoveRight={!!handleMoveRight}
+                        onMoveLeft={handleMoveLeft}
+                        onMoveRight={handleMoveRight}
                       />
                     </div>
                   );
