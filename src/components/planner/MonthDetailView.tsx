@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useDroppable } from '@dnd-kit/core';
-import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
+import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -128,14 +128,14 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const calendarEnd = useMemo(() => endOfWeek(monthEnd, { weekStartsOn: 1 }), [monthEnd]);
   const calendarDays = useMemo(() => eachDayOfInterval({ start: calendarStart, end: calendarEnd }), [calendarStart, calendarEnd]);
 
-  const { tasks, updateTask, deleteTask } = useRealtimeTasks({
-    userId: userId || undefined,
-    dateRange: {
-      start: format(calendarStart, 'yyyy-MM-dd'),
-      end: format(calendarEnd, 'yyyy-MM-dd'),
-    },
-    includeShared: true,
-  });
+  const { tasks: allTasks, updateTask, deleteTask } = useTasksContext();
+  
+  // Filter tasks for the calendar range from centralized context
+  const tasks = useMemo(() => {
+    const startStr = format(calendarStart, 'yyyy-MM-dd');
+    const endStr = format(calendarEnd, 'yyyy-MM-dd');
+    return allTasks.filter(t => t.due_date && t.due_date >= startStr && t.due_date <= endStr);
+  }, [allTasks, calendarStart, calendarEnd]);
 
   const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
