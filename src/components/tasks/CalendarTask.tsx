@@ -375,14 +375,14 @@ const CalendarTask = ({
               {canResizeHorizontally && (
                 <div
                   className={cn(
-                    'absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-10',
-                    'opacity-0 group-hover:opacity-100 transition-opacity',
-                    isResizing && resizeDirection === 'left' && 'opacity-100'
+                    'absolute left-0 top-1/2 -translate-y-1/2 w-3 h-10 cursor-ew-resize flex items-center justify-center z-20',
+                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground/10 rounded-sm',
+                    isResizing && resizeDirection === 'left' && 'opacity-100 bg-foreground/10'
                   )}
                   onPointerDown={handleResizeLeftStart}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <div className="h-6 w-0.5 rounded-full bg-foreground/40" />
+                  <div className="h-5 w-1 rounded-full bg-foreground/50" />
                 </div>
               )}
 
@@ -390,14 +390,14 @@ const CalendarTask = ({
               {canResizeHorizontally && (
                 <div
                   className={cn(
-                    'absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-10',
-                    'opacity-0 group-hover:opacity-100 transition-opacity',
-                    isResizing && resizeDirection === 'right' && 'opacity-100'
+                    'absolute right-0 top-1/2 -translate-y-1/2 w-3 h-10 cursor-ew-resize flex items-center justify-center z-20',
+                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground/10 rounded-sm',
+                    isResizing && resizeDirection === 'right' && 'opacity-100 bg-foreground/10'
                   )}
                   onPointerDown={handleResizeRightStart}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <div className="h-6 w-0.5 rounded-full bg-foreground/40" />
+                  <div className="h-5 w-1 rounded-full bg-foreground/50" />
                 </div>
               )}
 
