@@ -695,27 +695,70 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-4 gap-2">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 flex-shrink-0">
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
+      {/* Header: Day name + date + navigation */}
+      <div className={cn(
+        "flex items-center justify-between gap-3",
+        isMobile ? "mb-4" : "mb-5"
+      )}>
+        {/* Left: Back + Date info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack} 
+            className={cn(
+              "flex-shrink-0 gap-1.5",
+              isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
+            )}
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-medium tracking-tight text-foreground truncate">
+          
+          <div className="min-w-0 flex flex-col">
+            <h2 className={cn(
+              "font-semibold tracking-tight text-foreground truncate leading-tight",
+              isMobile ? "text-xl" : "text-2xl"
+            )}>
               {format(currentDate, 'EEEE')}
             </h2>
-            <p className="text-sm text-foreground-muted">{format(currentDate, 'MMM d, yyyy')}</p>
+            <p className={cn(
+              "text-foreground-muted leading-tight",
+              isMobile ? "text-sm" : "text-base"
+            )}>
+              {format(currentDate, 'MMMM d, yyyy')}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        
+        {/* Right: Settings + Nav */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <DayViewTimeControls date={currentDate} />
-          <Button variant="outline" size="sm" onClick={handlePrevDay} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleNextDay} className="min-w-[44px] min-h-[44px] p-0 sm:p-2">
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+          
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrevDay} 
+              className={cn(
+                "border-border/50",
+                isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
+              )}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleNextDay} 
+              className={cn(
+                "border-border/50",
+                isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
+              )}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </div>
 

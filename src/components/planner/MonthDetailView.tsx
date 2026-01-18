@@ -312,22 +312,57 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-3 lg:mb-6 gap-2">
-        <div className="flex items-center gap-2 lg:gap-4 min-w-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 flex-shrink-0 h-8 lg:h-9 px-2 lg:px-3">
-            <ChevronLeft className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            <span className="hidden sm:inline text-xs lg:text-sm">Back</span>
+      {/* Header: Month name + navigation */}
+      <div className={cn(
+        "flex items-center justify-between gap-3",
+        isMobile ? "mb-4" : "mb-6"
+      )}>
+        {/* Left: Back + Month name */}
+        <div className="flex items-center gap-3 min-w-0">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack} 
+            className={cn(
+              "flex-shrink-0 gap-1.5",
+              isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
+            )}
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-          <h2 className="text-base sm:text-xl lg:text-2xl font-light text-foreground truncate">
+          
+          <h2 className={cn(
+            "font-semibold tracking-tight text-foreground truncate",
+            isMobile ? "text-xl" : "text-2xl"
+          )}>
             {format(monthDate, 'MMMM yyyy')}
           </h2>
         </div>
+        
+        {/* Right: Nav buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={handlePrevMonth} className="min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px] p-0">
-            <ChevronLeft className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handlePrevMonth} 
+            className={cn(
+              "border-border/50",
+              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
+            )}
+          >
+            <ChevronLeft className="w-5 h-5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleNextMonth} className="min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px] p-0">
-            <ChevronRight className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleNextMonth} 
+            className={cn(
+              "border-border/50",
+              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
+            )}
+          >
+            <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
       </div>

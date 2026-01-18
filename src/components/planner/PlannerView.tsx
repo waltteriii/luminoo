@@ -54,8 +54,8 @@ const PlannerView = ({
   // Day view
   if (zoomLevel === 'day' && focusedDate) {
     return (
-      <div className="h-full p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-4">
+      <div className="h-full p-4 sm:p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
           <ViewSelector
             zoomLevel={zoomLevel}
             onZoomLevelChange={onZoomLevelChange}
@@ -77,8 +77,8 @@ const PlannerView = ({
   // Week view
   if (zoomLevel === 'week' && focusedDate) {
     return (
-      <div className="h-full p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-4">
+      <div className="h-full p-4 sm:p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
           <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
         </div>
         <WeekView
@@ -95,8 +95,8 @@ const PlannerView = ({
   // Month detail view
   if (zoomLevel === 'month' && focusedMonth !== null) {
     return (
-      <div className="h-full p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-4">
+      <div className="h-full p-4 sm:p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
           <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
         </div>
         <MonthDetailView
@@ -122,8 +122,8 @@ const PlannerView = ({
   };
 
   return (
-    <div className="h-full p-6 lg:p-8">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full p-4 sm:p-6 lg:p-8">
+      <div className="flex items-center justify-between mb-4 sm:mb-5">
         <ViewSelector zoomLevel={zoomLevel} onZoomLevelChange={onZoomLevelChange} />
       </div>
       {viewMode === 'grid' && <YearGridView {...commonProps} />}
