@@ -69,6 +69,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
     const dragStateRef = useRef<DragState | null>(null);
     const rafRef = useRef<number | null>(null);
     const pendingRef = useRef<{ start: string; end: string } | null>(null);
+    const suppressClickRef = useRef(false);
 
     useEffect(() => {
       if (dragType) return;
@@ -151,6 +152,11 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
       onStartTimeChange(draftStartTime);
       onEndTimeChange(draftEndTime);
 
+      // Prevent the trailing click event from "jumping" the slider after a drag
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -161,6 +167,9 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
     const startDrag = (type: DragType) => (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // Suppress the synthetic click that fires after pointerup
+      suppressClickRef.current = true;
 
       const target = e.currentTarget as HTMLElement;
       target.setPointerCapture(e.pointerId);
@@ -246,8 +255,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
     };
 
     const handleClickTrack = (e: React.MouseEvent) => {
-      if (dragType) return;
-      const hour = getHourFromPosition(e.clientX);
+      if (dragType || suppressClickRef.current) return;
       const startH = getHourFromTime(draftStartTime);
       const endH = getHourFromTime(draftEndTime);
 
@@ -280,7 +288,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
                 onStartTimeChange(val);
               }}
             >
-              <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-primary transition-colors focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-highlight transition-colors focus:ring-0 focus:ring-offset-0">
                 <SelectValue>{formatDisplayTime(draftStartTime)}</SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-64">
@@ -307,7 +315,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
                 onEndTimeChange(val);
               }}
             >
-              <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-primary transition-colors focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-xl font-semibold hover:text-highlight transition-colors focus:ring-0 focus:ring-offset-0">
                 <SelectValue>{formatDisplayTime(draftEndTime)}</SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-64">

@@ -44,7 +44,7 @@
     --border: 0 0% 16%;
     --border-subtle: 0 0% 12%;
     --input: 0 0% 16%;
-    --ring: 210 100% 52%;
+    --ring: var(--highlight);
 
     --radius: 0.625rem;
 
@@ -79,7 +79,7 @@
     --sidebar-accent: 210 60% 20%;
     --sidebar-accent-foreground: 210 100% 70%;
     --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 210 100% 52%;
+    --sidebar-ring: var(--highlight);
   }
 
   /* Highlight color themes */
@@ -146,7 +146,7 @@
     --border: 35 15% 88%;
     --border-subtle: 35 10% 92%;
     --input: 35 15% 90%;
-    --ring: 210 100% 45%;
+    --ring: var(--highlight);
 
     /* Highlight/Info color - calming blue (light theme) */
     --highlight: 210 100% 45%;
@@ -175,7 +175,7 @@
     --sidebar-accent: 210 80% 95%;
     --sidebar-accent-foreground: 210 100% 40%;
     --sidebar-border: 35 15% 90%;
-    --sidebar-ring: 210 100% 45%;
+    --sidebar-ring: var(--highlight);
   }
 
   /* Light theme highlight colors */

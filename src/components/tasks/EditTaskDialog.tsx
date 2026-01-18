@@ -109,10 +109,10 @@ const EditTaskDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle className="flex items-center gap-2">
-            <Pencil className="w-5 h-5 text-primary" />
-            Edit Task
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-highlight" />
+              Edit Task
           </DialogTitle>
           <DialogDescription>
             Update task details and scheduling
