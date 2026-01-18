@@ -141,10 +141,90 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
   
+  // Track which task is currently selected (only one at a time)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  
+  // Track copied task for paste functionality
+  const [copiedTask, setCopiedTask] = useState<Task | null>(null);
+  
   // Track custom widths AND left positions for tasks (percentage values)
   // For single tasks: width + left offset. For groups: just widths that sum to 100%
   const [taskWidths, setTaskWidths] = useState<Record<string, number>>({});
   const [taskLefts, setTaskLefts] = useState<Record<string, number>>({});
+  
+  const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
+
+  // Deselect task when clicking outside any task
+  useEffect(() => {
+    if (!selectedTaskId) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // If clicking on a task item, don't deselect (task will handle its own selection)
+      if (target.closest('.task-item')) return;
+      setSelectedTaskId(null);
+    };
+    
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [selectedTaskId]);
+
+  // Handle copying a task
+  const handleCopyTask = useCallback((task: Task) => {
+    setCopiedTask(task);
+  }, []);
+
+  // Handle pasting a task
+  const handlePasteTask = useCallback(async () => {
+    if (!copiedTask) return;
+    
+    // Create a duplicate with a slightly offset time (15 min later) or next to it
+    const startHour = parseTimeToHours(copiedTask.start_time);
+    const endHour = parseTimeToHours(copiedTask.end_time);
+    
+    let newStartTime = copiedTask.start_time;
+    let newEndTime = copiedTask.end_time;
+    
+    // Offset by 15 minutes if timed
+    if (startHour !== null) {
+      const newStartMins = (startHour * 60) + 15;
+      const newStartH = Math.floor(newStartMins / 60);
+      const newStartM = newStartMins % 60;
+      newStartTime = `${newStartH.toString().padStart(2, '0')}:${newStartM.toString().padStart(2, '0')}`;
+      
+      if (endHour !== null) {
+        const duration = endHour - startHour;
+        const newEndMins = newStartMins + (duration * 60);
+        const newEndH = Math.floor(newEndMins / 60);
+        const newEndM = newEndMins % 60;
+        newEndTime = `${newEndH.toString().padStart(2, '0')}:${newEndM.toString().padStart(2, '0')}`;
+      }
+    }
+    
+    await addTask({
+      title: copiedTask.title + ' (copy)',
+      description: copiedTask.description,
+      energy_level: copiedTask.energy_level,
+      due_date: copiedTask.due_date,
+      start_time: newStartTime,
+      end_time: newEndTime,
+      completed: false,
+    });
+  }, [copiedTask, addTask]);
+
+  // Handle paste keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Paste: Ctrl+V or Cmd+V
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedTask) {
+        e.preventDefault();
+        handlePasteTask();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [copiedTask, handlePasteTask]);
 
   const canResetLayout = useMemo(
     () => Object.keys(taskWidths).length > 0 || Object.keys(taskLefts).length > 0,
@@ -252,7 +332,6 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     }
   }, [taskWidths, taskLefts]);
 
-  const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -769,6 +848,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               task={task}
                               onUpdate={(updates) => updateTask(task.id, updates)}
                               onDelete={() => deleteTask(task.id)}
+                              onCopy={() => handleCopyTask(task)}
                               isShared={task.user_id !== userId}
                               showTimeRange={pos.duration >= 1}
                               height={taskHeight}
@@ -786,6 +866,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               onMoveLeft={handleMoveLeft}
                               onMoveRight={handleMoveRight}
                               showTooltip={isTooltipEnabledForView('day')}
+                              isSelected={selectedTaskId === task.id}
+                              onSelect={() => setSelectedTaskId(task.id)}
                             />
                           </div>
                         );
