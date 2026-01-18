@@ -4,7 +4,7 @@ import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 
 interface CalendarTaskProps {
@@ -39,6 +39,10 @@ const CalendarTask = ({
   height,
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizePreviewHeight, setResizePreviewHeight] = useState<number | null>(null);
+  const resizeStartY = useRef<number>(0);
+  const resizeStartHeight = useRef<number>(0);
 
   const {
     attributes,
@@ -49,6 +53,7 @@ const CalendarTask = ({
   } = useDraggable({
     id: task.id,
     data: { type: 'calendar-task', task },
+    disabled: isResizing,
   });
 
   const style = transform
@@ -67,9 +72,73 @@ const CalendarTask = ({
     return `${startFormatted} - ${endFormatted}`;
   };
 
+  // Calculate new end time from height change
+  const calculateNewEndTime = useCallback((heightDelta: number) => {
+    if (!task.start_time) return null;
+    
+    // Assume 48px per hour on desktop (from DayView HOUR_HEIGHT)
+    const HOUR_HEIGHT = 48;
+    const MIN_DURATION_MINS = 15;
+    
+    const newHeight = Math.max(resizeStartHeight.current + heightDelta, MIN_DURATION_MINS / 60 * HOUR_HEIGHT);
+    const durationHours = newHeight / HOUR_HEIGHT;
+    
+    // Snap to 15-minute increments
+    const durationMins = Math.round(durationHours * 60 / 15) * 15;
+    const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60)); // Max 16 hours
+    
+    const [startH, startM] = task.start_time.split(':').map(Number);
+    const startTotalMins = startH * 60 + startM;
+    const endTotalMins = startTotalMins + clampedMins;
+    
+    const endH = Math.floor(endTotalMins / 60);
+    const endM = endTotalMins % 60;
+    
+    // Clamp to 22:00 max
+    if (endH >= 22) {
+      return '22:00';
+    }
+    
+    return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+  }, [task.start_time]);
+
+  const handleResizeStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = height;
+    
+    const handleMove = (ev: PointerEvent) => {
+      const deltaY = ev.clientY - resizeStartY.current;
+      const newHeight = Math.max(22, resizeStartHeight.current + deltaY);
+      setResizePreviewHeight(newHeight);
+    };
+    
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      
+      const deltaY = ev.clientY - resizeStartY.current;
+      const newEndTime = calculateNewEndTime(deltaY);
+      
+      if (newEndTime && newEndTime !== task.end_time) {
+        onUpdate({ end_time: newEndTime });
+      }
+      
+      setIsResizing(false);
+      setResizePreviewHeight(null);
+    };
+    
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  }, [height, calculateNewEndTime, task.end_time, onUpdate]);
+
   // Determine layout based on height
-  const isCompact = height < 40;
-  const showDetails = height >= 60;
+  const displayHeight = resizePreviewHeight ?? height;
+  const isCompact = displayHeight < 40;
+  const showDetails = displayHeight >= 60;
   const contentPadding = isCompact ? 'py-0.5' : showDetails ? 'py-2' : 'py-1.5';
   const contentJustify = showDetails ? 'justify-start' : 'justify-center';
 
@@ -77,15 +146,20 @@ const CalendarTask = ({
     <>
       <div
         ref={setNodeRef}
-        style={style}
+        style={{
+          ...style,
+          height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
+        }}
         {...attributes}
         {...listeners}
         className={cn(
-          'group relative h-full rounded-md border-l-2 ring-1 ring-border/40 shadow-sm cursor-grab active:cursor-grabbing transition-[box-shadow,opacity] overflow-hidden',
+          'group relative h-full rounded-md border-l-2 ring-1 ring-border/40 shadow-sm transition-[box-shadow,opacity] overflow-hidden',
           'hover:shadow-md',
+          !isResizing && 'cursor-grab active:cursor-grabbing',
           energyBorderColors[task.energy_level],
           energyBgColors[task.energy_level],
           isDragging && 'opacity-60 shadow-lg ring-1 ring-highlight',
+          isResizing && 'ring-2 ring-primary shadow-lg z-50',
           task.completed && 'opacity-50'
         )}
       >
@@ -133,6 +207,20 @@ const CalendarTask = ({
         >
           <Pencil className="w-3 h-3" />
         </Button>
+
+        {/* Resize handle at bottom */}
+        <div
+          className={cn(
+            'absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
+            'opacity-0 group-hover:opacity-100 transition-opacity',
+            'bg-gradient-to-t from-background/60 to-transparent',
+            isResizing && 'opacity-100'
+          )}
+          onPointerDown={handleResizeStart}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-1 rounded-full bg-foreground/30" />
+        </div>
       </div>
 
       <EditTaskDialog

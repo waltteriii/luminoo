@@ -131,7 +131,7 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
               </Button>
             </div>
             
-            <ScrollArea className="flex-1 -mx-6 px-6">
+            <ScrollArea className="flex-1 -mx-6 px-6 [&>div>div]:!block [&_[data-radix-scroll-area-viewport]]:!overflow-y-scroll [&_[data-radix-scroll-area-scrollbar]]:!flex [&_[data-radix-scroll-area-scrollbar]]:!w-2 [&_[data-radix-scroll-area-scrollbar]]:!bg-transparent [&_[data-radix-scroll-area-thumb]]:!bg-foreground/20 [&_[data-radix-scroll-area-thumb]]:!rounded-full hover:[&_[data-radix-scroll-area-thumb]]:!bg-foreground/30">
               <div className="space-y-3 pb-4">
                 {trends.map((trend, index) => {
                   const CategoryIcon = categoryConfig[trend.category]?.icon || TrendingUp;
