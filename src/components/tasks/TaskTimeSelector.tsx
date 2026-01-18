@@ -346,8 +346,8 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
             {/* Selected range */}
             <div
               className={cn(
-                'absolute top-0 bottom-0 bg-primary/25 rounded cursor-grab active:cursor-grabbing transition-colors touch-none',
-                dragType === 'range' && 'bg-primary/35'
+                'absolute top-0 bottom-0 bg-highlight/25 rounded cursor-grab active:cursor-grabbing transition-colors touch-none',
+                dragType === 'range' && 'bg-highlight/35'
               )}
               style={{
                 left: `${startPercent}%`,
@@ -359,25 +359,25 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
             {/* Start handle */}
             <div
               className={cn(
-                'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-primary rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
+                'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-highlight rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
                 dragType === 'start' && 'scale-110 shadow-lg'
               )}
               style={{ left: `calc(${startPercent}% - 8px)` }}
               onPointerDown={startDrag('start')}
             >
-              <div className="w-0.5 h-4 bg-primary-foreground/60 rounded-full" />
+              <div className="w-0.5 h-4 bg-highlight-foreground/60 rounded-full" />
             </div>
 
             {/* End handle */}
             <div
               className={cn(
-                'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-primary rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
+                'absolute top-1/2 -translate-y-1/2 w-4 h-9 bg-highlight rounded cursor-ew-resize shadow-md transition-all touch-none flex items-center justify-center',
                 dragType === 'end' && 'scale-110 shadow-lg'
               )}
               style={{ left: `calc(${endPercent}% - 8px)` }}
               onPointerDown={startDrag('end')}
             >
-              <div className="w-0.5 h-4 bg-primary-foreground/60 rounded-full" />
+              <div className="w-0.5 h-4 bg-highlight-foreground/60 rounded-full" />
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
               }}
               className={cn(
                 'px-3 py-1.5 text-xs rounded-lg border border-border/60 hover:bg-secondary transition-colors',
-                durationMinutes === mins && 'bg-primary/15 border-primary/40 text-primary'
+                durationMinutes === mins && 'bg-highlight/15 border-highlight/40 text-highlight'
               )}
             >
               {mins < 60 ? `${mins}m` : `${mins / 60}h`}
