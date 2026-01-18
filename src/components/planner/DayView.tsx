@@ -155,9 +155,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     };
   }, [timeRangeSettings, currentDate]);
   
-  // Get unified time range config based on mode and display mode
+  // Get unified time range config based on mode and showNight toggle
   const timeRangeConfig = useMemo(() => {
-    const displayMode = effectiveSettings.timeDisplayMode || 'BOTH';
+    // Use showNight to determine display mode: false = DAY only, true = BOTH (day + night)
+    const showNight = effectiveSettings.showNight ?? false;
+    const displayMode = showNight ? 'BOTH' : 'DAY';
     return getUnifiedTimeRangeConfig(
       effectiveSettings.dayTimeRangeMode,
       displayMode,
@@ -784,10 +786,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
               const timeStr = format(addHours(startOfDay(currentDate), hour), 'h a');
               
-              // Determine if this hour is night (for subtle visual distinction in Both mode)
-              const displayMode = effectiveSettings.timeDisplayMode || 'BOTH';
+              // Determine if this hour is night (for subtle visual distinction when showNight is ON)
+              const showNightEnabled = effectiveSettings.showNight ?? false;
               const isNight = isNightHour(hour);
-              const showNightIndicator = displayMode === 'BOTH' && effectiveSettings.dayTimeRangeMode === 'FOCUS' && isNight;
+              const showNightIndicator = showNightEnabled && effectiveSettings.dayTimeRangeMode === 'FOCUS' && isNight;
 
               return (
                 <TimeSlotDropZone key={`${hour}-${hourIndex}`} hour={hour} slotIndex={hourIndex} date={currentDate}>

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { ZoomLevel } from '@/types';
-import { Calendar, CalendarDays, LayoutGrid, Clock, RotateCcw, Moon, Sun, SunMoon, CalendarCheck } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutGrid, Clock, RotateCcw, Moon, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDensity } from '@/contexts/DensityContext';
-import { TimeDisplayMode } from '@/lib/timeRangeConfig';
 
 interface ViewSelectorProps {
   zoomLevel: ZoomLevel;
@@ -27,25 +26,22 @@ const views: { value: ZoomLevel; label: string; icon: React.ReactNode }[] = [
   { value: 'day', label: 'Day', icon: <Clock className="w-4 h-4" /> },
 ];
 
-const timeDisplayModes: { value: TimeDisplayMode; icon: React.ReactNode; label: string }[] = [
-  { value: 'DAY', icon: <Sun className="w-4 h-4" />, label: 'Day hours only' },
-  { value: 'NIGHT', icon: <Moon className="w-4 h-4" />, label: 'Night hours only' },
-  { value: 'BOTH', icon: <SunMoon className="w-4 h-4" />, label: 'All hours' },
-];
-
 const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLayout, onJumpToToday }: ViewSelectorProps) => {
   const isMobile = useIsMobile();
-  const { timeRangeSettings, updateTimeRangeSetting } = useDensity();
+  const { timeRangeSettings, setTimeRangeSettings } = useDensity();
   
-  const currentDisplayMode = timeRangeSettings.timeDisplayMode || 'BOTH';
+  const showNight = timeRangeSettings.showNight ?? false;
   const isFocusMode = timeRangeSettings.dayTimeRangeMode === 'FOCUS';
-  const showTimeToggle = zoomLevel === 'day' && isFocusMode;
+  const showNightToggle = zoomLevel === 'day' && isFocusMode;
 
-  // Cycle through display modes on click
-  const handleTimeDisplayToggle = () => {
-    const currentIndex = timeDisplayModes.findIndex(m => m.value === currentDisplayMode);
-    const nextIndex = (currentIndex + 1) % timeDisplayModes.length;
-    updateTimeRangeSetting('timeDisplayMode', timeDisplayModes[nextIndex].value);
+  // Simple toggle for showing night hours
+  const handleToggleNight = () => {
+    setTimeRangeSettings({
+      ...timeRangeSettings,
+      showNight: !showNight,
+      // Also update legacy timeDisplayMode for compatibility
+      timeDisplayMode: !showNight ? 'BOTH' : 'DAY',
+    });
   };
   
   return (
@@ -106,26 +102,27 @@ const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLay
         </TooltipProvider>
       )}
 
-      {/* Quick time display toggle - only in Day view with Focus mode */}
-      {showTimeToggle && (
+      {/* Show Night toggle - only in Day view with Focus mode */}
+      {showNightToggle && (
         <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleTimeDisplayToggle}
+                onClick={handleToggleNight}
                 className={cn(
-                  "border-border/50 bg-secondary/60 backdrop-blur-sm",
-                  isMobile ? "h-[52px] w-[52px] p-0" : "h-10 w-10 p-0",
-                  currentDisplayMode === 'NIGHT' && "bg-secondary border-highlight/50 text-highlight"
+                  "border-border/50 bg-secondary/60 backdrop-blur-sm gap-1.5",
+                  isMobile ? "h-[52px] px-3" : "h-10 px-3",
+                  showNight && "bg-highlight/20 border-highlight/50 text-highlight"
                 )}
               >
-                {timeDisplayModes.find(m => m.value === currentDisplayMode)?.icon}
+                <Moon className="w-4 h-4" />
+                <span className={cn("text-sm", isMobile && "hidden sm:inline")}>Night</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{timeDisplayModes.find(m => m.value === currentDisplayMode)?.label}</p>
+              <p>{showNight ? 'Hide night hours' : 'Show night hours'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

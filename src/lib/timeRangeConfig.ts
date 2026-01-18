@@ -5,7 +5,9 @@
 
 export type TimeRangeMode = 'FOCUS' | 'FULL_24H';
 
-// Simplified display modes: what hours to show on the timeline
+// Simplified: Day is default, Night is additive
+// showNight: false = DAY only (focus hours)
+// showNight: true = DAY + NIGHT (full timeline)
 export type TimeDisplayMode = 'DAY' | 'NIGHT' | 'BOTH';
 
 // Legacy types for backward compatibility
@@ -24,7 +26,8 @@ export interface TimeRangeSettings {
   focusStartTime: number; // Hour (0-23), e.g., 8 for 08:00
   focusEndTime: number; // Hour (0-24), e.g., 23 for 23:00
   dayViewLayout: DayViewLayout; // Legacy - maps to TimeDisplayMode
-  timeDisplayMode: TimeDisplayMode; // New unified display mode
+  timeDisplayMode: TimeDisplayMode; // Legacy - kept for compatibility
+  showNight: boolean; // NEW: Simple toggle - false = day only, true = day + night
   offHoursDisplay: OffHoursDisplay; // Legacy
   offHoursDenseScaleFactor: number; // Legacy
   perDayOverrides: Record<string, DayTimeOverride>; // Key is date string (YYYY-MM-DD)
@@ -35,8 +38,9 @@ export const defaultTimeRangeSettings: TimeRangeSettings = {
   weekTimeRangeMode: 'FOCUS',
   focusStartTime: 8, // 08:00
   focusEndTime: 23, // 23:00
-  dayViewLayout: 'BOTH', // Legacy
-  timeDisplayMode: 'BOTH', // New: show day + night combined
+  dayViewLayout: 'DAY_ONLY', // Legacy - default to day only
+  timeDisplayMode: 'DAY', // Legacy
+  showNight: false, // NEW: Night is OFF by default
   offHoursDisplay: 'COLLAPSED', // Legacy
   offHoursDenseScaleFactor: 0.35, // Legacy
   perDayOverrides: {},
