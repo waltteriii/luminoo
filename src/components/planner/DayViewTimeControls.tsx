@@ -10,10 +10,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Clock, RotateCcw, Settings2 } from 'lucide-react';
+import { Clock, RotateCcw, Settings2, Moon } from 'lucide-react';
 import { useDensity } from '@/contexts/DensityContext';
 import {
-  TimeDisplayMode,
   formatHourLabel,
   getEffectiveFocusTimes,
   DayTimeOverride,
@@ -40,7 +39,7 @@ const DayViewTimeControls = memo(({ date, className }: DayViewTimeControlsProps)
   const effectiveTimes = getEffectiveFocusTimes(timeRangeSettings, dateStr);
   
   const isFocusMode = timeRangeSettings.dayTimeRangeMode === 'FOCUS';
-  const currentDisplayMode = timeRangeSettings.timeDisplayMode || 'BOTH';
+  const showNight = timeRangeSettings.showNight ?? false;
 
   const handleToggleCustomHours = useCallback((enabled: boolean) => {
     if (enabled) {
@@ -89,6 +88,14 @@ const DayViewTimeControls = memo(({ date, className }: DayViewTimeControlsProps)
     });
   }, [dateStr, timeRangeSettings, setTimeRangeSettings]);
 
+  const handleToggleNight = useCallback((enabled: boolean) => {
+    setTimeRangeSettings({
+      ...timeRangeSettings,
+      showNight: enabled,
+      timeDisplayMode: enabled ? 'BOTH' : 'DAY',
+    });
+  }, [timeRangeSettings, setTimeRangeSettings]);
+
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
@@ -134,30 +141,21 @@ const DayViewTimeControls = memo(({ date, className }: DayViewTimeControlsProps)
           {/* Focus Mode Options */}
           {isFocusMode && (
             <>
-              {/* Time Display Mode - Day/Night/Both */}
-              <div className="space-y-2">
-                <Label className="text-xs text-foreground-muted">Time Display</Label>
-                <div className="flex rounded-lg border border-border overflow-hidden">
-                  {[
-                    { value: 'DAY' as TimeDisplayMode, label: 'Day' },
-                    { value: 'NIGHT' as TimeDisplayMode, label: 'Night' },
-                    { value: 'BOTH' as TimeDisplayMode, label: 'Both' },
-                  ].map((option, index) => (
-                    <button
-                      key={option.value}
-                      onClick={() => updateTimeRangeSetting('timeDisplayMode', option.value)}
-                      className={cn(
-                        "flex-1 py-1.5 px-2 text-xs font-medium transition-colors",
-                        index > 0 && "border-l border-border",
-                        currentDisplayMode === option.value
-                          ? "bg-highlight text-highlight-foreground"
-                          : "bg-secondary hover:bg-secondary/80 text-foreground-muted"
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+              {/* Show Night Toggle - Simple boolean */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Moon className="w-3.5 h-3.5 text-foreground-muted" />
+                  <div>
+                    <span className="text-sm">Show Night Hours</span>
+                    <p className="text-[10px] text-foreground-muted">
+                      Extend timeline with early/late hours
+                    </p>
+                  </div>
                 </div>
+                <Switch
+                  checked={showNight}
+                  onCheckedChange={handleToggleNight}
+                />
               </div>
 
               {/* Custom Hours Toggle */}
