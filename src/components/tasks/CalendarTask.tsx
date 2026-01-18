@@ -173,6 +173,10 @@ const CalendarTask = ({
   const handleResizeBottomStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Capture pointer for smoother tracking and prevent scroll
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
 
     setIsResizing(true);
     setResizeDirection('bottom');
@@ -188,12 +192,14 @@ const CalendarTask = ({
     };
 
     const handleMove = (ev: PointerEvent) => {
+      ev.preventDefault(); // Prevent scroll on touch
       const deltaY = ev.clientY - resizeStartY.current;
       pendingHeight = Math.max(22, resizeStartHeight.current + deltaY);
       if (raf === null) raf = requestAnimationFrame(applyPreview);
     };
 
     const handleUp = (ev: PointerEvent) => {
+      target.releasePointerCapture(ev.pointerId);
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
 
@@ -214,7 +220,7 @@ const CalendarTask = ({
       setResizePreviewHeight(null);
     };
 
-    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointermove', handleMove, { passive: false });
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewEndTime, task.end_time, onUpdate]);
 
@@ -222,6 +228,10 @@ const CalendarTask = ({
   const handleResizeTopStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Capture pointer for smoother tracking and prevent scroll
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
 
     setIsResizing(true);
     setResizeDirection('top');
@@ -240,6 +250,7 @@ const CalendarTask = ({
     };
 
     const handleMove = (ev: PointerEvent) => {
+      ev.preventDefault(); // Prevent scroll on touch
       const deltaY = ev.clientY - resizeStartY.current;
       pendingHeight = Math.max(22, resizeStartHeight.current - deltaY);
       pendingTop = deltaY;
@@ -247,6 +258,7 @@ const CalendarTask = ({
     };
 
     const handleUp = (ev: PointerEvent) => {
+      target.releasePointerCapture(ev.pointerId);
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
 
@@ -268,7 +280,7 @@ const CalendarTask = ({
       setResizePreviewTop(null);
     };
 
-    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointermove', handleMove, { passive: false });
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewStartTime, task.start_time, onUpdate]);
 
@@ -488,10 +500,11 @@ const CalendarTask = ({
               {/* Top resize handle */}
               <div
                 className={cn(
-                  'absolute top-0 left-0 right-0 h-2.5 cursor-ns-resize flex items-center justify-center z-10',
+                  'absolute top-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center z-10',
                   'opacity-0 group-hover:opacity-100 transition-opacity',
                   isResizing && resizeDirection === 'top' && 'opacity-100'
                 )}
+                style={{ touchAction: 'none' }}
                 onPointerDown={handleResizeTopStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
@@ -608,11 +621,12 @@ const CalendarTask = ({
               {/* Bottom resize handle - changes end time */}
               <div
                 className={cn(
-                  'absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
+                  'absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center',
                   'opacity-0 group-hover:opacity-100 transition-opacity',
                   'bg-gradient-to-t from-background/60 to-transparent',
                   isResizing && resizeDirection === 'bottom' && 'opacity-100'
                 )}
+                style={{ touchAction: 'none' }}
                 onPointerDown={handleResizeBottomStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
