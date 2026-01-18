@@ -358,6 +358,18 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // File type validation
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!file.type || !allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, GIF, or WebP image",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // File size validation
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: "File too large",
