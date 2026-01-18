@@ -57,31 +57,36 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
       // Get all friendships where user is either user_id or friend_id
       const { data, error } = await supabase
         .from('friendships')
-        .select(`
-          id,
-          user_id,
-          friend_id,
-          status,
-          user_profile:profiles!friendships_user_id_fkey(display_name, email, avatar_url),
-          friend_profile:profiles!friendships_friend_id_fkey(display_name, email, avatar_url)
-        `)
+        .select('id, user_id, friend_id, status')
         .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
       if (error) throw error;
 
-      const friendsList: Friend[] = (data || []).map((f: any) => {
-        const isIncoming = f.friend_id === userId;
-        const profile = isIncoming ? f.user_profile : f.friend_profile;
-        return {
-          id: f.id,
-          friendId: isIncoming ? f.user_id : f.friend_id,
-          displayName: profile?.display_name,
-          email: profile?.email,
-          avatarUrl: profile?.avatar_url,
-          status: f.status,
-          isIncoming
-        };
-      });
+      // For each friendship, fetch the friend's public profile (no email)
+      const friendsList: Friend[] = await Promise.all(
+        (data || []).map(async (f: any) => {
+          const isIncoming = f.friend_id === userId;
+          const friendId = isIncoming ? f.user_id : f.friend_id;
+          
+          // Get profile - now using the full profiles table which is protected by RLS
+          // Users can only see profiles of accepted friends (see RLS policy)
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, avatar_url')
+            .eq('id', friendId)
+            .maybeSingle();
+
+          return {
+            id: f.id,
+            friendId,
+            displayName: profile?.display_name || null,
+            email: null, // Email intentionally not fetched for privacy
+            avatarUrl: profile?.avatar_url || null,
+            status: f.status,
+            isIncoming
+          };
+        })
+      );
 
       setFriends(friendsList);
     } catch (err) {
@@ -95,28 +100,33 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
     try {
       const { data, error } = await supabase
         .from('shared_calendars')
-        .select(`
-          id,
-          owner_id,
-          shared_with_id,
-          can_edit,
-          owner:profiles!shared_calendars_owner_id_fkey(display_name),
-          shared_with:profiles!shared_calendars_shared_with_id_fkey(display_name)
-        `)
+        .select('id, owner_id, shared_with_id, can_edit')
         .or(`owner_id.eq.${userId},shared_with_id.eq.${userId}`);
 
       if (error) throw error;
 
-      const calendars: SharedCalendar[] = (data || []).map((c: any) => {
-        const isOwner = c.owner_id === userId;
-        return {
-          id: c.id,
-          friendId: isOwner ? c.shared_with_id : c.owner_id,
-          displayName: isOwner ? c.shared_with?.display_name : c.owner?.display_name,
-          canEdit: c.can_edit,
-          isOwner
-        };
-      });
+      // For each calendar, fetch the relevant profile from profiles_public
+      const calendars: SharedCalendar[] = await Promise.all(
+        (data || []).map(async (c: any) => {
+          const isOwner = c.owner_id === userId;
+          const friendId = isOwner ? c.shared_with_id : c.owner_id;
+          
+          // Get profile - using profiles table which is protected by RLS
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', friendId)
+            .maybeSingle();
+
+          return {
+            id: c.id,
+            friendId,
+            displayName: profile?.display_name || null,
+            canEdit: c.can_edit,
+            isOwner
+          };
+        })
+      );
 
       setSharedCalendars(calendars);
     } catch (err) {
@@ -129,14 +139,15 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
 
     setSending(true);
     try {
-      // Find user by email
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', inviteEmail.toLowerCase().trim())
-        .maybeSingle();
+      // Find user by email via secure edge function
+      const { data: result, error: functionError } = await supabase.functions.invoke(
+        'find-user-by-email',
+        { body: { email: inviteEmail.toLowerCase().trim() } }
+      );
 
-      if (profileError) throw profileError;
+      if (functionError) throw functionError;
+      
+      const profile = result?.profile;
 
       if (!profile) {
         toast({
@@ -351,11 +362,11 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">
                             <AvatarImage src={friend.avatarUrl || undefined} />
-                            <AvatarFallback>{getInitials(friend.displayName, friend.email)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(friend.displayName, null)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium text-sm">{friend.displayName || friend.email}</p>
-                            <p className="text-xs text-foreground-muted">{friend.email}</p>
+                            <p className="font-medium text-sm">{friend.displayName || 'Unknown User'}</p>
+                            <p className="text-xs text-foreground-muted">Wants to connect</p>
                           </div>
                         </div>
                         <div className="flex gap-1">
@@ -382,11 +393,10 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
                           <div className="flex items-center gap-3">
                             <Avatar className="w-10 h-10">
                               <AvatarImage src={friend.avatarUrl || undefined} />
-                              <AvatarFallback>{getInitials(friend.displayName, friend.email)}</AvatarFallback>
+                              <AvatarFallback>{getInitials(friend.displayName, null)}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium text-sm">{friend.displayName || friend.email}</p>
-                              <p className="text-xs text-foreground-muted">{friend.email}</p>
+                              <p className="font-medium text-sm">{friend.displayName || 'Unknown User'}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -416,10 +426,10 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">
                             <AvatarImage src={friend.avatarUrl || undefined} />
-                            <AvatarFallback>{getInitials(friend.displayName, friend.email)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(friend.displayName, null)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium text-sm">{friend.displayName || friend.email}</p>
+                            <p className="font-medium text-sm">{friend.displayName || 'Unknown User'}</p>
                             <Badge variant="secondary" className="text-2xs">Pending</Badge>
                           </div>
                         </div>
