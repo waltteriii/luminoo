@@ -23,23 +23,33 @@ const views: { value: ZoomLevel; label: string; icon: React.ReactNode }[] = [
   { value: 'day', label: 'Day', icon: <Clock className="w-4 h-4" /> },
 ];
 
+import { useIsMobile } from '@/hooks/use-mobile';
+
 const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLayout }: ViewSelectorProps) => {
+  const isMobile = useIsMobile();
+  
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1 p-1 bg-secondary/50 rounded-lg">
+      <div className={cn(
+        "flex items-center p-1 bg-secondary/50 rounded-lg",
+        isMobile ? "gap-0.5 w-full" : "gap-1"
+      )}>
         {views.map((view) => (
           <button
             key={view.value}
             onClick={() => onZoomLevelChange(view.value)}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+              "flex items-center justify-center gap-1.5 rounded-md font-medium transition-all",
+              isMobile 
+                ? "flex-1 px-2 py-3 text-base min-h-[48px]" 
+                : "px-3 py-1.5 text-sm",
               zoomLevel === view.value
                 ? "bg-background text-foreground shadow-sm"
                 : "text-foreground-muted hover:text-foreground"
             )}
           >
             {view.icon}
-            <span className="hidden sm:inline">{view.label}</span>
+            <span className={cn(isMobile ? "text-xs" : "hidden sm:inline")}>{view.label}</span>
           </button>
         ))}
       </div>
@@ -53,7 +63,7 @@ const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLay
                 variant="outline"
                 size="sm"
                 onClick={onResetLayout}
-                className="h-9 w-9 p-0"
+                className={cn("p-0", isMobile ? "h-12 w-12" : "h-9 w-9")}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>

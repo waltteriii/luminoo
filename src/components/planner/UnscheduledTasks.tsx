@@ -1,13 +1,27 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle, Check } from 'lucide-react';
+import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle, Check, Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface UnscheduledTasksProps {
   energyFilter: EnergyLevel[];
@@ -31,9 +45,20 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [defaultInboxEnergy, setDefaultInboxEnergy] = useState<EnergyLevel>('high');
+  const [selectedEnergy, setSelectedEnergy] = useState<EnergyLevel | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
+  const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const newTaskInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const TIME_OPTIONS = useMemo(() => Array.from({ length: 32 }, (_, i) => {
+    const hour = Math.floor(i / 2) + 6;
+    const minute = (i % 2) * 30;
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  }), []);
   const isMobile = useIsMobile();
 
   // Filter to only unscheduled, uncompleted tasks
@@ -143,19 +168,32 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     }
   }, [deleteTask, toast]);
 
-  const createNewTask = useCallback(async () => {
+  const createNewTask = useCallback(async (withSchedule = false) => {
     const title = newTaskTitle.trim();
     if (!title) return;
 
+    const energy = selectedEnergy || defaultInboxEnergy;
+    const dueDate = withSchedule && selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+    const startTime = withSchedule && selectedStartTime && selectedStartTime !== 'none' ? selectedStartTime : null;
+    const endTime = withSchedule && selectedEndTime && selectedEndTime !== 'none' ? selectedEndTime : null;
+
     await addTask({
       title,
-      energy_level: defaultInboxEnergy,
-      due_date: null,
+      energy_level: energy,
+      due_date: dueDate,
+      start_time: startTime,
+      end_time: endTime,
       completed: false,
       detected_from_brain_dump: false,
     });
+    
     setNewTaskTitle('');
-  }, [newTaskTitle, addTask, defaultInboxEnergy]);
+    setSelectedEnergy(null);
+    setSelectedDate(undefined);
+    setSelectedStartTime('');
+    setSelectedEndTime('');
+    setShowDatePicker(false);
+  }, [newTaskTitle, addTask, defaultInboxEnergy, selectedEnergy, selectedDate, selectedStartTime, selectedEndTime]);
 
   const energyFilteredTasks = useMemo(() => 
     energyFilter.length > 0
@@ -268,36 +306,135 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
 
           {/* Task grid - responsive 1/2/3 columns */}
           <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-            {/* New task input - consistent highlight (no intensity shift) */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-highlight focus-within:border-highlight transition-colors min-h-[44px] group">
+            {/* New task input - with quick add icons */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-highlight focus-within:border-highlight transition-colors min-h-[48px] group">
               <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-highlight flex-shrink-0 transition-colors" />
               <input
                 ref={newTaskInputRef}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') createNewTask();
+                  if (e.key === 'Enter') createNewTask(false);
                   if (e.key === 'Escape') {
                     setNewTaskTitle('');
+                    setSelectedEnergy(null);
                     newTaskInputRef.current?.blur();
                   }
                 }}
                 placeholder="New task…"
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0 min-w-0"
               />
-              {/* Approve button - visible when input has content */}
+              
+              {/* Quick energy selector - inline dots */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {(['high', 'medium', 'low', 'recovery'] as EnergyLevel[]).map((energy) => (
+                  <button
+                    key={energy}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedEnergy(selectedEnergy === energy ? null : energy);
+                    }}
+                    className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center transition-all",
+                      selectedEnergy === energy && "ring-2 ring-offset-1 ring-offset-card ring-foreground/30 scale-110"
+                    )}
+                    title={`${energy.charAt(0).toUpperCase() + energy.slice(1)} energy`}
+                  >
+                    <span
+                      className={cn(
+                        "w-2.5 h-2.5 rounded-full",
+                        energy === 'high' && "bg-energy-high",
+                        energy === 'medium' && "bg-energy-medium",
+                        energy === 'low' && "bg-energy-low",
+                        energy === 'recovery' && "bg-energy-recovery"
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              {/* Calendar quick pick */}
+              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-8 w-8 p-0 flex-shrink-0 transition-colors",
+                      selectedDate ? "text-highlight" : "text-foreground-muted hover:text-foreground"
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Schedule date & time"
+                  >
+                    <Calendar className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3 space-y-3" align="end" onClick={(e) => e.stopPropagation()}>
+                  <CalendarPicker
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    className="pointer-events-auto"
+                  />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-foreground-muted mb-1 block">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        Start
+                      </label>
+                      <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Time" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-48">
+                          <SelectItem value="none">No time</SelectItem>
+                          {TIME_OPTIONS.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-foreground-muted mb-1 block">End</label>
+                      <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Time" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-48">
+                          <SelectItem value="none">No time</SelectItem>
+                          {TIME_OPTIONS.filter(t => !selectedStartTime || selectedStartTime === 'none' || t > selectedStartTime).map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {selectedDate && (
+                    <div className="text-xs text-foreground-muted">
+                      Scheduling for {format(selectedDate, 'MMM d, yyyy')}
+                      {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {/* Add task button - more prominent */}
               {newTaskTitle.trim() && (
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 p-0 text-primary hover:text-primary hover:bg-primary/10 flex-shrink-0"
+                  size="sm"
+                  className="h-8 px-3 gap-1.5 flex-shrink-0 ml-1"
                   onClick={(e) => {
                     e.stopPropagation();
-                    createNewTask();
+                    createNewTask(!!selectedDate);
                   }}
-                  title="Add task (Enter)"
+                  title={selectedDate ? "Add to calendar (Enter)" : "Add to inbox (Enter)"}
                 >
-                  <Check className="w-4 h-4" />
+                  <Check className="w-3.5 h-3.5" />
+                  <span className="text-xs">{selectedDate ? 'Schedule' : 'Add'}</span>
                 </Button>
               )}
             </div>

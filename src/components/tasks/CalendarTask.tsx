@@ -420,8 +420,9 @@ const CalendarTask = ({
     window.addEventListener('pointerup', handleUp);
   }, [width, minWidth, maxWidth, onWidthChange, onResizeLeft]);
   const displayHeight = resizePreviewHeight ?? height;
-  const isCompact = displayHeight < 36;
-  const isMedium = displayHeight >= 36 && displayHeight < 60;
+  // Lower threshold for compact - tasks < 28px are compact (was 36)
+  const isCompact = displayHeight < 28;
+  const isMedium = displayHeight >= 28 && displayHeight < 60;
   const isLarge = displayHeight >= 60 && displayHeight < 100;
   const isExtraLarge = displayHeight >= 100;
   
@@ -439,6 +440,15 @@ const CalendarTask = ({
     e.preventDefault();
     // For very small tasks, open dialog instead of inline edit
     if (isCompact) {
+      setEditDialogOpen(true);
+    }
+  }, [isCompact]);
+  
+  // Handle single click for compact tasks - opens dialog directly
+  const handleCompactClick = useCallback((e: React.MouseEvent) => {
+    if (isCompact) {
+      e.stopPropagation();
+      e.preventDefault();
       setEditDialogOpen(true);
     }
   }, [isCompact]);
@@ -500,8 +510,11 @@ const CalendarTask = ({
   const canResizeHorizontallyLeft = canResizeLeft || !!onWidthChange;
   const canResizeHorizontallyRight = canResizeRight || !!onWidthChange;
   
-  // For small tasks, show edit button always
+  // For small tasks, show edit button always and make entire task clickable
   const isVerySmall = displayHeight < 32;
+  
+  // Minimum height for interaction - clamp to 24px minimum display
+  const minInteractiveHeight = 24;
 
   return (
     <>
@@ -517,10 +530,12 @@ const CalendarTask = ({
                 ...style,
                 height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
                 marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
+                minHeight: `${minInteractiveHeight}px`,
               }}
               {...attributes}
               {...listeners}
               onDoubleClick={handleDoubleClick}
+              onClick={handleCompactClick}
               className={cn(
                 'group relative h-full rounded-lg border-l-[3px] shadow-sm overflow-hidden',
                 'hover:shadow-md hover:brightness-105',
@@ -530,7 +545,9 @@ const CalendarTask = ({
                 energyBgColors[task.energy_level],
                 isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
                 isResizing && 'ring-2 ring-highlight shadow-lg z-50',
-                task.completed && 'opacity-50'
+                task.completed && 'opacity-50',
+                // For very small tasks, add hover highlight to indicate clickability
+                isVerySmall && 'hover:ring-2 hover:ring-highlight/50'
               )}
             >
               {/* Left resize handle - for split-pane resize */}
@@ -563,18 +580,20 @@ const CalendarTask = ({
                 </div>
               )}
 
-              {/* Top resize handle */}
+              {/* Top resize handle - larger for small tasks */}
               <div
                 className={cn(
-                  'absolute top-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center z-10',
+                  'absolute top-0 left-0 right-0 cursor-ns-resize flex items-center justify-center z-10',
                   'opacity-0 group-hover:opacity-100 transition-opacity',
-                  isResizing && resizeDirection === 'top' && 'opacity-100'
+                  isResizing && resizeDirection === 'top' && 'opacity-100',
+                  isVerySmall ? 'h-6' : 'h-4'
                 )}
                 style={{ touchAction: 'none' }}
                 onPointerDown={handleResizeTopStart}
                 onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="w-6 h-0.5 rounded-full bg-foreground/40" />
+                <div className={cn("rounded-full bg-foreground/40", isVerySmall ? "w-8 h-1" : "w-6 h-0.5")} />
               </div>
 
               {/* Main content */}
@@ -731,19 +750,21 @@ const CalendarTask = ({
                 <Pencil className="w-3 h-3" />
               </Button>
 
-              {/* Bottom resize handle - changes end time */}
+              {/* Bottom resize handle - larger for small tasks */}
               <div
                 className={cn(
-                  'absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center',
+                  'absolute bottom-0 left-0 right-0 cursor-ns-resize flex items-center justify-center',
                   'opacity-0 group-hover:opacity-100 transition-opacity',
                   'bg-gradient-to-t from-background/60 to-transparent',
-                  isResizing && resizeDirection === 'bottom' && 'opacity-100'
+                  isResizing && resizeDirection === 'bottom' && 'opacity-100',
+                  isVerySmall ? 'h-6' : 'h-4'
                 )}
                 style={{ touchAction: 'none' }}
                 onPointerDown={handleResizeBottomStart}
                 onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="w-8 h-1 rounded-full bg-foreground/30" />
+                <div className={cn("rounded-full bg-foreground/30", isVerySmall ? "w-10 h-1.5" : "w-8 h-1")} />
               </div>
             </div>
           </TooltipTrigger>

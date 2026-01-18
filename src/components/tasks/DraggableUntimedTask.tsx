@@ -59,9 +59,9 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
       ref={setNodeRef}
       {...(isEditing ? {} : { ...attributes, ...listeners })}
       className={cn(
-        "group flex items-center gap-2.5 p-3 rounded-lg bg-secondary border-l-[3px] shadow-sm min-h-[48px]",
+        "group flex items-center gap-3 p-4 rounded-xl bg-secondary border-l-[4px] shadow-sm min-h-[56px]",
         energyColors[task.energy_level],
-        isDragging && "opacity-50 shadow-lg",
+        isDragging && "opacity-50 shadow-lg ring-2 ring-highlight",
         task.completed && "opacity-60",
         !isEditing && "cursor-grab active:cursor-grabbing hover:shadow-md hover:bg-secondary/80 transition-all"
       )}
@@ -75,14 +75,14 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared }: DraggableU
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}
           autoFocus
-          className="h-7 text-sm flex-1"
+          className="h-8 text-sm flex-1"
         />
       ) : (
-        <span className={cn("text-sm truncate flex-1", task.completed && "line-through")}>
+        <span className={cn("text-sm font-medium truncate flex-1", task.completed && "line-through")}>
           {task.title}
         </span>
       )}
-      {isShared && <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+      {isShared && <Users className="w-4 h-4 text-primary flex-shrink-0" />}
     </div>
   );
 };

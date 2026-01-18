@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel } from '@/types';
 import EnergySelector from '@/components/planner/NewEnergySelector';
-import { useState, useEffect, useCallback } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HeaderProps {
@@ -37,9 +36,10 @@ interface HeaderProps {
   highlightColor?: string;
   onAddTask?: () => void;
   onBrainDump?: () => void;
+  onLogoClick?: () => void;
 }
 
-const Header = memo(({ 
+const Header = memo(({
   user, 
   currentEnergy, 
   onEnergyChange, 
@@ -52,7 +52,8 @@ const Header = memo(({
   avatarUrl,
   highlightColor = 'blue',
   onAddTask,
-  onBrainDump
+  onBrainDump,
+  onLogoClick
 }: HeaderProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -94,9 +95,12 @@ const Header = memo(({
           <Menu className="w-5 h-5" />
         </Button>
         
-        {/* Logo - hide on mobile to save space */}
+        {/* Logo - clickable to go home */}
         {!isMobile && (
-          <div className="flex items-center gap-2">
+          <button 
+            onClick={onLogoClick}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div 
               className={cn(
                 "group w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer",
@@ -113,7 +117,7 @@ const Header = memo(({
               <Squirrel className="w-4 h-4 text-white group-hover:animate-squirrel-hello" />
             </div>
             <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
-          </div>
+          </button>
         )}
       </div>
 
