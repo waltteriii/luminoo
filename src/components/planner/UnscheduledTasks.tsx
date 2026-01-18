@@ -13,6 +13,9 @@ interface UnscheduledTasksProps {
   onScheduleTask: (taskId: string, date: Date) => void;
 }
 
+const MAX_VISIBLE_TASKS_DESKTOP = 4;
+const MAX_VISIBLE_TASKS_TABLET = 4;
+
 const MAX_VISIBLE_TASKS = 5;
 const MAX_VISIBLE_TASKS_MOBILE = 3;
 
@@ -32,7 +35,8 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  const maxVisible = isMobile ? MAX_VISIBLE_TASKS_MOBILE : MAX_VISIBLE_TASKS;
+  // Use fewer visible tasks on larger screens to keep inbox compact
+  const maxVisible = isMobile ? MAX_VISIBLE_TASKS_MOBILE : MAX_VISIBLE_TASKS_DESKTOP;
 
   useEffect(() => {
     const init = async () => {
@@ -229,7 +233,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             setCollapsed((v) => !v);
           }
         }}
-        className="w-full flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-secondary/50 transition-colors min-h-[52px]"
+        className="w-full flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2 lg:py-2.5 hover:bg-secondary/50 transition-colors min-h-[44px] lg:min-h-[48px]"
       >
         <div className="flex items-center gap-2 min-w-0">
           <InboxIcon className="w-4 h-4 text-foreground-muted flex-shrink-0" />
@@ -294,23 +298,23 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
       </div>
 
       {!collapsed && (
-        <div className="px-3 sm:px-4 pb-4 space-y-2">
+        <div className="px-3 sm:px-4 lg:px-6 pb-3 lg:pb-4 space-y-1.5 lg:space-y-2">
           {showSearch && (
-            <div className="relative">
+            <div className="relative max-w-md">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
               <input
                 ref={searchInputRef}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter tasks..."
-                className="w-full pl-8 pr-3 py-2 rounded bg-card border border-border text-sm text-foreground placeholder:text-foreground-muted/60 focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
+                className="w-full pl-8 pr-3 py-1.5 lg:py-2 rounded bg-card border border-border text-sm text-foreground placeholder:text-foreground-muted/60 focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] lg:min-h-[40px]"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
           )}
 
           {/* New task input */}
-          <div className="flex items-center gap-2 p-2 rounded bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[48px]">
+          <div className="flex items-center gap-2 p-1.5 lg:p-2 rounded bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[40px] lg:min-h-[44px] max-w-2xl">
             <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
             <input
               ref={newTaskInputRef}

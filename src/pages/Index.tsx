@@ -277,27 +277,32 @@ const Index = () => {
             onClose={handleCloseSidebar}
           />
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* Unscheduled tasks inbox */}
-            <UnscheduledTasks 
-              energyFilter={energyFilter}
-              onScheduleTask={handleScheduleTask}
-            />
+            {/* Centered content container for large screens */}
+            <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
+              {/* Unscheduled tasks inbox */}
+              <UnscheduledTasks 
+                energyFilter={energyFilter}
+                onScheduleTask={handleScheduleTask}
+              />
+            </div>
             
             {/* Main planner view */}
-            <div className="flex-1 overflow-auto p-2 sm:p-4">
-              <PlannerView
-                viewMode={viewMode}
-                zoomLevel={zoomLevel}
-                focusedMonth={focusedMonth}
-                focusedDate={focusedDate}
-                currentEnergy={currentEnergy}
-                energyFilter={energyFilter}
-                onMonthClick={handleMonthClick}
-                onDayClick={handleDayClick}
-                onWeekClick={handleWeekClick}
-                onZoomOut={handleZoomOut}
-                onZoomLevelChange={handleZoomLevelChange}
-              />
+            <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6">
+              <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
+                <PlannerView
+                  viewMode={viewMode}
+                  zoomLevel={zoomLevel}
+                  focusedMonth={focusedMonth}
+                  focusedDate={focusedDate}
+                  currentEnergy={currentEnergy}
+                  energyFilter={energyFilter}
+                  onMonthClick={handleMonthClick}
+                  onDayClick={handleDayClick}
+                  onWeekClick={handleWeekClick}
+                  onZoomOut={handleZoomOut}
+                  onZoomLevelChange={handleZoomLevelChange}
+                />
+              </div>
             </div>
           </main>
           

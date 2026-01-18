@@ -41,12 +41,12 @@ const MonthCard = ({
     <div
       onClick={onClick}
       className={cn(
-        "group relative rounded-xl border transition-all duration-200 cursor-pointer",
+        "group relative rounded-lg lg:rounded-xl border transition-all duration-200 cursor-pointer",
         "bg-card hover:bg-highlight-muted/50 border-border hover:border-highlight/30",
         isCurrentMonth && "ring-1 ring-highlight/50",
-        isCompact && "p-4 min-h-[120px]",
-        !isCompact && !isExpanded && "p-6 min-h-[200px]",
-        isExpanded && "p-8 min-h-[400px]"
+        isCompact && "p-2.5 lg:p-4 min-h-[80px] lg:min-h-[120px]",
+        !isCompact && !isExpanded && "p-4 lg:p-6 min-h-[160px] lg:min-h-[200px]",
+        isExpanded && "p-6 lg:p-8 min-h-[300px] lg:min-h-[400px]"
       )}
     >
       {/* Month header */}
@@ -54,13 +54,13 @@ const MonthCard = ({
         <div>
           <h3 className={cn(
             "font-medium text-foreground",
-            isCompact && "text-sm",
-            !isCompact && "text-lg"
+            isCompact && "text-xs lg:text-sm",
+            !isCompact && "text-base lg:text-lg"
           )}>
             {name}
           </h3>
           {isCurrentMonth && (
-            <span className="inline-block mt-1 text-2xs uppercase tracking-wider text-highlight font-medium">
+            <span className="inline-block mt-0.5 lg:mt-1 text-[9px] lg:text-2xs uppercase tracking-wider text-highlight font-medium">
               Current
             </span>
           )}
@@ -68,8 +68,8 @@ const MonthCard = ({
         
         <span className={cn(
           "text-foreground-subtle font-light",
-          isCompact && "text-lg",
-          !isCompact && "text-2xl"
+          isCompact && "text-sm lg:text-lg",
+          !isCompact && "text-xl lg:text-2xl"
         )}>
           {String(month + 1).padStart(2, '0')}
         </span>
@@ -77,9 +77,9 @@ const MonthCard = ({
 
       {/* Task indicators - energy colored dots/bars */}
       <div className={cn(
-        "mt-3 flex-1",
-        isCompact && "space-y-1",
-        !isCompact && "space-y-2"
+        "mt-2 lg:mt-3 flex-1",
+        isCompact && "space-y-0.5 lg:space-y-1",
+        !isCompact && "space-y-1 lg:space-y-2"
       )}>
         {totalTasks > 0 && (
           <div className="flex flex-wrap gap-1">

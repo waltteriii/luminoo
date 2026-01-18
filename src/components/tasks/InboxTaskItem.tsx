@@ -150,13 +150,13 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
       {...attributes}
       {...listeners}
       className={cn(
-        "group flex items-center gap-2 p-2 rounded bg-card border border-border transition-all touch-none",
+        "group flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded bg-card border border-border transition-all touch-none",
         isDragging && "opacity-70 shadow-lg ring-2 ring-primary",
         !isDragging && "cursor-grab active:cursor-grabbing"
       )}
     >
       {/* Drag handle */}
-      <GripVertical className="w-4 h-4 text-foreground-muted flex-shrink-0" />
+      <GripVertical className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-foreground-muted flex-shrink-0" />
 
       {/* Task title and energy */}
       <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -196,7 +196,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
           </div>
         ) : (
           <span
-            className="text-sm truncate cursor-text"
+            className="text-xs lg:text-sm truncate cursor-text"
             onDoubleClick={handleDoubleClick}
             title="Double-click to edit"
           >
@@ -208,7 +208,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
         {!isEditing && (
           <Popover>
             <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <button className="cursor-pointer hover:opacity-80 min-w-[44px] min-h-[44px] flex items-center justify-center -m-2">
+              <button className="cursor-pointer hover:opacity-80 min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px] flex items-center justify-center -m-1.5">
                 <EnergyPill energy={task.energy_level} />
               </button>
             </PopoverTrigger>
@@ -256,7 +256,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 px-2 text-xs min-w-[44px]"
+            className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs min-w-[36px] lg:min-w-[44px]"
             onClick={(e) => {
               e.stopPropagation();
               handleQuickSchedule(0);
@@ -268,7 +268,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-xs"
+              className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 handleQuickSchedule(1);
@@ -284,10 +284,10 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 min-w-[44px] min-h-[44px]"
+                className="h-7 w-7 lg:h-8 lg:w-8 p-0 min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px]"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
@@ -354,14 +354,14 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 min-w-[44px] min-h-[44px] text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="h-7 w-7 lg:h-8 lg:w-8 p-0 min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px] text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(task.id);
               }}
               title="Delete task"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             </Button>
           )}
         </div>
