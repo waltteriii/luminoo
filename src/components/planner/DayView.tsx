@@ -66,10 +66,10 @@ interface ReorderDropZoneProps {
   groupTasks: Task[];
   groupTop: number;
   groupHeight: number;
-  columnWidth: number;
+  edgeLeftPercent: number; // Actual left edge position in percentage
 }
 
-const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, groupHeight, columnWidth }: ReorderDropZoneProps) => {
+const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, groupHeight, edgeLeftPercent }: ReorderDropZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `reorder-zone-${groupIdx}-${columnIndex}`,
     data: { 
@@ -81,8 +81,8 @@ const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, gro
     },
   });
 
-  // Make drop zone wider and span the full column slot
-  const zoneWidth = Math.max(24, columnWidth * 0.3);
+  // Zone width - a thin strip at the exact edge
+  const zoneWidth = 24;
 
   return (
     <div
@@ -94,7 +94,7 @@ const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, gro
       style={{
         top: `${groupTop}px`,
         height: `${Math.max(groupHeight, 48)}px`,
-        left: `calc(${columnIndex * columnWidth}% - ${zoneWidth / 2}px)`,
+        left: `calc(${edgeLeftPercent}% - ${zoneWidth / 2}px)`,
         width: `${zoneWidth}px`,
       }}
     >
@@ -122,9 +122,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
   
-  // Track custom widths for tasks in overlap groups (actual percentage width per task id)
-  // When not set, tasks get equal share of 100%
+  // Track custom widths AND left positions for tasks (percentage values)
+  // For single tasks: width + left offset. For groups: just widths that sum to 100%
   const [taskWidths, setTaskWidths] = useState<Record<string, number>>({});
+  const [taskLefts, setTaskLefts] = useState<Record<string, number>>({});
 
   // Helper to get widths for a group - ensures they always sum to 100%
   const getGroupWidths = useCallback((group: Task[]): number[] => {
@@ -182,6 +183,39 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       [group[neighborIndex].id]: finalNeighborWidth,
     }));
   }, [getGroupWidths]);
+
+  // Handle single task resize (can resize from either edge)
+  const handleSingleTaskResize = useCallback((
+    taskId: string,
+    delta: number,
+    direction: 'left' | 'right'
+  ) => {
+    const MIN_WIDTH = 20;
+    const currentWidth = taskWidths[taskId] ?? 100;
+    const currentLeft = taskLefts[taskId] ?? 0;
+    
+    if (direction === 'right') {
+      // Right edge: just change width
+      const newWidth = Math.max(MIN_WIDTH, Math.min(100 - currentLeft, currentWidth + delta));
+      setTaskWidths(prev => ({ ...prev, [taskId]: newWidth }));
+    } else {
+      // Left edge: change both left position and width
+      const potentialLeft = currentLeft + delta;
+      const potentialWidth = currentWidth - delta;
+      
+      // Clamp
+      let newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
+      let newWidth = Math.max(MIN_WIDTH, Math.min(100, potentialWidth));
+      
+      // Ensure left + width <= 100
+      if (newLeft + newWidth > 100) {
+        newWidth = 100 - newLeft;
+      }
+      
+      setTaskLefts(prev => ({ ...prev, [taskId]: newLeft }));
+      setTaskWidths(prev => ({ ...prev, [taskId]: newWidth }));
+    }
+  }, [taskWidths, taskLefts]);
 
   const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
 
@@ -507,35 +541,53 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
                 return (
                   <div key={`group-${groupIdx}`}>
-                    {/* Drop indicator line */}
-                    {isTargetGroup && activeTask && (
-                      <div
-                        className="absolute z-50 pointer-events-none"
-                        style={{
-                          top: `${groupTop}px`,
-                          height: `${groupHeight}px`,
-                          left: `calc(${dragOverInfo.targetColumnIndex * columnWidth}% + 2px)`,
-                          width: '3px',
-                        }}
-                      >
-                        <div className="w-full h-full bg-primary rounded-full animate-pulse" />
-                      </div>
-                    )}
+                    {/* Drop indicator line - use actual cumulative widths */}
+                    {isTargetGroup && activeTask && (() => {
+                      const groupWidthsForIndicator = getGroupWidths(group);
+                      let indicatorLeft = 0;
+                      for (let i = 0; i < dragOverInfo.targetColumnIndex && i < groupWidthsForIndicator.length; i++) {
+                        indicatorLeft += groupWidthsForIndicator[i];
+                      }
+                      return (
+                        <div
+                          className="absolute z-50 pointer-events-none"
+                          style={{
+                            top: `${groupTop}px`,
+                            height: `${groupHeight}px`,
+                            left: `calc(${indicatorLeft}% + 2px)`,
+                            width: '3px',
+                          }}
+                        >
+                          <div className="w-full h-full bg-primary rounded-full animate-pulse" />
+                        </div>
+                      );
+                    })()}
                     
-                    {/* Reorder drop zones - invisible areas between columns */}
+                    {/* Reorder drop zones - invisible areas at actual task edges */}
                     {isMultiTask && activeTask && group.some(t => t.id === activeTask.id) && (
                       <>
-                        {Array.from({ length: group.length + 1 }).map((_, zoneIdx) => (
-                          <ReorderDropZone
-                            key={`zone-${groupIdx}-${zoneIdx}`}
-                            groupIdx={groupIdx}
-                            columnIndex={zoneIdx}
-                            groupTasks={group}
-                            groupTop={groupTop}
-                            groupHeight={groupHeight}
-                            columnWidth={columnWidth}
-                          />
-                        ))}
+                        {(() => {
+                          // Calculate actual edge positions based on cumulative widths
+                          const groupWidthsForZones = getGroupWidths(group);
+                          const edges: number[] = [0]; // Start with left edge at 0%
+                          let cumulative = 0;
+                          for (const w of groupWidthsForZones) {
+                            cumulative += w;
+                            edges.push(cumulative);
+                          }
+                          
+                          return edges.map((edgePercent, zoneIdx) => (
+                            <ReorderDropZone
+                              key={`zone-${groupIdx}-${zoneIdx}`}
+                              groupIdx={groupIdx}
+                              columnIndex={zoneIdx}
+                              groupTasks={group}
+                              groupTop={groupTop}
+                              groupHeight={groupHeight}
+                              edgeLeftPercent={edgePercent}
+                            />
+                          ));
+                        })()}
                       </>
                     )}
                     
@@ -588,18 +640,30 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                           }));
                         } : undefined;
 
-                        // For split-pane resize: can resize left if not first, right if not last
-                        const canResizeLeft = isMultiTask && columnIdx > 0;
-                        const canResizeRight = isMultiTask && columnIdx < group.length - 1;
+                        // For split-pane resize in groups; for single task, both edges are resizable
+                        const canResizeLeft = isMultiTask ? columnIdx > 0 : true;
+                        const canResizeRight = isMultiTask ? columnIdx < group.length - 1 : true;
                         
-                        // Resize handlers that adjust neighbor widths
+                        // Resize handlers - different logic for single vs group
                         const handleResizeLeft = canResizeLeft ? (delta: number) => {
-                          handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'left');
+                          if (isMultiTask) {
+                            handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'left');
+                          } else {
+                            handleSingleTaskResize(task.id, -delta, 'left');
+                          }
                         } : undefined;
                         
                         const handleResizeRight = canResizeRight ? (delta: number) => {
-                          handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'right');
+                          if (isMultiTask) {
+                            handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'right');
+                          } else {
+                            handleSingleTaskResize(task.id, delta, 'right');
+                          }
                         } : undefined;
+
+                        // For single tasks, use stored left position; for groups, use cumulative
+                        const displayLeft = isMultiTask ? taskLeft : (taskLefts[task.id] ?? 0);
+                        const displayWidth = isMultiTask ? taskWidth : (taskWidths[task.id] ?? 100);
 
                         return (
                           <div
@@ -608,8 +672,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             style={{
                               top: `${pos.top + 1}px`,
                               height: `${taskHeight}px`,
-                              left: `calc(${taskLeft}% + 2px)`,
-                              width: `calc(${taskWidth}% - 4px)`,
+                              left: `calc(${displayLeft}% + 2px)`,
+                              width: `calc(${displayWidth}% - 4px)`,
                               transition: 'none',
                             }}
                             onMouseDown={(e) => e.stopPropagation()}
@@ -622,10 +686,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               isShared={task.user_id !== userId}
                               showTimeRange={pos.duration >= 1}
                               height={taskHeight}
-                              width={taskWidth}
+                              width={displayWidth}
                               baseWidth={100 / group.length}
-                              minWidth={12}
-                              maxWidth={100 - 12 * (group.length - 1)}
+                              minWidth={isMultiTask ? 12 : 20}
+                              maxWidth={isMultiTask ? 100 - 12 * (group.length - 1) : 100}
                               canResizeLeft={canResizeLeft}
                               canResizeRight={canResizeRight}
                               onResizeLeft={handleResizeLeft}
