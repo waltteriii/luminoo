@@ -154,6 +154,15 @@ export default {
           "25%": { transform: "rotate(-8deg)" },
           "75%": { transform: "rotate(8deg)" },
         },
+        "squirrel-hello": {
+          "0%": { transform: "translateY(0) rotate(0deg)" },
+          "15%": { transform: "translateY(-2px) rotate(-5deg)" },
+          "30%": { transform: "translateY(0) rotate(5deg)" },
+          "45%": { transform: "translateY(-1px) rotate(-3deg)" },
+          "60%": { transform: "translateY(0) rotate(3deg)" },
+          "75%": { transform: "translateY(-1px) rotate(-2deg)" },
+          "100%": { transform: "translateY(0) rotate(0deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -165,6 +174,7 @@ export default {
         "slide-down": "slide-down 0.3s ease-out forwards",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
         "wiggle": "wiggle 0.3s ease-in-out",
+        "squirrel-hello": "squirrel-hello 0.6s ease-out forwards",
       },
       transitionDuration: {
         "150": "150ms",

@@ -99,7 +99,7 @@ const Header = memo(({
           <div className="flex items-center gap-2">
             <div 
               className={cn(
-                "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
                 highlightColor === 'blue' && "bg-blue-500",
                 highlightColor === 'purple' && "bg-purple-500",
                 highlightColor === 'green' && "bg-emerald-500",
@@ -110,7 +110,7 @@ const Header = memo(({
                 !['blue', 'purple', 'green', 'orange', 'pink', 'cyan', 'teal'].includes(highlightColor) && "bg-primary"
               )}
             >
-              <Squirrel className="w-4 h-4 text-white animate-wiggle" />
+              <Squirrel className="w-4 h-4 text-white animate-squirrel-hello" />
             </div>
             <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
           </div>
