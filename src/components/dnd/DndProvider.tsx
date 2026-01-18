@@ -191,17 +191,29 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
   ) => {
     const updateData: Record<string, unknown> = {
       due_date: dueDate,
-      start_time: startTime && startTime !== 'none' ? startTime : null,
-      end_time: endTime && endTime !== 'none' ? endTime : null,
     };
-    
+
+    // Only set/clear time when explicitly provided.
+    if (startTime !== undefined) {
+      if (startTime === 'none' || startTime === '') {
+        updateData.start_time = null;
+        updateData.end_time = null;
+      } else {
+        updateData.start_time = startTime;
+      }
+    }
+
+    if (endTime !== undefined && startTime !== 'none' && startTime !== '') {
+      updateData.end_time = endTime === 'none' || endTime === '' ? null : endTime;
+    }
+
     if (updates) {
       if (updates.title) updateData.title = updates.title;
       if (updates.energy_level) updateData.energy_level = updates.energy_level;
       if (updates.location !== undefined) updateData.location = updates.location || null;
       if (updates.is_shared !== undefined) updateData.is_shared = updates.is_shared;
     }
-    
+
     await updateTask(taskId, updateData as any);
     onTaskScheduled?.();
   }, [onTaskScheduled, updateTask]);

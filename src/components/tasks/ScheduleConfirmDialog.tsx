@@ -54,13 +54,31 @@ const ScheduleConfirmDialog = ({
       setEnergy(task.energy_level);
       setLocation(task.location || '');
       setIsShared(task.is_shared || false);
-      
+
+      const normalizeTime = (t: string | null | undefined) => {
+        if (!t) return null;
+        // Handles both HH:MM and HH:MM:SS
+        return t.slice(0, 5);
+      };
+
+      const taskStart = normalizeTime(task.start_time);
+      const taskEnd = normalizeTime(task.end_time);
+
       if (targetHour !== undefined) {
         setStartTime(`${targetHour.toString().padStart(2, '0')}:00`);
         setEndTime(`${(targetHour + 1).toString().padStart(2, '0')}:00`);
+      } else if (taskStart && taskEnd) {
+        setStartTime(taskStart);
+        setEndTime(taskEnd);
+      } else if (taskStart && !taskEnd) {
+        setStartTime(taskStart);
+        const [h, m] = taskStart.split(':').map(Number);
+        const endH = Math.min(22, h + 1);
+        setEndTime(`${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
       } else {
-        setStartTime('none');
-        setEndTime('none');
+        // Default to a visible time range (matches what the slider shows)
+        setStartTime('09:00');
+        setEndTime('10:00');
       }
     }
   }, [open, task, targetHour]);
