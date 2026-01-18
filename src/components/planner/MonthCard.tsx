@@ -41,90 +41,83 @@ const MonthCard = ({
     <div
       onClick={onClick}
       className={cn(
-        "group relative rounded-lg lg:rounded-xl border transition-all duration-200 cursor-pointer",
-        "bg-card hover:bg-highlight-muted/50 border-border hover:border-highlight/30",
-        isCurrentMonth && "ring-1 ring-highlight/50",
-        isCompact && "p-2.5 lg:p-4 min-h-[80px] lg:min-h-[120px]",
+        "group relative rounded-lg border transition-all duration-200 cursor-pointer",
+        "bg-card hover:bg-card-hover border-border hover:border-highlight/30",
+        isCurrentMonth && "border-highlight/50 bg-highlight-muted/20",
+        isCompact && "p-3 sm:p-4 aspect-[4/3] flex flex-col",
         !isCompact && !isExpanded && "p-4 lg:p-6 min-h-[160px] lg:min-h-[200px]",
         isExpanded && "p-6 lg:p-8 min-h-[300px] lg:min-h-[400px]"
       )}
     >
       {/* Month header */}
       <div className="flex items-start justify-between">
-        <div>
+        <div className="min-w-0">
           <h3 className={cn(
-            "font-medium text-foreground",
-            isCompact && "text-xs lg:text-sm",
+            "font-medium text-foreground truncate",
+            isCompact && "text-xs sm:text-sm",
             !isCompact && "text-base lg:text-lg"
           )}>
             {name}
           </h3>
-          {isCurrentMonth && (
-            <span className="inline-block mt-0.5 lg:mt-1 text-[9px] lg:text-2xs uppercase tracking-wider text-highlight font-medium">
-              Current
+          {isCurrentMonth && isCompact && (
+            <span className="inline-block mt-0.5 text-[8px] sm:text-[9px] uppercase tracking-wider text-highlight font-semibold">
+              Now
             </span>
           )}
         </div>
         
         <span className={cn(
-          "text-foreground-subtle font-light",
-          isCompact && "text-sm lg:text-lg",
-          !isCompact && "text-xl lg:text-2xl"
+          "text-foreground-subtle/50 font-light flex-shrink-0",
+          isCompact && "text-xs sm:text-sm",
+          !isCompact && "text-lg lg:text-xl"
         )}>
           {String(month + 1).padStart(2, '0')}
         </span>
       </div>
 
-      {/* Task indicators - energy colored dots/bars */}
-      <div className={cn(
-        "mt-2 lg:mt-3 flex-1",
-        isCompact && "space-y-0.5 lg:space-y-1",
-        !isCompact && "space-y-1 lg:space-y-2"
-      )}>
-        {totalTasks > 0 && (
-          <div className="flex flex-wrap gap-1">
+      {/* Minimalist energy indicators - just tiny dots in a row */}
+      {isCompact && totalTasks > 0 && (
+        <div className="mt-auto pt-2">
+          <div className="flex items-center gap-0.5 flex-wrap">
             {taskIndicators.filter(t => t.count > 0).map((indicator) => (
-              <div key={indicator.energy} className="flex items-center gap-1">
-                {/* Show dots for compact view, bars for expanded */}
-                {isCompact ? (
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: Math.min(indicator.count, 5) }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "w-1.5 h-1.5 rounded-full",
-                          energyColors[indicator.energy]
-                        )}
-                      />
-                    ))}
-                    {indicator.count > 5 && (
-                      <span className="text-2xs text-foreground-muted ml-0.5">+{indicator.count - 5}</span>
+              <div key={indicator.energy} className="flex gap-[2px]">
+                {Array.from({ length: Math.min(indicator.count, 3) }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full opacity-80",
+                      energyColors[indicator.energy]
                     )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className={cn(
-                        "h-2 rounded-full",
-                        energyColors[indicator.energy]
-                      )}
-                      style={{ width: `${Math.min(indicator.count * 8, 60)}px` }}
-                    />
-                    <span className="text-2xs text-foreground-muted">{indicator.count}</span>
-                  </div>
+                  />
+                ))}
+                {indicator.count > 3 && (
+                  <span className="text-[8px] sm:text-[9px] text-foreground-muted ml-0.5 leading-none">
+                    +{indicator.count - 3}
+                  </span>
                 )}
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Total tasks count for compact */}
-        {isCompact && totalTasks > 0 && (
-          <p className="text-2xs text-foreground-muted mt-1">
-            {totalTasks} task{totalTasks !== 1 ? 's' : ''}
-          </p>
-        )}
-      </div>
+      {/* Expanded view - bars */}
+      {!isCompact && totalTasks > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {taskIndicators.filter(t => t.count > 0).map((indicator) => (
+            <div key={indicator.energy} className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "h-1.5 rounded-full",
+                  energyColors[indicator.energy]
+                )}
+                style={{ width: `${Math.min(indicator.count * 8, 60)}px` }}
+              />
+              <span className="text-2xs text-foreground-muted">{indicator.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add button - shows on hover for expanded views */}
       {!isCompact && (
@@ -138,7 +131,6 @@ const MonthCard = ({
           )}
           onClick={(e) => {
             e.stopPropagation();
-            // Add campaign logic
           }}
         >
           <Plus className="w-4 h-4" />
@@ -147,7 +139,7 @@ const MonthCard = ({
 
       {/* Current month indicator line */}
       {isCurrentMonth && (
-        <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-highlight rounded-full" />
+        <div className="absolute bottom-0 left-3 right-3 sm:left-4 sm:right-4 h-0.5 bg-highlight rounded-full" />
       )}
     </div>
   );
