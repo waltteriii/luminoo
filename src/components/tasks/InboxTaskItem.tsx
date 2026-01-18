@@ -143,20 +143,32 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
     }
   }, [selectedDate, selectedStartTime, selectedEndTime, task.id, onSchedule]);
 
+  // On mobile, only apply drag listeners to the handle to allow scrolling
+  const dragHandleProps = isMobile ? { ...attributes, ...listeners } : {};
+  const containerDragProps = isMobile ? {} : { ...attributes, ...listeners };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...containerDragProps}
       className={cn(
-        "group flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded bg-card border border-border transition-all touch-none",
+        "group flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded bg-card border border-border transition-all",
+        isMobile ? "touch-auto" : "touch-none",
         isDragging && "opacity-70 shadow-lg ring-2 ring-primary",
-        !isDragging && "cursor-grab active:cursor-grabbing"
+        !isDragging && !isMobile && "cursor-grab active:cursor-grabbing"
       )}
     >
-      {/* Drag handle */}
-      <GripVertical className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-foreground-muted flex-shrink-0" />
+      {/* Drag handle - on mobile this is the only draggable area */}
+      <div 
+        {...dragHandleProps}
+        className={cn(
+          "flex-shrink-0 p-1 -m-1 rounded",
+          isMobile && "touch-none cursor-grab active:cursor-grabbing"
+        )}
+      >
+        <GripVertical className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-foreground-muted" />
+      </div>
 
       {/* Task title and energy */}
       <div className="flex-1 min-w-0 flex items-center gap-2">
