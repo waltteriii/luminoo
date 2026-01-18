@@ -110,17 +110,6 @@ const SidebarContent = ({
           </Button>
         </div>
       </div>
-
-      {/* Today Button */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="w-full gap-2 min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm"
-        onClick={() => handleAction(onJumpToToday)}
-      >
-        <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-        Jump to Today
-      </Button>
     </div>
   );
 };

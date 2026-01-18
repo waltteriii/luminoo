@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { ZoomLevel } from '@/types';
-import { Calendar, CalendarDays, LayoutGrid, Clock, RotateCcw, Moon, Sun, SunMoon } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutGrid, Clock, RotateCcw, Moon, Sun, SunMoon, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -17,6 +17,7 @@ interface ViewSelectorProps {
   onZoomLevelChange: (level: ZoomLevel) => void;
   canResetLayout?: boolean;
   onResetLayout?: () => void;
+  onJumpToToday?: () => void;
 }
 
 const views: { value: ZoomLevel; label: string; icon: React.ReactNode }[] = [
@@ -32,7 +33,7 @@ const timeDisplayModes: { value: TimeDisplayMode; icon: React.ReactNode; label: 
   { value: 'BOTH', icon: <SunMoon className="w-4 h-4" />, label: 'All hours' },
 ];
 
-const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLayout }: ViewSelectorProps) => {
+const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLayout, onJumpToToday }: ViewSelectorProps) => {
   const isMobile = useIsMobile();
   const { timeRangeSettings, updateTimeRangeSetting } = useDensity();
   
@@ -79,6 +80,31 @@ const ViewSelector = ({ zoomLevel, onZoomLevelChange, canResetLayout, onResetLay
           </button>
         ))}
       </div>
+
+      {/* Today button */}
+      {onJumpToToday && (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onJumpToToday}
+                className={cn(
+                  "border-border/50 bg-secondary/60 backdrop-blur-sm gap-1.5",
+                  isMobile ? "h-[52px] px-3" : "h-10 px-3"
+                )}
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span className={cn(isMobile ? "text-sm" : "text-sm")}>Today</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Jump to today</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       {/* Quick time display toggle - only in Day view with Focus mode */}
       {showTimeToggle && (
