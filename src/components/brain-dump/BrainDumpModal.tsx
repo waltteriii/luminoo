@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Loader2, Sparkles, Check, History, ArrowLeft, Trash2, Copy, Calendar } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Brain, Loader2, Sparkles, Check, History, ArrowLeft, Trash2, Copy, Calendar, Zap, Clock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, ParsedItem, BrainDump } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -256,42 +257,93 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               Write everything on your mind. AI will detect tasks, energy levels, dates, and emotional context.
             </p>
             
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                // Enter = process, Shift+Enter = newline
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleParse();
-                }
-              }}
-              placeholder="I need to finish that album artwork by Friday, it's stressing me out. Also should probably do some admin stuff like respond to emails when I'm feeling low energy. And I had this crazy idea for a new series... next tuesday seeing friends for dinner"
-              className="flex-1 min-h-[200px] resize-none"
-            />
+            {parsing ? (
+              /* Enhanced Loading State */
+              <div className="flex-1 flex flex-col min-h-0 animate-fade-in">
+                {/* Pulsing brain header */}
+                <div className="flex items-center justify-center gap-3 py-6 mb-4">
+                  <div className="relative">
+                    <Brain className="w-10 h-10 text-primary animate-pulse" />
+                    <Sparkles className="w-4 h-4 text-primary absolute -top-1 -right-1 animate-bounce" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-foreground">Analyzing your thoughts...</p>
+                    <p className="text-xs text-foreground-muted">Finding tasks, dates, and energy levels</p>
+                  </div>
+                </div>
 
-            <div className="flex justify-end gap-2 shrink-0">
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleParse} 
-                disabled={!text.trim() || parsing}
-                className="gap-2"
-              >
-                {parsing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
+                {/* Skeleton cards with staggered animation */}
+                <div className="flex-1 overflow-hidden space-y-3">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="p-4 rounded-lg border border-border bg-card animate-fade-in"
+                      style={{ animationDelay: `${i * 150}ms`, animationFillMode: 'backwards' }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-5 w-16 rounded-full" />
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                          </div>
+                          <Skeleton className="h-4 w-4/5" />
+                          <Skeleton className="h-3 w-2/3" />
+                        </div>
+                        <Skeleton className="h-8 w-8 rounded-md shrink-0" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress indicator */}
+                <div className="flex items-center justify-center py-4 gap-2">
+                  <div className="flex gap-1">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 rounded-full bg-primary animate-bounce"
+                        style={{ animationDelay: `${i * 150}ms` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-foreground-muted ml-2">
+                    Detecting patterns in your brain dump…
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Normal Input State */
+              <>
+                <Textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Enter = process, Shift+Enter = newline
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleParse();
+                    }
+                  }}
+                  placeholder="I need to finish that album artwork by Friday, it's stressing me out. Also should probably do some admin stuff like respond to emails when I'm feeling low energy. And I had this crazy idea for a new series... next tuesday seeing friends for dinner"
+                  className="flex-1 min-h-[200px] resize-none"
+                />
+
+                <div className="flex justify-end gap-2 shrink-0">
+                  <Button variant="outline" onClick={handleClose}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleParse} 
+                    disabled={!text.trim() || parsing}
+                    className="gap-2"
+                  >
                     <Sparkles className="w-4 h-4" />
                     Parse with AI
-                  </>
-                )}
-              </Button>
-            </div>
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : step === 'review' ? (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
