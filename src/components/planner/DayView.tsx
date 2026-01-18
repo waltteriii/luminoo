@@ -436,7 +436,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   }, [untimedTasks]);
 
   const hours = useMemo(() => Array.from({ length: 17 }, (_, i) => i + 6), []);
-  const HOUR_HEIGHT = isMobile ? 60 : 48;
+  // Denser grid: 64px desktop, 72px mobile for smoother 15-min snaps
+  const HOUR_HEIGHT = isMobile ? 72 : 64;
 
   const selectionStart = dragStartHour !== null && dragEndHour !== null
     ? Math.min(dragStartHour, dragEndHour)
@@ -561,6 +562,20 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                     onMouseDown={(e) => handleMouseDown(hour, e)}
                     onClick={() => handleTapToAdd(hour)}
                   >
+                    {/* 15-min subdivision lines for denser grid feel */}
+                    <div
+                      className="absolute left-14 right-0 top-1/4 border-t border-border/20 pointer-events-none"
+                      style={{ height: 0 }}
+                    />
+                    <div
+                      className="absolute left-14 right-0 top-1/2 border-t border-border/30 pointer-events-none"
+                      style={{ height: 0 }}
+                    />
+                    <div
+                      className="absolute left-14 right-0 top-3/4 border-t border-border/20 pointer-events-none"
+                      style={{ height: 0 }}
+                    />
+
                     <div className="absolute left-0 top-0 w-10 sm:w-12 text-[10px] sm:text-[11px] tabular-nums text-foreground-muted py-0.5 pointer-events-none">
                       {timeStr}
                     </div>
@@ -588,7 +603,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
             })}
 
             {/* Positioned tasks */}
-            <div className={cn("absolute inset-0 pr-2 pointer-events-none", isMobile ? "ml-12" : "ml-14")}>
+            <div className={cn("absolute inset-0 pr-2 pointer-events-none overflow-visible", isMobile ? "ml-12" : "ml-14")}>
               {overlappingGroups.map((group, groupIdx) => {
                 const columnWidth = 100 / group.length;
                 const isMultiTask = group.length > 1;
@@ -752,6 +767,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                               isShared={task.user_id !== userId}
                               showTimeRange={pos.duration >= 1}
                               height={taskHeight}
+                              hourHeight={HOUR_HEIGHT}
                               width={displayWidth}
                               baseWidth={100 / group.length}
                               minWidth={15}
