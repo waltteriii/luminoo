@@ -256,6 +256,7 @@ const TaskTimeSelector = React.forwardRef<HTMLDivElement, TaskTimeSelectorProps>
 
     const handleClickTrack = (e: React.MouseEvent) => {
       if (dragType || suppressClickRef.current) return;
+      const hour = getHourFromPosition(e.clientX);
       const startH = getHourFromTime(draftStartTime);
       const endH = getHourFromTime(draftEndTime);
 
