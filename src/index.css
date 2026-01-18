@@ -22,13 +22,8 @@
     --popover: 0 0% 12%;
     --popover-foreground: 0 0% 98%;
 
-    /* Highlight/Info color - user selectable */
-    --highlight: 210 100% 52%;
-    --highlight-foreground: 210 100% 80%;
-    --highlight-muted: 210 60% 20%;
-
-    /* Accent (follows highlight color) */
-    --primary: var(--highlight);
+    /* Framer blue accent */
+    --primary: 210 100% 52%;
     --primary-foreground: 0 0% 100%;
 
     /* Muted surfaces */
@@ -38,8 +33,25 @@
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 64%;
 
-    --accent: var(--highlight-muted);
-    --accent-foreground: var(--highlight-foreground);
+    --accent: 210 60% 20%;
+    --accent-foreground: 210 100% 70%;
+
+    /* Destructive - soft red */
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders - very subtle */
+    --border: 0 0% 16%;
+    --border-subtle: 0 0% 12%;
+    --input: 0 0% 16%;
+    --ring: 210 100% 52%;
+
+    --radius: 0.625rem;
+
+    /* Highlight/Info color - calming blue (replaces amber alert) */
+    --highlight: 210 100% 52%;
+    --highlight-foreground: 210 100% 80%;
+    --highlight-muted: 210 60% 20%;
 
     /* Energy states - vibrant for dark theme */
     --energy-high: 142 50% 45%;
