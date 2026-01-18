@@ -111,18 +111,21 @@ const CalendarTask = ({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Handle keyboard shortcuts when selected
+  // Handle keyboard shortcuts when selected (but NOT when editing text)
   useEffect(() => {
     if (!isSelected) return;
 
     const handleKeyDown = (ev: KeyboardEvent) => {
-      // Copy: Ctrl+C or Cmd+C
+      // Skip copy/paste shortcuts when editing text - let native text editing work
+      if (isEditingTitle || isEditingDescription) return;
+      
+      // Copy: Ctrl+C or Cmd+C (only when not editing)
       if ((ev.ctrlKey || ev.metaKey) && ev.key === 'c' && onCopy) {
         ev.preventDefault();
         onCopy();
       }
-      // Delete: Backspace or Delete
-      if ((ev.key === 'Backspace' || ev.key === 'Delete') && onDelete && !isEditingTitle && !isEditingDescription) {
+      // Delete: Backspace or Delete (only when not editing)
+      if ((ev.key === 'Backspace' || ev.key === 'Delete') && onDelete) {
         ev.preventDefault();
         onDelete();
       }
@@ -485,12 +488,14 @@ const CalendarTask = ({
   const isExtraLarge = displayHeight >= 100;
   
   // Show full title (no truncate) when there's enough vertical space
-  const allowTitleWrap = displayHeight >= 80;
+  const allowTitleWrap = displayHeight >= 50;
   const canShowTime = displayHeight >= 48;
   const showDescription = displayHeight >= 100 && !!task.description;
   
-  // Calculate max lines for title based on height
-  const titleMaxLines = isExtraLarge ? 3 : isLarge ? 2 : 1;
+  // Calculate max lines for title based on height - scale dynamically
+  // Approximate 16px per line, subtract padding (~24px), divide by line height
+  const availableHeightForTitle = displayHeight - (showDescription ? 60 : canShowTime && showTimeRange ? 40 : 24);
+  const titleMaxLines = Math.max(1, Math.floor(availableHeightForTitle / 16));
 
   // Handle double-click to open edit dialog - ALWAYS opens dialog for all tasks
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
