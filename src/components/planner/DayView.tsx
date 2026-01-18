@@ -504,17 +504,22 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         updateTask(rightTask.id, { display_order: newRightOrder });
                       } : undefined;
 
-                      // For single tasks (no overlap), enable horizontal resizing
+                      // Enable horizontal resizing for ALL tasks
                       const isSingleTask = group.length === 1;
                       const taskCustomWidth = taskWidths[task.id];
-                      // For single tasks, use custom width; for multi-task groups, use column width
-                      const effectiveWidthPercent = isSingleTask 
-                        ? (taskCustomWidth ?? 100) 
-                        : 100;
+                      // Base width is the column width for overlapping tasks, or 100% for single
+                      const baseWidthPercent = isSingleTask ? 100 : columnWidth;
+                      // Apply custom width multiplier if set (stored as percentage of base)
+                      const effectiveWidthPercent = taskCustomWidth !== undefined 
+                        ? (baseWidthPercent * taskCustomWidth / 100) 
+                        : baseWidthPercent;
                       
-                      const handleWidthChange = isSingleTask ? (newWidth: number) => {
-                        setTaskWidths(prev => ({ ...prev, [task.id]: newWidth }));
-                      } : undefined;
+                      // Enable width change for ALL tasks
+                      const handleWidthChange = (newWidth: number) => {
+                        // Store as percentage relative to base width
+                        const relativeWidth = (newWidth / baseWidthPercent) * 100;
+                        setTaskWidths(prev => ({ ...prev, [task.id]: Math.min(100, Math.max(30, relativeWidth)) }));
+                      };
 
                       return (
                         <div
@@ -524,9 +529,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             top: `${pos.top + 1}px`,
                             height: `${taskHeight}px`,
                             left: `calc(${columnIdx * columnWidth}% + 4px)`,
-                            width: isSingleTask 
-                              ? `calc(${effectiveWidthPercent}% - 8px)` 
-                              : `calc(${columnWidth}% - 8px)`,
+                            width: `calc(${effectiveWidthPercent}% - 8px)`,
+                            transition: 'none', // Disable transitions during resize
                           }}
                           onMouseDown={(e) => e.stopPropagation()}
                           onPointerDown={(e) => e.stopPropagation()}
@@ -538,9 +542,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             isShared={task.user_id !== userId}
                             showTimeRange={pos.duration >= 1}
                             height={taskHeight}
-                            width={isSingleTask ? effectiveWidthPercent : undefined}
-                            minWidth={30}
-                            maxWidth={100}
+                            width={effectiveWidthPercent}
+                            baseWidth={baseWidthPercent}
+                            minWidth={isSingleTask ? 30 : 15}
+                            maxWidth={isSingleTask ? 100 : columnWidth}
                             onWidthChange={handleWidthChange}
                             canMoveLeft={!!handleMoveLeft}
                             canMoveRight={!!handleMoveRight}
