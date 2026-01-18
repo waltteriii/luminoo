@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Loader2, Mail, Lock, ArrowRight, Squirrel } from 'lucide-react';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -134,36 +134,44 @@ const Auth = () => {
           <div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-primary-foreground" />
+                <Squirrel className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-medium text-foreground">Planner</span>
+              <span className="text-xl font-medium text-foreground">Luminoo</span>
             </div>
           </div>
           
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl font-light text-foreground leading-tight">
-              Plan your year.
-              <br />
-              <span className="text-foreground-muted">Powered by AI.</span>
+              Luminoo
             </h1>
             <p className="text-lg text-foreground-muted max-w-md">
               An AI-powered marketing calendar that understands your creative energy 
               and helps you plan content that resonates.
             </p>
+            <p className="text-base text-foreground-subtle max-w-md">
+              Dump your thoughts, ideas, tasks, and half-formed plans into Luminoo. 
+              It turns mental noise into clarity, structure, and realistic action, 
+              without forcing you into rigid systems.
+            </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex -space-x-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="w-8 h-8 rounded-full bg-secondary border-2 border-background-elevated"
-                />
-              ))}
-            </div>
-            <p className="text-sm text-foreground-subtle">
-              Join creators building smarter
+          <div className="space-y-3">
+            <p className="text-sm text-foreground-muted italic">
+              Plan with awareness. Create with flow. Stay consistent without burning out.
             </p>
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="w-8 h-8 rounded-full bg-secondary border-2 border-background-elevated"
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-foreground-subtle">
+                Join creators building smarter
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -174,9 +182,9 @@ const Auth = () => {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 justify-center">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+              <Squirrel className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-medium text-foreground">Planner</span>
+            <span className="text-xl font-medium text-foreground">Luminoo</span>
           </div>
 
           <div className="space-y-2 text-center lg:text-left">

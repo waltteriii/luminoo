@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Sparkles, 
+  Squirrel, 
   Menu, 
   LogOut, 
   User as UserIcon,
@@ -96,7 +96,7 @@ const Header = memo(({
         {!isMobile && (
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
+              <Squirrel className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-medium text-foreground text-sm hidden md:block">Luminoo</span>
           </div>
