@@ -323,11 +323,11 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
         description: "Your profile has been updated successfully."
       });
       onOpenChange(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Save profile error:', err);
       toast({
         title: "Failed to save",
-        description: "Could not update your profile. Please try again.",
+        description: err?.message || "Could not update your profile. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -382,8 +382,8 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden group">
-        <DialogHeader className="px-6 py-4 border-b border-border">
+      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-primary" />
             Settings
@@ -395,8 +395,8 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
             <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
           </div>
         ) : (
-          <Tabs defaultValue="profile" className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <TabsList className="mx-6 mt-4 grid grid-cols-4 w-auto">
+          <Tabs defaultValue="profile" className="flex-1 min-h-0 flex flex-col">
+            <TabsList className="mx-6 mt-4 grid grid-cols-4 w-auto flex-shrink-0">
               <TabsTrigger value="profile" className="text-xs gap-1">
                 <User className="w-3 h-3" />
                 Profile
@@ -415,9 +415,9 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 min-h-0 pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-foreground/15 hover:scrollbar-thumb-foreground/25 scrollbar-track-transparent">
               {/* Profile Tab */}
-              <TabsContent value="profile" className="px-6 py-8 space-y-8 mt-0">
+              <TabsContent value="profile" className="px-6 py-8 space-y-8 mt-0 pr-8">
                 {/* Avatar and Name - FIRST */}
                 <div className="flex items-center gap-5">
                   <div 
@@ -871,7 +871,7 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                   </CardContent>
                 </Card>
               </TabsContent>
-            </ScrollArea>
+            </div>
 
             {/* Save Button - Fixed at bottom */}
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-border bg-background">
