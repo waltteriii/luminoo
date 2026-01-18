@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { Task, EnergyLevel } from '@/types';
 import { parse, format, addMinutes } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { useTasksContext } from '@/contexts/TasksContext';
 import ScheduleConfirmDialog from '@/components/tasks/ScheduleConfirmDialog';
 
 interface DndContextValue {
@@ -29,6 +29,7 @@ interface DndProviderProps {
 }
 
 const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
+  const { updateTask } = useTasksContext();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [taskToSchedule, setTaskToSchedule] = useState<Task | null>(null);
@@ -71,20 +72,13 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     if (overId === 'memory-panel' || overData?.type === 'memory') {
       const task = activeData?.task as Task;
       if (task && (activeData?.type === 'inbox-task' || activeData?.type === 'calendar-task')) {
-        try {
-          await supabase
-            .from('tasks')
-            .update({ 
-              location: 'memory',
-              due_date: null,
-              start_time: null,
-              end_time: null
-            })
-            .eq('id', task.id);
-          onTaskScheduled?.();
-        } catch (err) {
-          // Error handling without console.log
-        }
+        await updateTask(task.id, { 
+          location: 'memory',
+          due_date: null,
+          start_time: null,
+          end_time: null
+        });
+        onTaskScheduled?.();
         return;
       }
     }
@@ -182,16 +176,11 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
       if (Object.keys(updateData).length === 0) return;
 
-      try {
-        await supabase.from('tasks').update(updateData).eq('id', task.id);
-        onTaskScheduled?.();
-      } catch (err) {
-        // Error handling without console.log
-      }
-
+      await updateTask(task.id, updateData as any);
+      onTaskScheduled?.();
       return;
     }
-  }, [onTaskScheduled]);
+  }, [onTaskScheduled, updateTask]);
 
   const handleConfirmSchedule = useCallback(async (
     taskId: string,
@@ -200,30 +189,22 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     endTime?: string,
     updates?: { title?: string; energy_level?: EnergyLevel; location?: string; is_shared?: boolean }
   ) => {
-    try {
-      const updateData: Record<string, unknown> = {
-        due_date: dueDate,
-        start_time: startTime && startTime !== 'none' ? startTime : null,
-        end_time: endTime && endTime !== 'none' ? endTime : null,
-      };
-      
-      if (updates) {
-        if (updates.title) updateData.title = updates.title;
-        if (updates.energy_level) updateData.energy_level = updates.energy_level;
-        if (updates.location !== undefined) updateData.location = updates.location || null;
-        if (updates.is_shared !== undefined) updateData.is_shared = updates.is_shared;
-      }
-      
-      await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', taskId);
-      
-      onTaskScheduled?.();
-    } catch (err) {
-      // Error handling without console.log
+    const updateData: Record<string, unknown> = {
+      due_date: dueDate,
+      start_time: startTime && startTime !== 'none' ? startTime : null,
+      end_time: endTime && endTime !== 'none' ? endTime : null,
+    };
+    
+    if (updates) {
+      if (updates.title) updateData.title = updates.title;
+      if (updates.energy_level) updateData.energy_level = updates.energy_level;
+      if (updates.location !== undefined) updateData.location = updates.location || null;
+      if (updates.is_shared !== undefined) updateData.is_shared = updates.is_shared;
     }
-  }, [onTaskScheduled]);
+    
+    await updateTask(taskId, updateData as any);
+    onTaskScheduled?.();
+  }, [onTaskScheduled, updateTask]);
 
   return (
     <DndProviderContext.Provider value={{ activeTask }}>

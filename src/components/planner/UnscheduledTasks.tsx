@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { InboxIcon, ChevronRight, ChevronDown, Plus, RefreshCw, Search, ChevronUp, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTasksContext } from '@/contexts/TasksContext';
 
 interface UnscheduledTasksProps {
   energyFilter: EnergyLevel[];
@@ -22,9 +22,7 @@ const ROWS_TABLET = 3;
 const ROWS_DESKTOP = 3;
 
 const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { tasks: allTasks, loading, addTask, updateTask, deleteTask } = useTasksContext();
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,9 +31,14 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const newTaskInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Filter to only unscheduled, uncompleted tasks
+  const tasks = useMemo(() => 
+    allTasks.filter(t => !t.due_date && !t.completed && t.location !== 'memory'),
+    [allTasks]
+  );
 
   // Responsive columns and max visible tasks
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -70,55 +73,10 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   }, [windowWidth]);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        loadTasks(user.id);
-      }
-    };
-    init();
-
-    const channel = supabase
-      .channel('unscheduled-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) loadTasks(user.id);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  useEffect(() => {
     if (showSearch && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [showSearch]);
-
-  const loadTasks = useCallback(async (uid?: string) => {
-    const userIdToUse = uid || userId;
-    if (!userIdToUse) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userIdToUse)
-        .is('due_date', null)
-        .eq('completed', false)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks((data as Task[]) || []);
-    } catch (err) {
-      // Error handling
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
 
   const handleScheduleTask = useCallback(async (
     taskId: string,
@@ -126,98 +84,43 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     startTime?: string,
     endTime?: string
   ) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          due_date: dueDate,
-          start_time: startTime === 'none' ? null : startTime,
-          end_time: endTime === 'none' ? null : endTime,
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      setTasks(prev => prev.filter(t => t.id !== taskId));
-    } catch (err) {
-      // Error handling
-    }
-  }, []);
+    await updateTask(taskId, {
+      due_date: dueDate,
+      start_time: startTime === 'none' ? null : startTime,
+      end_time: endTime === 'none' ? null : endTime,
+    });
+  }, [updateTask]);
 
   const handleEnergyChange = useCallback(async (taskId: string, energy: EnergyLevel) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ energy_level: energy })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      setTasks(prev => prev.map(t =>
-        t.id === taskId ? { ...t, energy_level: energy } : t
-      ));
-    } catch (err) {
-      // Error handling
-    }
-  }, []);
+    await updateTask(taskId, { energy_level: energy });
+  }, [updateTask]);
 
   const handleTitleChange = useCallback(async (taskId: string, title: string) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ title })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      setTasks(prev => prev.map(t =>
-        t.id === taskId ? { ...t, title } : t
-      ));
-    } catch (err) {
-      // Error handling
-    }
-  }, []);
+    await updateTask(taskId, { title });
+  }, [updateTask]);
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+    const success = await deleteTask(taskId);
+    if (success) {
       toast({ title: 'Deleted', description: 'Task removed from inbox' });
-    } catch (err) {
+    } else {
       toast({ title: 'Error', description: 'Could not delete task', variant: 'destructive' });
     }
-  }, [toast]);
+  }, [deleteTask, toast]);
 
   const createNewTask = useCallback(async () => {
     const title = newTaskTitle.trim();
-    if (!title || !userId) return;
+    if (!title) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: userId,
-          title,
-          energy_level: 'medium',
-          due_date: null,
-          completed: false,
-          detected_from_brain_dump: false,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newTask = data as Task;
-      setTasks(prev => [newTask, ...prev]);
-      setNewTaskTitle('');
-    } catch (err) {
-      // Error handling
-    }
-  }, [newTaskTitle, userId]);
+    await addTask({
+      title,
+      energy_level: 'medium',
+      due_date: null,
+      completed: false,
+      detected_from_brain_dump: false,
+    });
+    setNewTaskTitle('');
+  }, [newTaskTitle, addTask]);
 
   const energyFilteredTasks = useMemo(() => 
     energyFilter.length > 0
@@ -302,22 +205,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             title="Search inbox"
           >
             <Search className={cn("w-4 h-4", showSearch && "text-primary")} />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 opacity-60 hover:opacity-100 hover:bg-secondary"
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (!userId) return;
-              setRefreshing(true);
-              await loadTasks(userId);
-              setRefreshing(false);
-            }}
-            title="Refresh inbox"
-          >
-            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
           </Button>
 
           {collapsed ? (

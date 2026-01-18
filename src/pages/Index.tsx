@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -9,6 +9,7 @@ import PlannerView from '@/components/planner/PlannerView';
 import UnscheduledTasks from '@/components/planner/UnscheduledTasks';
 import DndProvider from '@/components/dnd/DndProvider';
 import MemoryPanel from '@/components/memory/MemoryPanel';
+import { TasksProvider } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { ViewMode, ZoomLevel, EnergyLevel, ParsedItem, Platform } from '@/types';
@@ -30,20 +31,68 @@ interface UserProfile {
   highlightColor: string | null;
 }
 
+// View state persistence keys
+const VIEW_STATE_KEY = 'luminoo-view-state';
+const HIGHLIGHT_KEY = 'luminoo-highlight';
+
+// Load cached view state from localStorage
+const loadCachedViewState = () => {
+  try {
+    const saved = localStorage.getItem(VIEW_STATE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        zoomLevel: parsed.zoomLevel as ZoomLevel || 'year',
+        focusedMonth: parsed.focusedMonth ?? null,
+        focusedDate: parsed.focusedDate ? new Date(parsed.focusedDate) : null,
+        viewMode: parsed.viewMode as ViewMode || 'grid',
+      };
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+};
+
+// Load cached highlight color
+const loadCachedHighlight = (): string => {
+  try {
+    return localStorage.getItem(HIGHLIGHT_KEY) || 'blue';
+  } catch {
+    return 'blue';
+  }
+};
+
+const cachedViewState = loadCachedViewState();
+const cachedHighlight = loadCachedHighlight();
+
+// Apply highlight immediately to prevent flash
+if (cachedHighlight) {
+  document.documentElement.setAttribute('data-highlight', cachedHighlight);
+}
+
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    creatorType: null,
+    platforms: [],
+    nicheKeywords: [],
+    audienceDescription: null,
+    avatarUrl: null,
+    defaultView: null,
+    highlightColor: cachedHighlight,
+  });
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('year');
-  const [focusedMonth, setFocusedMonth] = useState<number | null>(null);
-  const [focusedDate, setFocusedDate] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(cachedViewState?.viewMode || 'grid');
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>(cachedViewState?.zoomLevel || 'year');
+  const [focusedMonth, setFocusedMonth] = useState<number | null>(cachedViewState?.focusedMonth ?? null);
+  const [focusedDate, setFocusedDate] = useState<Date | null>(cachedViewState?.focusedDate ?? null);
   const [currentEnergy, setCurrentEnergy] = useState<EnergyLevel>('medium');
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Default closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [energyFilter, setEnergyFilter] = useState<EnergyLevel[]>([]);
   
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
@@ -52,6 +101,17 @@ const Index = () => {
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
+
+  // Persist view state to localStorage
+  useEffect(() => {
+    const state = {
+      zoomLevel,
+      focusedMonth,
+      focusedDate: focusedDate?.toISOString() || null,
+      viewMode,
+    };
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(state));
+  }, [zoomLevel, focusedMonth, focusedDate, viewMode]);
 
   // Set sidebar default based on screen size
   useEffect(() => {
@@ -92,6 +152,8 @@ const Index = () => {
       .maybeSingle();
 
     if (data) {
+      const highlightColor = ((data as any).highlight_color as string) || 'blue';
+      
       const profile = {
         creatorType: data.creator_type,
         platforms: (data.platforms || []) as Platform[],
@@ -99,17 +161,16 @@ const Index = () => {
         audienceDescription: data.audience_description,
         avatarUrl: data.avatar_url,
         defaultView: ((data as any).default_view as ZoomLevel) || null,
-        highlightColor: ((data as any).highlight_color as string) || 'blue'
+        highlightColor,
       };
       setUserProfile(profile);
       
-      // Apply highlight color
-      if (profile.highlightColor) {
-        document.documentElement.setAttribute('data-highlight', profile.highlightColor);
-      }
+      // Cache and apply highlight color
+      localStorage.setItem(HIGHLIGHT_KEY, highlightColor);
+      document.documentElement.setAttribute('data-highlight', highlightColor);
       
-      // Set the default view if configured
-      if (profile.defaultView) {
+      // Only set view from profile if no cached view state exists
+      if (!cachedViewState && profile.defaultView) {
         setZoomLevel(profile.defaultView);
         if (profile.defaultView === 'month') {
           setFocusedMonth(new Date().getMonth());
@@ -247,8 +308,9 @@ const Index = () => {
   if (!user) return null;
 
   return (
-    <DndProvider>
-      <div className="min-h-screen bg-background flex flex-col w-full">
+    <TasksProvider userId={user.id}>
+      <DndProvider>
+        <div className="min-h-screen bg-background flex flex-col w-full">
         <Header 
           user={user}
           currentEnergy={currentEnergy}
@@ -260,7 +322,7 @@ const Index = () => {
           onViewInbox={handleViewEnergyInbox}
           activeFilters={energyFilter}
           avatarUrl={userProfile?.avatarUrl}
-          highlightColor={userProfile?.highlightColor || 'blue'}
+          highlightColor={userProfile.highlightColor || 'blue'}
           onAddTask={() => setQuickAddOpen(true)}
           onBrainDump={() => setBrainDumpOpen(true)}
         />
@@ -362,8 +424,9 @@ const Index = () => {
             />
           )}
         </Suspense>
-      </div>
-    </DndProvider>
+        </div>
+      </DndProvider>
+    </TasksProvider>
   );
 };
 

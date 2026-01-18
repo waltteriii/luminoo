@@ -4,15 +4,15 @@ import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import QuickAddTask from '@/components/tasks/QuickAddTask';
 import CalendarTask from '@/components/tasks/CalendarTask';
 import DraggableUntimedTask from '@/components/tasks/DraggableUntimedTask';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import CurrentTimeIndicator from '@/components/planner/CurrentTimeIndicator';
 import { useDroppable } from '@dnd-kit/core';
-import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
+import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DayViewProps {
   date: Date;
@@ -63,6 +63,8 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
 
+  const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUserId(data.user?.id || null);
@@ -74,11 +76,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   }, [date]);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
-  const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
-    userId: userId || undefined,
-    singleDate: dateStr,
-    includeShared: true,
-  });
+  
+  // Filter tasks for current date from the centralized context
+  const tasks = useMemo(() => 
+    allTasks.filter(t => t.due_date === dateStr),
+    [allTasks, dateStr]
+  );
 
   // Disable drag-to-create on mobile (use tap instead)
   const handleMouseDown = useCallback((hour: number, e: React.MouseEvent) => {

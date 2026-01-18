@@ -13,7 +13,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
+import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface WeekViewProps {
@@ -163,14 +163,14 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     [weekStart]
   );
 
-  const { tasks, addTask, updateTask, deleteTask } = useRealtimeTasks({
-    userId: userId || undefined,
-    dateRange: {
-      start: format(weekStart, 'yyyy-MM-dd'),
-      end: format(addDays(weekStart, 6), 'yyyy-MM-dd'),
-    },
-    includeShared: true,
-  });
+  const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
+  
+  // Filter tasks for the week from centralized context
+  const tasks = useMemo(() => {
+    const startStr = format(weekStart, 'yyyy-MM-dd');
+    const endStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+    return allTasks.filter(t => t.due_date && t.due_date >= startStr && t.due_date <= endStr);
+  }, [allTasks, weekStart]);
 
   const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
