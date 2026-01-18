@@ -63,7 +63,7 @@ const DroppableDay = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border bg-card p-3 min-h-[300px] transition-all",
+        "rounded-lg border border-border bg-card p-2 min-h-[200px] transition-all flex flex-col",
         today && "border-primary ring-1 ring-primary/20",
         isOver && "ring-2 ring-primary bg-primary/5"
       )}
@@ -71,15 +71,15 @@ const DroppableDay = ({
       <button
         onClick={() => onDayClick(date)}
         className={cn(
-          "w-full text-left mb-3 hover:text-primary transition-colors",
+          "w-full text-left mb-2 hover:text-primary transition-colors",
           today && "text-primary"
         )}
       >
-        <div className="text-xs text-foreground-muted uppercase">
+        <div className="text-[10px] text-foreground-muted uppercase">
           {format(date, 'EEE')}
         </div>
         <div className={cn(
-          "text-lg font-medium",
+          "text-base font-medium",
           today ? "text-primary" : "text-foreground"
         )}>
           {format(date, 'd')}
@@ -90,8 +90,8 @@ const DroppableDay = ({
         items={tasks.map(t => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-2">
-          {tasks.slice(0, 5).map(task => (
+        <div className="space-y-1 flex-1">
+          {tasks.slice(0, 6).map(task => (
             <div 
               key={task.id}
               onDoubleClick={(e) => handleDoubleClick(e, task)}
@@ -107,14 +107,16 @@ const DroppableDay = ({
               />
             </div>
           ))}
-          {tasks.length > 5 && (
+          {tasks.length > 6 && (
             <button 
               onClick={() => onDayClick(date)}
-              className="text-xs text-foreground-muted hover:text-primary"
+              className="text-[10px] text-foreground-muted hover:text-primary"
             >
-              +{tasks.length - 5} more
+              +{tasks.length - 6} more
             </button>
           )}
+        </div>
+        <div className="mt-1">
           <QuickAddTask
             onAdd={async (task) => {
               await onAddTask(date, task.title, task.energy);
@@ -221,7 +223,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-3">
+      <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day) => (
           <DroppableDay
             key={day.toISOString()}
