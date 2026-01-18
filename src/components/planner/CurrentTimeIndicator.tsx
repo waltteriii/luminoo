@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CurrentTimeIndicatorProps {
-  startHour?: number; // Default 6 (6 AM)
+  startHour?: number; // Default 0 (midnight)
+  endHour?: number; // Default 24 (end of day)
   hourHeight?: number; // Height of each hour slot in pixels
   timezone?: string;
 }
 
 const CurrentTimeIndicator = ({ 
-  startHour = 6, 
+  startHour = 0, 
+  endHour = 24,
   hourHeight = 80,
   timezone = 'UTC'
 }: CurrentTimeIndicatorProps) => {
@@ -41,7 +43,7 @@ const CurrentTimeIndicator = ({
       
       const totalMinutes = hours * 60 + minutes;
       const startMinutes = startHour * 60;
-      const endMinutes = 22 * 60; // 10 PM
+      const endMinutes = endHour * 60;
       
       // Only show if current time is within the visible range
       if (totalMinutes >= startMinutes && totalMinutes <= endMinutes) {
@@ -66,7 +68,7 @@ const CurrentTimeIndicator = ({
     const interval = setInterval(updatePosition, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, [startHour, hourHeight, timezone]);
+  }, [startHour, endHour, hourHeight, timezone]);
 
   if (position === null) return null;
 

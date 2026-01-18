@@ -1,4 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { 
+  TimeRangeSettings, 
+  TimeRangeMode, 
+  OffHoursDisplay, 
+  defaultTimeRangeSettings 
+} from '@/lib/timeRangeConfig';
 
 export type UIDensity = 'comfortable' | 'compact';
 export type ViewType = 'year' | 'month' | 'week' | 'day';
@@ -17,6 +23,10 @@ interface DensityContextType {
   tooltipSettings: TooltipSettings;
   setTooltipSettings: (settings: TooltipSettings) => void;
   isTooltipEnabledForView: (view: ViewType) => boolean;
+  // Time range settings
+  timeRangeSettings: TimeRangeSettings;
+  setTimeRangeSettings: (settings: TimeRangeSettings) => void;
+  updateTimeRangeSetting: <K extends keyof TimeRangeSettings>(key: K, value: TimeRangeSettings[K]) => void;
 }
 
 const defaultTooltipSettings: TooltipSettings = {
@@ -28,9 +38,12 @@ const defaultTooltipSettings: TooltipSettings = {
 
 const DensityContext = createContext<DensityContextType | undefined>(undefined);
 
+const TIME_RANGE_STORAGE_KEY = 'time-range-settings';
+
 export function DensityProvider({ children }: { children: ReactNode }) {
   const [density, setDensityState] = useState<UIDensity>('comfortable');
   const [tooltipSettings, setTooltipSettingsState] = useState<TooltipSettings>(defaultTooltipSettings);
+  const [timeRangeSettings, setTimeRangeSettingsState] = useState<TimeRangeSettings>(defaultTimeRangeSettings);
 
   useEffect(() => {
     // Load density from localStorage
@@ -46,6 +59,17 @@ export function DensityProvider({ children }: { children: ReactNode }) {
       try {
         const parsed = JSON.parse(storedTooltips);
         setTooltipSettingsState({ ...defaultTooltipSettings, ...parsed });
+      } catch {
+        // Use defaults
+      }
+    }
+
+    // Load time range settings from localStorage
+    const storedTimeRange = localStorage.getItem(TIME_RANGE_STORAGE_KEY);
+    if (storedTimeRange) {
+      try {
+        const parsed = JSON.parse(storedTimeRange);
+        setTimeRangeSettingsState({ ...defaultTimeRangeSettings, ...parsed });
       } catch {
         // Use defaults
       }
@@ -67,6 +91,19 @@ export function DensityProvider({ children }: { children: ReactNode }) {
     return tooltipSettings[view] ?? true;
   };
 
+  const setTimeRangeSettings = (settings: TimeRangeSettings) => {
+    setTimeRangeSettingsState(settings);
+    localStorage.setItem(TIME_RANGE_STORAGE_KEY, JSON.stringify(settings));
+  };
+
+  const updateTimeRangeSetting = <K extends keyof TimeRangeSettings>(key: K, value: TimeRangeSettings[K]) => {
+    setTimeRangeSettingsState(prev => {
+      const updated = { ...prev, [key]: value };
+      localStorage.setItem(TIME_RANGE_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
     <DensityContext.Provider value={{ 
       density, 
@@ -75,6 +112,9 @@ export function DensityProvider({ children }: { children: ReactNode }) {
       tooltipSettings,
       setTooltipSettings,
       isTooltipEnabledForView,
+      timeRangeSettings,
+      setTimeRangeSettings,
+      updateTimeRangeSetting,
     }}>
       {children}
     </DensityContext.Provider>
