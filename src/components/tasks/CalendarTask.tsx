@@ -275,7 +275,8 @@ const CalendarTask = ({
 
               <div
                 className={cn(
-                  'h-full flex flex-col px-2 leading-snug',
+                  'h-full flex flex-col leading-snug',
+                  (canMoveLeft || canMoveRight) ? 'pl-8 pr-2' : 'px-2',
                   contentJustify,
                   contentPadding,
                   task.completed && 'line-through'
@@ -299,10 +300,10 @@ const CalendarTask = ({
                 )}
               </div>
 
-              {/* Reorder buttons - positioned below title area */}
+              {/* Reorder buttons - kept in top area, but text has reserved padding */}
               {(canMoveLeft || canMoveRight) && (
                 <div className={cn(
-                  'absolute left-1 top-7 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10'
+                  'absolute left-1 top-5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10'
                 )}>
                   {canMoveLeft && (
                     <Button
