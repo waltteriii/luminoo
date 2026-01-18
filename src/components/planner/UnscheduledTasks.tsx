@@ -13,10 +13,9 @@ interface UnscheduledTasksProps {
   onScheduleTask: (taskId: string, date: Date) => void;
 }
 
-const MAX_VISIBLE_TASKS_DESKTOP = 4;
+// Multi-column: show more tasks on wider screens
+const MAX_VISIBLE_TASKS_DESKTOP = 6;
 const MAX_VISIBLE_TASKS_TABLET = 4;
-
-const MAX_VISIBLE_TASKS = 5;
 const MAX_VISIBLE_TASKS_MOBILE = 3;
 
 const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
@@ -35,7 +34,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Use fewer visible tasks on larger screens to keep inbox compact
+  // Responsive max visible tasks
   const maxVisible = isMobile ? MAX_VISIBLE_TASKS_MOBILE : MAX_VISIBLE_TASKS_DESKTOP;
 
   useEffect(() => {
@@ -298,23 +297,23 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
       </div>
 
       {!collapsed && (
-        <div className="px-3 sm:px-4 lg:px-6 pb-3 lg:pb-4 space-y-1.5 lg:space-y-2">
+        <div className="px-3 sm:px-4 lg:px-6 pb-3 lg:pb-4 space-y-2">
           {showSearch && (
             <div className="relative max-w-md">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
               <input
                 ref={searchInputRef}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter tasks..."
-                className="w-full pl-8 pr-3 py-1.5 lg:py-2 rounded bg-card border border-border text-sm text-foreground placeholder:text-foreground-muted/60 focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] lg:min-h-[40px]"
+                className="w-full pl-9 pr-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-foreground-muted/60 focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[44px]"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
           )}
 
           {/* New task input */}
-          <div className="flex items-center gap-2 p-1.5 lg:p-2 rounded bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[40px] lg:min-h-[44px] max-w-2xl">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/50 hover:border-border transition-colors min-h-[44px] max-w-2xl">
             <Plus className="w-4 h-4 text-foreground-muted flex-shrink-0" />
             <input
               ref={newTaskInputRef}
@@ -332,17 +331,19 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             />
           </div>
 
-          {/* Task list */}
-          {visibleTasks.map(task => (
-            <InboxTaskItem
-              key={task.id}
-              task={task}
-              onSchedule={handleScheduleTask}
-              onEnergyChange={handleEnergyChange}
-              onTitleChange={handleTitleChange}
-              onDelete={handleDeleteTask}
-            />
-          ))}
+          {/* Task list - multi-column on larger screens */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+            {visibleTasks.map(task => (
+              <InboxTaskItem
+                key={task.id}
+                task={task}
+                onSchedule={handleScheduleTask}
+                onEnergyChange={handleEnergyChange}
+                onTitleChange={handleTitleChange}
+                onDelete={handleDeleteTask}
+              />
+            ))}
+          </div>
 
           {/* Overflow indicator */}
           {isOverflowing && (

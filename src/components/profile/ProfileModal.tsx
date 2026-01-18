@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { User, Loader2, Save, Camera, Music, Palette, PenTool, Heart, Video, Briefcase, Plus, Clock, Search, X, Shield, CreditCard, Users, Key, Share2, LayoutGrid, Calendar, CalendarDays, Sparkles, SlidersHorizontal, Maximize2, Minimize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorType, Platform, ZoomLevel } from '@/types';
@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useDensity, UIDensity } from '@/contexts/DensityContext';
 
 interface ProfileModalProps {
   open: boolean;
@@ -117,6 +118,59 @@ const ALL_TIMEZONES = [
   { value: 'Africa/Lagos', label: 'Lagos', keywords: ['nigeria', 'lagos', 'africa'] },
   { value: 'Africa/Johannesburg', label: 'Johannesburg', keywords: ['south africa', 'johannesburg', 'africa'] },
 ];
+
+// Density toggle section component
+const DensitySection = () => {
+  const { density, setDensity } = useDensity();
+  
+  const densityOptions: { value: UIDensity; label: string; description: string; icon: React.ReactNode }[] = [
+    { value: 'comfortable', label: 'Comfortable', description: 'More spacing, larger elements', icon: <Maximize2 className="w-4 h-4" /> },
+    { value: 'compact', label: 'Compact', description: 'Denser layout, more content visible', icon: <Minimize2 className="w-4 h-4" /> },
+  ];
+  
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <SlidersHorizontal className="w-3.5 h-3.5 text-highlight" />
+        <Label className="text-xs font-medium">UI Density</Label>
+      </div>
+      <p className="text-xs text-foreground-muted">
+        Control spacing and element sizes throughout the app
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {densityOptions.map(option => (
+          <button
+            key={option.value}
+            onClick={() => setDensity(option.value)}
+            className={cn(
+              "flex flex-col items-start gap-2 p-3 rounded-lg border transition-all text-left",
+              density === option.value
+                ? "border-highlight bg-highlight-muted"
+                : "border-border hover:border-foreground-muted/50"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "w-8 h-8 rounded-md flex items-center justify-center",
+                density === option.value ? "bg-highlight/20 text-highlight-foreground" : "bg-secondary text-foreground-muted"
+              )}>
+                {option.icon}
+              </span>
+              <span className={cn(
+                "text-sm font-medium",
+                density === option.value ? "text-highlight-foreground" : "text-foreground"
+              )}>{option.label}</span>
+            </div>
+            <span className={cn(
+              "text-xs",
+              density === option.value ? "text-highlight-foreground/80" : "text-foreground-muted"
+            )}>{option.description}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: ProfileModalProps) => {
   const [loading, setLoading] = useState(true);
@@ -746,6 +800,11 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                     ))}
                   </div>
                 </div>
+
+                <Separator className="my-1" />
+
+                {/* UI Density */}
+                <DensitySection />
 
                 <Separator className="my-1" />
 
