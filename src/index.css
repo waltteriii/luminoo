@@ -494,32 +494,33 @@
   /* Custom scrollbar class for more emphasis */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--foreground) / 0.1) transparent;
+    scrollbar-color: hsl(var(--foreground) / 0.2) transparent;
   }
   
   .scrollbar-thin:hover {
-    scrollbar-color: hsl(var(--foreground) / 0.2) transparent;
+    scrollbar-color: hsl(var(--foreground) / 0.3) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--foreground) / 0.05);
+    border-radius: 9999px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--foreground) / 0.1);
+    background: hsl(var(--foreground) / 0.2);
     border-radius: 9999px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--foreground) / 0.2);
+    background: hsl(var(--foreground) / 0.3);
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:active {
-    background: hsl(var(--foreground) / 0.3);
+    background: hsl(var(--foreground) / 0.4);
   }
 }

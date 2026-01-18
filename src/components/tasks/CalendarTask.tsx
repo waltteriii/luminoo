@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
+import { normalizeTime, parseTimeToHours, formatHoursToTime } from '@/lib/timeUtils';
 import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
@@ -65,16 +66,19 @@ const CalendarTask = ({
 
   // Format time range
   const getTimeRange = () => {
-    if (!task.start_time) return '';
-    const startFormatted = format(new Date(`2000-01-01T${task.start_time}`), 'h:mm a');
-    if (!task.end_time) return startFormatted;
-    const endFormatted = format(new Date(`2000-01-01T${task.end_time}`), 'h:mm a');
+    const startNorm = normalizeTime(task.start_time);
+    if (!startNorm) return '';
+    const startFormatted = format(new Date(`2000-01-01T${startNorm}`), 'h:mm a');
+    const endNorm = normalizeTime(task.end_time);
+    if (!endNorm) return startFormatted;
+    const endFormatted = format(new Date(`2000-01-01T${endNorm}`), 'h:mm a');
     return `${startFormatted} - ${endFormatted}`;
   };
 
   // Calculate new end time from height change
   const calculateNewEndTime = useCallback((heightDelta: number) => {
-    if (!task.start_time) return null;
+    const startHour = parseTimeToHours(task.start_time);
+    if (startHour === null) return null;
     
     // Assume 48px per hour on desktop (from DayView HOUR_HEIGHT)
     const HOUR_HEIGHT = 48;
@@ -87,19 +91,18 @@ const CalendarTask = ({
     const durationMins = Math.round(durationHours * 60 / 15) * 15;
     const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60)); // Max 16 hours
     
-    const [startH, startM] = task.start_time.split(':').map(Number);
-    const startTotalMins = startH * 60 + startM;
+    const startTotalMins = startHour * 60;
     const endTotalMins = startTotalMins + clampedMins;
     
     const endH = Math.floor(endTotalMins / 60);
-    const endM = endTotalMins % 60;
+    const endM = Math.round(endTotalMins % 60);
     
     // Clamp to 22:00 max
     if (endH >= 22) {
       return '22:00';
     }
     
-    return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+    return formatHoursToTime(endH + endM / 60);
   }, [task.start_time]);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
