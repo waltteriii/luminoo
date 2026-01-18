@@ -230,13 +230,13 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     const currentLeft = taskLefts[taskId] ?? 0;
     
     if (direction === 'right') {
-      // Right edge: just change width, clamped to MAX_WIDTH
+      // Right edge: delta > 0 means dragging right = grow width
       const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.min(100 - currentLeft, currentWidth + delta)));
       setTaskWidths(prev => ({ ...prev, [taskId]: newWidth }));
     } else {
-      // Left edge: change both left position and width
-      const potentialLeft = currentLeft + delta;
-      const potentialWidth = currentWidth - delta;
+      // Left edge: delta > 0 means dragging left = move left edge left = decrease left position, increase width
+      const potentialLeft = currentLeft - delta;  // Subtract delta: dragging left (positive) moves left edge left
+      const potentialWidth = currentWidth + delta; // Add delta: dragging left (positive) increases width
       
       // Clamp left position to 0 minimum and width to limits
       let newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
@@ -726,16 +726,21 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         const canResizeRight = !isMobile && (isMultiTask ? columnIdx < group.length - 1 : true);
                         
                         // Resize handlers - different logic for single vs group
+                        // For LEFT edge: dragging left (positive delta from CalendarTask) = this task grows, left neighbor shrinks
+                        // For RIGHT edge: dragging right (positive delta) = this task grows, right neighbor shrinks
                         const handleResizeLeft = canResizeLeft ? (delta: number) => {
                           if (isMultiTask) {
+                            // delta > 0 means dragging left = grow this task, shrink left neighbor
                             handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'left');
                           } else {
-                            handleSingleTaskResize(task.id, -delta, 'left');
+                            // For single task, delta > 0 means move left edge left = grow width, shift left position
+                            handleSingleTaskResize(task.id, delta, 'left');
                           }
                         } : undefined;
                         
                         const handleResizeRight = canResizeRight ? (delta: number) => {
                           if (isMultiTask) {
+                            // delta > 0 means dragging right = grow this task, shrink right neighbor
                             handleGroupWidthChange(group, columnIdx, taskWidth + delta, 'right');
                           } else {
                             handleSingleTaskResize(task.id, delta, 'right');

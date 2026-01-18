@@ -695,12 +695,7 @@ const CalendarTask = ({
                   <textarea
                     ref={titleInputRef as unknown as React.RefObject<HTMLTextAreaElement>}
                     value={editTitle}
-                    onChange={(e) => {
-                      setEditTitle(e.target.value);
-                      // Auto-expand: reset height then set to scrollHeight
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${Math.min(e.target.scrollHeight, displayHeight - 20)}px`;
-                    }}
+                    onChange={(e) => setEditTitle(e.target.value)}
                     onBlur={handleTitleSave}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -714,17 +709,16 @@ const CalendarTask = ({
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
-                    onFocus={(e) => {
-                      // Set initial height on focus
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${Math.min(e.target.scrollHeight, displayHeight - 20)}px`;
-                    }}
                     className={cn(
-                      "bg-transparent border-none outline-none font-medium leading-tight w-full p-0 focus:ring-0 resize-none overflow-hidden",
+                      "bg-transparent border-none outline-none font-medium leading-tight w-full p-0 focus:ring-0 resize-none flex-1",
                       isCompact ? 'text-[11px]' : 'text-[13px]'
                     )}
-                    style={{ minHeight: '1.25em' }}
-                    rows={1}
+                    style={{ 
+                      minHeight: '1.25em',
+                      // Fill the available space in the box
+                      height: '100%',
+                      maxHeight: `${Math.max(displayHeight - 24, 20)}px`
+                    }}
                     autoFocus
                   />
                 ) : (
