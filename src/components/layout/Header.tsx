@@ -87,23 +87,23 @@ const Header = memo(({
   const displayName = user.email?.split('@')[0] || 'User';
 
   return (
-    <header className="h-12 lg:h-14 border-b border-border bg-background-elevated flex items-center justify-between px-2 sm:px-4 lg:px-6 gap-2">
+    <header className="h-14 sm:h-14 lg:h-16 border-b border-border bg-background-elevated flex items-center justify-between px-3 sm:px-4 lg:px-6 gap-2 sm:gap-3">
       {/* Left section */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onToggleSidebar}
-          className="text-foreground-muted hover:text-foreground min-w-[40px] min-h-[40px] lg:min-w-[44px] lg:min-h-[44px]"
+          className="text-foreground-muted hover:text-foreground min-w-[44px] min-h-[44px]"
         >
-          <Menu className="w-4 h-4 lg:w-5 lg:h-5" />
+          <Menu className="w-5 h-5" />
         </Button>
         
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-medium text-foreground text-sm lg:text-base hidden md:block">Luminoo</span>
+          <span className="font-medium text-foreground text-sm lg:text-base hidden sm:block">Luminoo</span>
         </div>
       </div>
 
@@ -122,17 +122,17 @@ const Header = memo(({
       </div>
 
       {/* Right section */}
-      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="text-foreground-muted hover:text-foreground min-w-[40px] min-h-[40px] lg:min-w-[44px] lg:min-h-[44px]"
+          className="text-foreground-muted hover:text-foreground min-w-[44px] min-h-[44px]"
         >
           {theme === 'dark' ? (
-            <Sun className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <Sun className="w-4 h-4" />
           ) : (
-            <Moon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <Moon className="w-4 h-4" />
           )}
         </Button>
 
@@ -140,19 +140,19 @@ const Header = memo(({
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="flex items-center gap-1 sm:gap-2 text-foreground-muted hover:text-foreground min-h-[40px] lg:min-h-[44px] px-1.5 lg:px-2"
+              className="flex items-center gap-2 text-foreground-muted hover:text-foreground min-h-[44px] px-2"
             >
-              <div className="w-6 h-6 lg:w-7 lg:h-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <UserIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-foreground-muted" />
+                  <UserIcon className="w-4 h-4 text-foreground-muted" />
                 )}
               </div>
               {!isMobile && (
                 <>
-                  <span className="text-xs lg:text-sm max-w-[100px] truncate">{displayName}</span>
-                  <ChevronDown className="w-3.5 h-3.5 lg:w-4 lg:h-4 flex-shrink-0" />
+                  <span className="text-sm max-w-[100px] truncate">{displayName}</span>
+                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
                 </>
               )}
             </Button>
