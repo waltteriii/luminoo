@@ -119,6 +119,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
+  
+  // Track custom widths for tasks (percentage width per task id)
+  const [taskWidths, setTaskWidths] = useState<Record<string, number>>({});
 
   const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
 
@@ -499,6 +502,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         updateTask(rightTask.id, { display_order: newRightOrder });
                       } : undefined;
 
+                      // For single tasks (no overlap), enable horizontal resizing
+                      const isSingleTask = group.length === 1;
+                      const taskCustomWidth = taskWidths[task.id];
+                      const baseWidth = columnWidth;
+                      const displayWidth = isSingleTask ? (taskCustomWidth ?? 100) : 100;
+                      
+                      const handleWidthChange = isSingleTask ? (newWidth: number) => {
+                        setTaskWidths(prev => ({ ...prev, [task.id]: newWidth }));
+                      } : undefined;
+
                       return (
                         <div
                           key={task.id}
@@ -507,7 +520,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             top: `${pos.top + 1}px`,
                             height: `${taskHeight}px`,
                             left: `calc(${columnIdx * columnWidth}% + 4px)`,
-                            width: `calc(${columnWidth}% - 8px)`,
+                            width: `calc(${baseWidth}% - 8px)`,
                           }}
                           onMouseDown={(e) => e.stopPropagation()}
                           onPointerDown={(e) => e.stopPropagation()}
@@ -519,6 +532,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             isShared={task.user_id !== userId}
                             showTimeRange={pos.duration >= 1}
                             height={taskHeight}
+                            width={displayWidth}
+                            minWidth={30}
+                            maxWidth={100}
+                            onWidthChange={handleWidthChange}
                             canMoveLeft={!!handleMoveLeft}
                             canMoveRight={!!handleMoveRight}
                             onMoveLeft={handleMoveLeft}
