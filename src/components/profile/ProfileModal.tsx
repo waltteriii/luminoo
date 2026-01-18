@@ -670,49 +670,55 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                 </div>
               </TabsContent>
 
-              {/* Interface Tab - UI/UX preferences for neurodivergent users */}
-              <TabsContent value="interface" className="px-6 py-6 space-y-6 mt-0 pr-8">
-                <div className="space-y-1">
+              {/* Interface Tab - UI/UX preferences */}
+              <TabsContent value="interface" className="px-6 py-5 space-y-5 mt-0">
+                {/* Header */}
+                <div>
                   <h3 className="text-sm font-medium text-foreground">Visual Preferences</h3>
-                  <p className="text-xs text-foreground-muted">
-                    Customize how the interface looks and behaves to match your working style
+                  <p className="text-xs text-foreground-muted mt-0.5">
+                    Customize the interface to match your working style
                   </p>
                 </div>
 
-                {/* Default View - Compact */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Default View on Login</Label>
-                  <div className="grid grid-cols-4 gap-1.5">
+                {/* Default View */}
+                <div className="space-y-2.5">
+                  <Label className="text-xs font-medium">Default View on Login</Label>
+                  <div className="grid grid-cols-4 gap-2">
                     {defaultViews.map(view => (
                       <button
                         key={view.value}
                         onClick={() => setDefaultView(view.value)}
                         className={cn(
-                          "flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all text-xs",
+                          "flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-lg border transition-all",
                           defaultView === view.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/50 text-foreground-muted"
+                            ? "border-highlight bg-highlight-muted text-highlight-foreground"
+                            : "border-border hover:border-foreground-muted/50 text-foreground-muted hover:text-foreground"
                         )}
                       >
-                        {view.icon}
-                        <span>{view.label}</span>
+                        <span className={cn(
+                          "w-7 h-7 rounded-md flex items-center justify-center",
+                          defaultView === view.value ? "bg-highlight/20" : "bg-secondary"
+                        )}>
+                          {view.icon}
+                        </span>
+                        <span className="text-[11px] font-medium">{view.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <Separator />
+                <Separator className="my-1" />
 
-                {/* Highlight Color - Compact */}
-                <div className="space-y-2">
+                {/* Highlight Color */}
+                <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-highlight" />
-                    <Label className="text-xs">Highlight Color</Label>
+                    <Label className="text-xs font-medium">Highlight Color</Label>
                   </div>
-                  <p className="text-xs text-foreground-muted -mt-1">
-                    Choose a calming accent color for current day, selections, and focus states
+                  <p className="text-xs text-foreground-muted">
+                    Accent color for current day, selections, and focus states
                   </p>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     {highlightColors.map(color => (
                       <button
                         key={color.value}
@@ -721,24 +727,31 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
                           document.documentElement.setAttribute('data-highlight', color.value);
                         }}
                         className={cn(
-                          "flex flex-col items-center gap-1 px-3 py-2 rounded-md border transition-all",
+                          "flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-lg border transition-all",
                           highlightColor === color.value
-                            ? "border-highlight bg-highlight-muted ring-1 ring-highlight/30"
-                            : "border-border hover:border-foreground-muted"
+                            ? "border-highlight bg-highlight-muted ring-1 ring-highlight/40"
+                            : "border-border hover:border-foreground-muted/50"
                         )}
                       >
-                        <div className={cn("w-4 h-4 rounded-full", color.colorClass)} />
-                        <span className="text-2xs text-foreground-muted">{color.label}</span>
+                        <div className={cn(
+                          "w-5 h-5 rounded-full ring-2 ring-offset-2 ring-offset-background transition-all",
+                          color.colorClass,
+                          highlightColor === color.value ? "ring-highlight" : "ring-transparent"
+                        )} />
+                        <span className={cn(
+                          "text-[10px] font-medium",
+                          highlightColor === color.value ? "text-highlight-foreground" : "text-foreground-muted"
+                        )}>{color.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <Separator />
+                <Separator className="my-1" />
 
-                {/* Future accessibility settings placeholder */}
-                <div className="p-4 bg-secondary/30 rounded-lg border border-border/50">
-                  <p className="text-xs text-foreground-muted text-center">
+                {/* Coming Soon */}
+                <div className="py-4 px-3 bg-secondary/40 rounded-lg border border-border/50 text-center">
+                  <p className="text-xs text-foreground-muted">
                     More accessibility and focus settings coming soon
                   </p>
                 </div>
