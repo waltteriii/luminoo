@@ -34,7 +34,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('circular');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('year');
   const [focusedMonth, setFocusedMonth] = useState<number | null>(null);
   const [focusedDate, setFocusedDate] = useState<Date | null>(null);
