@@ -259,13 +259,19 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 return taskHour === hour;
               });
 
+              // Dynamic height: minimum 48px, expand if multiple tasks
+              const minHeight = 48;
+              const taskHeight = 32; // Height per task
+              const dynamicHeight = Math.max(minHeight, hourTasks.length * taskHeight + 8);
+
               return (
                 <TimeSlotDropZone key={hour} hour={hour} date={currentDate}>
                   <div
                     className={cn(
-                      'group relative h-12 border-b border-border/50 transition-all cursor-crosshair',
+                      'group relative border-b border-border/50 transition-all cursor-crosshair',
                       isInSelection && 'bg-primary/20 ring-1 ring-primary/50'
                     )}
+                    style={{ minHeight: `${dynamicHeight}px` }}
                     onMouseDown={(e) => handleMouseDown(hour, e)}
                   >
                     {/* Time label */}
@@ -279,28 +285,56 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         items={hourTasks.map(t => t.id)}
                         strategy={verticalListSortingStrategy}
                       >
-                        <div className="space-y-1 py-1">
-                          {hourTasks.map(task => (
-                            <div
-                              key={task.id}
-                              className="task-item"
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onPointerDown={(e) => e.stopPropagation()}
-                            >
-                              <DraggableTask
-                                task={task}
-                                onUpdate={(updates) => updateTask(task.id, updates)}
-                                onDelete={() => deleteTask(task.id)}
-                                isShared={task.user_id !== userId}
-                                compact
-                                showDetailsButton
-                                enableInlineTitleEdit
-                                disableDoubleClickEdit
-                                dndData={{ hour, date: currentDate }}
-                              />
-                            </div>
-                          ))}
-                        </div>
+                        {hourTasks.length > 1 ? (
+                          // Multiple tasks - stacked with visual indicator
+                          <div className="py-1 space-y-0.5 relative">
+                            <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-transparent rounded-full" />
+                            {hourTasks.map((task, idx) => (
+                              <div
+                                key={task.id}
+                                className="task-item pl-2"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                <DraggableTask
+                                  task={task}
+                                  onUpdate={(updates) => updateTask(task.id, updates)}
+                                  onDelete={() => deleteTask(task.id)}
+                                  isShared={task.user_id !== userId}
+                                  compact
+                                  showDetailsButton
+                                  enableInlineTitleEdit
+                                  disableDoubleClickEdit
+                                  dndData={{ hour, date: currentDate }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // Single task or empty
+                          <div className="space-y-1 py-1">
+                            {hourTasks.map(task => (
+                              <div
+                                key={task.id}
+                                className="task-item"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                <DraggableTask
+                                  task={task}
+                                  onUpdate={(updates) => updateTask(task.id, updates)}
+                                  onDelete={() => deleteTask(task.id)}
+                                  isShared={task.user_id !== userId}
+                                  compact
+                                  showDetailsButton
+                                  enableInlineTitleEdit
+                                  disableDoubleClickEdit
+                                  dndData={{ hour, date: currentDate }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </SortableContext>
 
                       {/* Add task inline */}
@@ -319,7 +353,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                             <div className="flex items-center gap-1 text-xs text-foreground-muted">
                               <Plus className="w-3 h-3" />
-                              Drag to create task
+                              Drag to create
                             </div>
                           </div>
                         )
