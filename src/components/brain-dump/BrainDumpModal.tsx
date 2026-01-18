@@ -318,8 +318,8 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-            <div className="flex items-center gap-2">
+          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+            <div className="flex items-center gap-2 shrink-0">
               <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="gap-1">
                 <ArrowLeft className="w-4 h-4" />
                 Back
@@ -341,7 +341,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                   <p className="text-sm">Start dumping your thoughts!</p>
                 </div>
               ) : (
-                <div className="space-y-3 pr-2">
+                <div className="space-y-3 pr-4 pb-2">
                   {history.map((dump) => (
                     <div
                       key={dump.id}
