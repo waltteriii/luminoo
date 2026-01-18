@@ -66,10 +66,7 @@ const DroppableDay = memo(({
     data: { type: 'day', date },
   });
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent, task: Task) => {
-    e.stopPropagation();
-    onEditTask(task);
-  }, [onEditTask]);
+  // No longer needed - double-click is handled in DraggableTask now
 
   const maxTasks = compact ? 3 : 5;
   
@@ -171,21 +168,16 @@ const DroppableDay = memo(({
       >
         <div className="flex flex-col gap-1 flex-1">
           {tasks.slice(0, maxTasks).map(task => (
-            <div 
+            <DraggableTask
               key={task.id}
-              onDoubleClick={(e) => handleDoubleClick(e, task)}
-              className="cursor-pointer"
-            >
-              <DraggableTask
-                task={task}
-                onUpdate={(updates) => onUpdateTask(task.id, updates)}
-                onDelete={() => onDeleteTask(task.id)}
-                isShared={task.user_id !== userId}
-                compact
-                disableDoubleClickEdit
-                showTime
-              />
-            </div>
+              task={task}
+              onUpdate={(updates) => onUpdateTask(task.id, updates)}
+              onDelete={() => onDeleteTask(task.id)}
+              isShared={task.user_id !== userId}
+              compact
+              enableFullDrag
+              showTime
+            />
           ))}
           {tasks.length > maxTasks && (
             <button 

@@ -144,8 +144,9 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
   }, [selectedDate, selectedStartTime, selectedEndTime, task.id, onSchedule]);
 
   // On mobile, only apply drag listeners to the handle to allow scrolling
+  // When editing, disable drag on container to allow text selection
   const dragHandleProps = isMobile ? { ...attributes, ...listeners } : {};
-  const containerDragProps = isMobile ? {} : { ...attributes, ...listeners };
+  const containerDragProps = isEditing ? {} : (isMobile ? {} : { ...attributes, ...listeners });
 
   return (
     <div
@@ -159,16 +160,15 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
         !isDragging && !isMobile && "cursor-grab active:cursor-grabbing"
       )}
     >
-      {/* Drag handle - on mobile this is the only draggable area */}
-      <div 
-        {...dragHandleProps}
-        className={cn(
-          "flex-shrink-0 p-1 -m-1 rounded",
-          isMobile && "touch-none cursor-grab active:cursor-grabbing"
-        )}
-      >
-        <GripVertical className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-foreground-muted" />
-      </div>
+      {/* Mobile-only drag handle - invisible on desktop since whole card is draggable */}
+      {isMobile && (
+        <div 
+          {...dragHandleProps}
+          className="flex-shrink-0 p-1 -m-1 rounded touch-none cursor-grab active:cursor-grabbing"
+        >
+          <div className="w-1 h-4 rounded-full bg-foreground-muted/40" />
+        </div>
+      )}
 
       {/* Task title and energy */}
       <div className="flex-1 min-w-0 flex items-center gap-2">

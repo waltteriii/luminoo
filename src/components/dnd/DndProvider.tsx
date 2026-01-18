@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, memo } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, memo, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -23,14 +23,16 @@ interface DragOverInfo {
   targetColumnIndex: number;
   groupTop: number;
   groupHeight: number;
+  activeTaskDuration?: number; // Duration in hours for drop zone highlighting
 }
 
 interface DndContextValue {
   activeTask: Task | null;
   dragOverInfo: DragOverInfo | null;
+  activeTaskDuration: number | null; // Exposed for drop zone highlighting
 }
 
-const DndProviderContext = createContext<DndContextValue>({ activeTask: null, dragOverInfo: null });
+const DndProviderContext = createContext<DndContextValue>({ activeTask: null, dragOverInfo: null, activeTaskDuration: null });
 
 export const useDndContext = () => useContext(DndProviderContext);
 
@@ -69,6 +71,17 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
       setActiveTask(task);
     }
   }, []);
+
+  // Calculate active task duration for drop zone highlighting
+  const activeTaskDuration = useMemo(() => {
+    if (!activeTask) return null;
+    if (activeTask.start_time && activeTask.end_time) {
+      const [sh, sm] = activeTask.start_time.split(':').map(Number);
+      const [eh, em] = activeTask.end_time.split(':').map(Number);
+      return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+    }
+    return 1; // Default 1 hour
+  }, [activeTask]);
 
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     const { over } = event;
@@ -333,7 +346,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
   }, []);
 
   return (
-    <DndProviderContext.Provider value={{ activeTask, dragOverInfo }}>
+    <DndProviderContext.Provider value={{ activeTask, dragOverInfo, activeTaskDuration }}>
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetectionStrategy}

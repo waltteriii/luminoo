@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { useUndoOptional } from '@/contexts/UndoContext';
 
 type Task = Tables<'tasks'>;
 type TaskInsert = TablesInsert<'tasks'>;
@@ -35,6 +36,7 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const previousTasksRef = useRef<Task[]>([]);
+  const undoContext = useUndoOptional();
 
   // Load all tasks for the user
   const loadTasks = useCallback(async () => {
@@ -177,7 +179,7 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
     [userId, tasks]
   );
 
-  // Update task with optimistic update
+  // Update task with optimistic update and undo support
   const updateTask = useCallback(
     async (id: string, updates: TaskUpdate): Promise<boolean> => {
       const sanitizedUpdates = Object.fromEntries(
@@ -188,6 +190,9 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
 
       const taskToUpdate = tasks.find((t) => t.id === id);
       if (!taskToUpdate) return false;
+
+      // Store previous state for undo
+      const previousState = { ...taskToUpdate };
 
       // Store previous state for rollback
       previousTasksRef.current = tasks;
@@ -213,6 +218,27 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
           return false;
         }
 
+        // Push undo action
+        if (undoContext) {
+          const changedFields = Object.keys(sanitizedUpdates);
+          const description = `Reverted "${previousState.title.slice(0, 30)}${previousState.title.length > 30 ? '...' : ''}"`;
+          
+          undoContext.pushUndo(description, async () => {
+            // Restore previous values
+            const restoreUpdates: TaskUpdate = {};
+            for (const field of changedFields) {
+              (restoreUpdates as any)[field] = (previousState as any)[field];
+            }
+            await supabase.from('tasks').update(restoreUpdates).eq('id', id);
+            // Update local state
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === id ? { ...t, ...restoreUpdates } : t
+              )
+            );
+          });
+        }
+
         return true;
       } catch (err) {
         console.error('Error updating task:', err);
@@ -220,12 +246,15 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
         return false;
       }
     },
-    [tasks]
+    [tasks, undoContext]
   );
 
-  // Delete task with optimistic update
+  // Delete task with optimistic update and undo support
   const deleteTask = useCallback(
     async (id: string): Promise<boolean> => {
+      const taskToDelete = tasks.find((t) => t.id === id);
+      if (!taskToDelete) return false;
+
       previousTasksRef.current = tasks;
 
       // Optimistic delete
@@ -240,6 +269,25 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
           return false;
         }
 
+        // Push undo action - re-create the task
+        if (undoContext) {
+          const description = `Restored "${taskToDelete.title.slice(0, 30)}${taskToDelete.title.length > 30 ? '...' : ''}"`;
+          
+          undoContext.pushUndo(description, async () => {
+            // Re-insert the task
+            const { id: _id, created_at: _created, updated_at: _updated, ...taskData } = taskToDelete;
+            const { data, error: insertError } = await supabase
+              .from('tasks')
+              .insert(taskData)
+              .select()
+              .single();
+            
+            if (!insertError && data) {
+              setTasks((prev) => [data, ...prev]);
+            }
+          });
+        }
+
         return true;
       } catch (err) {
         console.error('Error deleting task:', err);
@@ -247,7 +295,7 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
         return false;
       }
     },
-    [tasks]
+    [tasks, undoContext]
   );
 
   // Reschedule task

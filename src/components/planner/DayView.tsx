@@ -45,15 +45,30 @@ const TimeSlotDropZone = memo(({ hour, date, children }: TimeSlotDropZoneProps) 
     data: { hour, type: 'time-slot', date },
   });
 
+  const { activeTaskDuration, activeTask } = useDndContext();
+  
+  // Calculate if this slot should be highlighted based on active task duration
+  const durationHours = activeTaskDuration ?? 1;
+
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'transition-colors',
+        'transition-colors relative',
         isOver && 'bg-primary/10 ring-1 ring-primary/30'
       )}
     >
       {children}
+      {/* Duration-matching highlight overlay */}
+      {isOver && activeTask && durationHours > 1 && (
+        <div 
+          className="absolute left-14 right-2 bg-primary/15 border-2 border-dashed border-primary/40 rounded-lg pointer-events-none z-30"
+          style={{
+            top: 0,
+            height: `${durationHours * 48}px`, // 48px per hour (desktop HOUR_HEIGHT)
+          }}
+        />
+      )}
     </div>
   );
 });
@@ -738,7 +753,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         {/* Untimed tasks */}
         <div className={cn(
           "shrink-0",
-          isMobile ? "order-1 w-full" : "w-64"
+          isMobile ? "order-1 w-full" : "w-72"
         )}>
           <h3 className="text-sm font-medium text-foreground-muted mb-3">
             Untimed Tasks
