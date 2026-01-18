@@ -3,6 +3,8 @@ import {
   DndContext,
   DragOverlay,
   closestCenter,
+  pointerWithin,
+  type CollisionDetection,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -292,11 +294,38 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     onTaskScheduled?.();
   }, [onTaskScheduled, updateTask]);
 
+  const collisionDetectionStrategy = useCallback<CollisionDetection>((args) => {
+    const activeType = args.active?.data?.current?.type as string | undefined;
+
+    // 1) Prefer pointer-based collisions (feels like "snapping" follows the cursor)
+    const pointerCollisions = pointerWithin(args);
+
+    // If reordering overlapping tasks, prefer reorder zones over time-slot rows
+    if (activeType === 'calendar-task') {
+      const reorderPointer = pointerCollisions.filter((c) => String(c.id).startsWith('reorder-zone-'));
+      if (reorderPointer.length) return reorderPointer;
+    }
+
+    if (pointerCollisions.length) return pointerCollisions;
+
+    // 2) If reordering, prefer reorder zones even when pointer isn't inside one
+    if (activeType === 'calendar-task') {
+      const reorderContainers = args.droppableContainers.filter((c: any) => String(c.id).startsWith('reorder-zone-'));
+      if (reorderContainers.length) {
+        const reorderClosest = closestCenter({ ...args, droppableContainers: reorderContainers });
+        if (reorderClosest.length) return reorderClosest;
+      }
+    }
+
+    // 3) Fallback
+    return closestCenter(args);
+  }, []);
+
   return (
     <DndProviderContext.Provider value={{ activeTask, dragOverInfo }}>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionDetectionStrategy}
         onDragStart={handleDragStart}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
