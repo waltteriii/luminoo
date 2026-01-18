@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { normalizeTime, parseTimeToHours, formatHoursToTime } from '@/lib/timeUtils';
 import { Task, EnergyLevel } from '@/types';
 import { format } from 'date-fns';
-import { Pencil } from 'lucide-react';
+import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useRef } from 'react';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
@@ -15,6 +15,10 @@ interface CalendarTaskProps {
   isShared?: boolean;
   showTimeRange?: boolean;
   height: number;
+  canMoveLeft?: boolean;
+  canMoveRight?: boolean;
+  onMoveLeft?: () => void;
+  onMoveRight?: () => void;
 }
 
 const energyBorderColors: Record<EnergyLevel, string> = {
@@ -38,6 +42,10 @@ const CalendarTask = ({
   isShared,
   showTimeRange = false,
   height,
+  canMoveLeft,
+  canMoveRight,
+  onMoveLeft,
+  onMoveRight,
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -273,6 +281,48 @@ const CalendarTask = ({
             </div>
           )}
         </div>
+
+        {/* Reorder buttons - only show when there are overlapping tasks */}
+        {(canMoveLeft || canMoveRight) && (
+          <div className={cn(
+            'absolute top-1 left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity'
+          )}>
+            {canMoveLeft && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 bg-background/80 hover:bg-background"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onMoveLeft?.();
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                title="Move left"
+              >
+                <ChevronLeft className="w-2.5 h-2.5" />
+              </Button>
+            )}
+            {canMoveRight && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 bg-background/80 hover:bg-background"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onMoveRight?.();
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                title="Move right"
+              >
+                <ChevronRight className="w-2.5 h-2.5" />
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Edit button - appears on hover */}
         <Button
