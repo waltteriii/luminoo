@@ -18,6 +18,7 @@ interface CalendarTaskProps {
   task: Task;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete?: () => void;
+  onCopy?: () => void; // Called when user wants to copy this task
   isShared?: boolean;
   showTimeRange?: boolean;
   height: number;
@@ -38,6 +39,9 @@ interface CalendarTaskProps {
   onMoveLeft?: () => void;
   onMoveRight?: () => void;
   showTooltip?: boolean; // Whether to show hover tooltip
+  // Selection management - parent controls which task is selected
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 const energyBorderColors: Record<EnergyLevel, string> = {
@@ -58,6 +62,7 @@ const CalendarTask = ({
   task,
   onUpdate,
   onDelete,
+  onCopy,
   isShared,
   showTimeRange = false,
   height,
@@ -76,10 +81,16 @@ const CalendarTask = ({
   onMoveLeft,
   onMoveRight,
   showTooltip = true,
+  isSelected: isSelectedProp,
+  onSelect,
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [isSelected, setIsSelected] = useState(false);
+  // Use prop if provided, otherwise manage locally
+  const [isSelectedLocal, setIsSelectedLocal] = useState(false);
+  const isSelected = isSelectedProp !== undefined ? isSelectedProp : isSelectedLocal;
+  const setIsSelected = onSelect ? () => onSelect() : setIsSelectedLocal;
+  
   const [resizeDirection, setResizeDirection] = useState<'top' | 'bottom' | 'left' | 'right' | null>(null);
   const [resizePreviewHeight, setResizePreviewHeight] = useState<number | null>(null);
   const [resizePreviewTop, setResizePreviewTop] = useState<number | null>(null);
@@ -100,19 +111,42 @@ const CalendarTask = ({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Handle keyboard shortcuts when selected
   useEffect(() => {
     if (!isSelected) return;
+
+    const handleKeyDown = (ev: KeyboardEvent) => {
+      // Copy: Ctrl+C or Cmd+C
+      if ((ev.ctrlKey || ev.metaKey) && ev.key === 'c' && onCopy) {
+        ev.preventDefault();
+        onCopy();
+      }
+      // Delete: Backspace or Delete
+      if ((ev.key === 'Backspace' || ev.key === 'Delete') && onDelete && !isEditingTitle && !isEditingDescription) {
+        ev.preventDefault();
+        onDelete();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSelected, onCopy, onDelete, isEditingTitle, isEditingDescription]);
+
+  // Deselect when clicking outside (only for local selection management)
+  useEffect(() => {
+    if (isSelectedProp !== undefined) return; // Parent manages selection
+    if (!isSelectedLocal) return;
 
     const handleOutsidePointerDown = (ev: PointerEvent) => {
       const el = containerRef.current;
       if (!el) return;
       if (el.contains(ev.target as Node)) return;
-      setIsSelected(false);
+      setIsSelectedLocal(false);
     };
 
     window.addEventListener('pointerdown', handleOutsidePointerDown);
     return () => window.removeEventListener('pointerdown', handleOutsidePointerDown);
-  }, [isSelected]);
+  }, [isSelectedProp, isSelectedLocal]);
 
   const {
     attributes,
@@ -468,8 +502,12 @@ const CalendarTask = ({
   // Click selects the task (used to reveal resize handles)
   const handleClickSelect = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsSelected(true);
-  }, []);
+    if (onSelect) {
+      onSelect();
+    } else {
+      setIsSelectedLocal(true);
+    }
+  }, [onSelect]);
 
   // Handle inline title editing
   const handleTitleClick = useCallback((e: React.MouseEvent) => {
