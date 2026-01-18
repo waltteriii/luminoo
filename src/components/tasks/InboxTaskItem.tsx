@@ -204,15 +204,23 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
           </span>
         )}
 
-        {/* Energy pill */}
+        {/* Energy dot - compact, click to change */}
         {!isEditing && (
           <Popover>
             <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <button className="cursor-pointer hover:opacity-80 min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px] flex items-center justify-center -m-1.5">
-                <EnergyPill energy={task.energy_level} />
+              <button className="cursor-pointer hover:scale-110 min-w-[32px] min-h-[32px] flex items-center justify-center transition-transform">
+                <span
+                  className={cn(
+                    "w-2.5 h-2.5 rounded-full",
+                    task.energy_level === 'high' && "bg-energy-high",
+                    task.energy_level === 'medium' && "bg-energy-medium",
+                    task.energy_level === 'low' && "bg-energy-low",
+                    task.energy_level === 'recovery' && "bg-energy-recovery"
+                  )}
+                />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-36 p-1" align="start" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent className="w-40 p-1" align="start" onClick={(e) => e.stopPropagation()}>
               {ENERGY_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -221,20 +229,28 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
                     onEnergyChange?.(task.id, option.value);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2 py-2 text-xs rounded hover:bg-secondary transition-colors min-h-[44px]",
+                    "w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md hover:bg-secondary transition-colors min-h-[40px]",
                     task.energy_level === option.value && "bg-secondary"
                   )}
                 >
                   <span
                     className={cn(
-                      "w-2 h-2 rounded-full",
+                      "w-2.5 h-2.5 rounded-full flex-shrink-0",
                       option.value === 'high' && "bg-energy-high",
                       option.value === 'medium' && "bg-energy-medium",
                       option.value === 'low' && "bg-energy-low",
                       option.value === 'recovery' && "bg-energy-recovery"
                     )}
                   />
-                  {option.label}
+                  <span className={cn(
+                    "font-medium",
+                    option.value === 'high' && "text-energy-high",
+                    option.value === 'medium' && "text-energy-medium",
+                    option.value === 'low' && "text-energy-low",
+                    option.value === 'recovery' && "text-energy-recovery"
+                  )}>
+                    {option.label}
+                  </span>
                 </button>
               ))}
             </PopoverContent>
