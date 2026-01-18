@@ -14,15 +14,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { EnergyLevel } from '@/types';
 import EnergyPill from '@/components/shared/EnergyPill';
+import TimeRangeSlider from '@/components/tasks/TimeRangeSlider';
 import { MapPin, Users, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -40,12 +34,6 @@ interface CreateTaskDialogProps {
   ) => void;
 }
 
-const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
-  const hour = Math.floor(i / 2) + 6;
-  const minute = (i % 2) * 30;
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-});
-
 const CreateTaskDialog = ({
   open,
   onOpenChange,
@@ -58,10 +46,11 @@ const CreateTaskDialog = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [energy, setEnergy] = useState<EnergyLevel>(defaultEnergy);
-  const [localStartTime, setLocalStartTime] = useState(startTime || '');
-  const [localEndTime, setLocalEndTime] = useState(endTime || '');
+  const [localStartTime, setLocalStartTime] = useState(startTime || '09:00');
+  const [localEndTime, setLocalEndTime] = useState(endTime || '10:00');
   const [location, setLocation] = useState('');
   const [isShared, setIsShared] = useState(false);
+  const [useTime, setUseTime] = useState(!!startTime);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -69,10 +58,11 @@ const CreateTaskDialog = ({
       setTitle('');
       setDescription('');
       setEnergy(defaultEnergy);
-      setLocalStartTime(startTime || '');
-      setLocalEndTime(endTime || '');
+      setLocalStartTime(startTime || '09:00');
+      setLocalEndTime(endTime || '10:00');
       setLocation('');
       setIsShared(false);
+      setUseTime(!!startTime);
     }
   }, [open, startTime, endTime, defaultEnergy]);
 
@@ -82,8 +72,8 @@ const CreateTaskDialog = ({
     onConfirm(
       title.trim(),
       energy,
-      localStartTime || undefined,
-      localEndTime || undefined,
+      useTime ? localStartTime : undefined,
+      useTime ? localEndTime : undefined,
       {
         description: description.trim() || undefined,
         location: location.trim() || undefined,
@@ -122,17 +112,13 @@ const CreateTaskDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Time display */}
-          {(localStartTime || localEndTime) && (
-            <div className="flex items-center gap-2 text-sm text-foreground-muted">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium text-foreground">
-                {localStartTime && formatTimeDisplay(localStartTime)}
-                {localEndTime && ` - ${formatTimeDisplay(localEndTime)}`}
-              </span>
-              <span className="text-xs">on {format(targetDate, 'MMM d')}</span>
-            </div>
-          )}
+          {/* Date display */}
+          <div className="flex items-center gap-2 text-sm text-foreground-muted">
+            <Clock className="w-4 h-4" />
+            <span className="font-medium text-foreground">
+              {format(targetDate, 'EEEE, MMM d')}
+            </span>
+          </div>
 
           {/* Task title */}
           <div className="space-y-2">
@@ -181,41 +167,30 @@ const CreateTaskDialog = ({
             </div>
           </div>
 
-          {/* Time adjustment */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs mb-1 block">Start Time</Label>
-              <Select value={localStartTime || 'none'} onValueChange={(v) => setLocalStartTime(v === 'none' ? '' : v)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  <SelectItem value="none">No specific time</SelectItem>
-                  {TIME_OPTIONS.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs mb-1 block">End Time</Label>
-              <Select value={localEndTime || 'none'} onValueChange={(v) => setLocalEndTime(v === 'none' ? '' : v)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  <SelectItem value="none">No specific time</SelectItem>
-                  {TIME_OPTIONS.filter(t => !localStartTime || t > localStartTime).map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Time toggle */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="use-time" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Schedule a specific time
+            </Label>
+            <Switch
+              id="use-time"
+              checked={useTime}
+              onCheckedChange={setUseTime}
+            />
           </div>
+
+          {/* Time slider - only show if useTime is enabled */}
+          {useTime && (
+            <div className="rounded-lg border border-border p-3 bg-secondary/30">
+              <TimeRangeSlider
+                startTime={localStartTime}
+                endTime={localEndTime}
+                onStartTimeChange={setLocalStartTime}
+                onEndTimeChange={setLocalEndTime}
+              />
+            </div>
+          )}
 
           {/* Location */}
           <div className="space-y-2">

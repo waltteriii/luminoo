@@ -2,12 +2,12 @@ import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { format, startOfWeek, addDays, addWeeks, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import QuickAddTask from '@/components/tasks/QuickAddTask';
 import DraggableTask from '@/components/tasks/DraggableTask';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
+import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -30,7 +30,7 @@ interface DroppableDayProps {
   currentEnergy: EnergyLevel;
   userId: string | null;
   onDayClick: (date: Date) => void;
-  onAddTask: (date: Date, title: string, energy: EnergyLevel) => void;
+  onOpenCreateDialog: (date: Date) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: Task) => void;
@@ -43,7 +43,7 @@ const DroppableDay = memo(({
   currentEnergy,
   userId,
   onDayClick,
-  onAddTask,
+  onOpenCreateDialog,
   onUpdateTask,
   onDeleteTask,
   onEditTask,
@@ -62,34 +62,60 @@ const DroppableDay = memo(({
     onEditTask(task);
   }, [onEditTask]);
 
-  const maxTasks = compact ? 4 : 8;
+  const maxTasks = compact ? 4 : 6;
+  
+  // Count tasks with times
+  const timedTasks = tasks.filter(t => t.start_time);
+  const untimedTasks = tasks.filter(t => !t.start_time);
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border bg-card px-1.5 py-1 transition-all flex flex-col min-h-[120px]",
-        compact && "min-h-[100px]",
-        today && "border-highlight ring-1 ring-highlight/30",
+        "rounded-xl border border-border bg-card p-2 transition-all flex flex-col min-h-[160px]",
+        compact && "min-h-[120px]",
+        today && "border-highlight ring-1 ring-highlight/30 bg-highlight/5",
         isOver && "ring-2 ring-highlight bg-highlight-muted",
         !isOver && !today && "hover:bg-highlight-muted/50 hover:border-highlight/30"
       )}
     >
+      {/* Day header */}
       <button
         onClick={() => onDayClick(date)}
         className={cn(
-          "w-full text-left hover:text-highlight transition-colors",
+          "w-full text-left hover:text-highlight transition-colors mb-2",
           today && "text-highlight"
         )}
       >
-        <div className="text-[9px] text-foreground-muted uppercase leading-none">
-          {format(date, 'EEE')}
-        </div>
-        <div className={cn(
-          "text-sm font-medium leading-tight",
-          today ? "text-highlight" : "text-foreground"
-        )}>
-          {format(date, 'd')}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-foreground-muted uppercase tracking-wide">
+              {format(date, 'EEE')}
+            </div>
+            <div className={cn(
+              "text-lg font-semibold leading-tight",
+              today ? "text-highlight" : "text-foreground"
+            )}>
+              {format(date, 'd')}
+            </div>
+          </div>
+          {/* Task count badge */}
+          {tasks.length > 0 && (
+            <div className="flex flex-col items-end gap-0.5">
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded-full",
+                today ? "bg-highlight/20 text-highlight" : "bg-secondary text-foreground-muted"
+              )}>
+                {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+              </span>
+              {timedTasks.length > 0 && (
+                <span className="text-[9px] text-foreground-muted flex items-center gap-0.5">
+                  <Clock className="w-2.5 h-2.5" />
+                  {timedTasks.length} scheduled
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </button>
 
@@ -97,7 +123,7 @@ const DroppableDay = memo(({
         items={tasks.map(t => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-px mt-0.5 flex-1">
+        <div className="flex flex-col gap-1 flex-1">
           {tasks.slice(0, maxTasks).map(task => (
             <div 
               key={task.id}
@@ -111,27 +137,31 @@ const DroppableDay = memo(({
                 isShared={task.user_id !== userId}
                 compact
                 disableDoubleClickEdit
+                showTime
               />
             </div>
           ))}
           {tasks.length > maxTasks && (
             <button 
               onClick={() => onDayClick(date)}
-              className="text-[9px] text-foreground-muted hover:text-primary pl-0.5"
+              className="text-[10px] text-foreground-muted hover:text-primary pl-1 py-0.5"
             >
               +{tasks.length - maxTasks} more
             </button>
           )}
         </div>
-        <div className="mt-auto pt-0.5">
-          <QuickAddTask
-            onAdd={async (task) => {
-              await onAddTask(date, task.title, task.energy);
-            }}
-            defaultEnergy={currentEnergy}
-            defaultDate={date}
-            compact
-          />
+        
+        {/* Add task button */}
+        <div className="mt-auto pt-2 border-t border-border/50">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenCreateDialog(date)}
+            className="w-full h-8 text-xs gap-1.5 text-foreground-muted hover:text-foreground border border-dashed border-border hover:border-primary/50"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add task
+          </Button>
         </div>
       </SortableContext>
     </div>
@@ -145,6 +175,8 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentStartDate, setCurrentStartDate] = useState(startDate);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogDate, setCreateDialogDate] = useState<Date>(new Date());
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -180,7 +212,13 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
       dayTasks = dayTasks.filter(t => energyFilter.includes(t.energy_level));
     }
     
-    return dayTasks;
+    // Sort: timed tasks first, then by time
+    return dayTasks.sort((a, b) => {
+      if (a.start_time && !b.start_time) return -1;
+      if (!a.start_time && b.start_time) return 1;
+      if (a.start_time && b.start_time) return a.start_time.localeCompare(b.start_time);
+      return 0;
+    });
   }, [tasks, energyFilter]);
 
   const handlePrevWeek = useCallback(() => {
@@ -191,13 +229,29 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     setCurrentStartDate(prev => addWeeks(prev, 1));
   }, []);
 
-  const handleAddTask = useCallback(async (date: Date, title: string, energy: EnergyLevel) => {
+  const handleOpenCreateDialog = useCallback((date: Date) => {
+    setCreateDialogDate(date);
+    setCreateDialogOpen(true);
+  }, []);
+
+  const handleCreateTask = useCallback(async (
+    title: string,
+    energy: EnergyLevel,
+    startTime?: string,
+    endTime?: string,
+    options?: { description?: string; location?: string; isShared?: boolean }
+  ) => {
     await addTask({
       title,
       energy_level: energy,
-      due_date: format(date, 'yyyy-MM-dd'),
+      due_date: format(createDialogDate, 'yyyy-MM-dd'),
+      start_time: startTime,
+      end_time: endTime,
+      description: options?.description,
+      location: options?.location,
+      is_shared: options?.isShared,
     });
-  }, [addTask]);
+  }, [addTask, createDialogDate]);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -209,6 +263,10 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
     setEditDialogOpen(false);
     setEditingTask(null);
   }, [updateTask]);
+
+  // Week summary
+  const weekTaskCount = tasks.length;
+  const completedCount = tasks.filter(t => t.completed).length;
 
   return (
     <div className="animate-fade-in">
@@ -222,7 +280,14 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             <h2 className="text-lg sm:text-2xl font-light text-foreground truncate">
               Week of {format(weekStart, 'MMM d')}
             </h2>
-            <p className="text-foreground-muted text-sm hidden sm:block">{format(weekStart, 'yyyy')}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-foreground-muted text-sm">{format(weekStart, 'yyyy')}</p>
+              {weekTaskCount > 0 && (
+                <span className="text-xs text-foreground-muted">
+                  • {completedCount}/{weekTaskCount} completed
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
@@ -237,7 +302,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
 
       {/* Responsive grid: 2 cols on mobile, 7 on desktop */}
       <div className={cn(
-        "grid gap-2",
+        "grid gap-3",
         isMobile ? "grid-cols-2" : "grid-cols-7"
       )}>
         {weekDays.map((day) => (
@@ -248,7 +313,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             currentEnergy={currentEnergy}
             userId={userId}
             onDayClick={onDayClick}
-            onAddTask={handleAddTask}
+            onOpenCreateDialog={handleOpenCreateDialog}
             onUpdateTask={updateTask}
             onDeleteTask={deleteTask}
             onEditTask={handleEditTask}
@@ -267,6 +332,14 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
           setEditDialogOpen(false);
           setEditingTask(null);
         } : undefined}
+      />
+
+      <CreateTaskDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        targetDate={createDialogDate}
+        defaultEnergy={currentEnergy}
+        onConfirm={handleCreateTask}
       />
     </div>
   );

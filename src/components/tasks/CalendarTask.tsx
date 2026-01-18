@@ -41,9 +41,12 @@ const CalendarTask = ({
 }: CalendarTaskProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<'top' | 'bottom' | null>(null);
   const [resizePreviewHeight, setResizePreviewHeight] = useState<number | null>(null);
+  const [resizePreviewTop, setResizePreviewTop] = useState<number | null>(null);
   const resizeStartY = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
+  const resizeStartTop = useRef<number>(0);
 
   const {
     attributes,
@@ -75,21 +78,19 @@ const CalendarTask = ({
     return `${startFormatted} - ${endFormatted}`;
   };
 
-  // Calculate new end time from height change
+  // Calculate new end time from height change (resize bottom)
   const calculateNewEndTime = useCallback((heightDelta: number) => {
     const startHour = parseTimeToHours(task.start_time);
     if (startHour === null) return null;
     
-    // Assume 48px per hour on desktop (from DayView HOUR_HEIGHT)
     const HOUR_HEIGHT = 48;
     const MIN_DURATION_MINS = 15;
     
     const newHeight = Math.max(resizeStartHeight.current + heightDelta, MIN_DURATION_MINS / 60 * HOUR_HEIGHT);
     const durationHours = newHeight / HOUR_HEIGHT;
     
-    // Snap to 15-minute increments
     const durationMins = Math.round(durationHours * 60 / 15) * 15;
-    const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60)); // Max 16 hours
+    const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60));
     
     const startTotalMins = startHour * 60;
     const endTotalMins = startTotalMins + clampedMins;
@@ -97,19 +98,45 @@ const CalendarTask = ({
     const endH = Math.floor(endTotalMins / 60);
     const endM = Math.round(endTotalMins % 60);
     
-    // Clamp to 22:00 max
-    if (endH >= 22) {
-      return '22:00';
-    }
+    if (endH >= 22) return '22:00';
     
     return formatHoursToTime(endH + endM / 60);
   }, [task.start_time]);
 
-  const handleResizeStart = useCallback((e: React.PointerEvent) => {
+  // Calculate new start time from height change (resize top)
+  const calculateNewStartTime = useCallback((heightDelta: number) => {
+    const endHour = parseTimeToHours(task.end_time);
+    if (endHour === null) return null;
+    
+    const HOUR_HEIGHT = 48;
+    const MIN_DURATION_MINS = 15;
+    
+    // Height delta is negative when dragging up (earlier start time)
+    const newHeight = Math.max(resizeStartHeight.current - heightDelta, MIN_DURATION_MINS / 60 * HOUR_HEIGHT);
+    const durationHours = newHeight / HOUR_HEIGHT;
+    
+    const durationMins = Math.round(durationHours * 60 / 15) * 15;
+    const clampedMins = Math.max(MIN_DURATION_MINS, Math.min(durationMins, 16 * 60));
+    
+    const endTotalMins = endHour * 60;
+    const startTotalMins = endTotalMins - clampedMins;
+    
+    const startH = Math.floor(startTotalMins / 60);
+    const startM = Math.round(startTotalMins % 60);
+    
+    // Clamp to 6:00 min
+    if (startH < 6) return '06:00';
+    
+    return formatHoursToTime(startH + startM / 60);
+  }, [task.end_time]);
+
+  // Handle bottom resize (changes end time)
+  const handleResizeBottomStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     setIsResizing(true);
+    setResizeDirection('bottom');
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = height;
     
@@ -131,12 +158,52 @@ const CalendarTask = ({
       }
       
       setIsResizing(false);
+      setResizeDirection(null);
       setResizePreviewHeight(null);
     };
     
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewEndTime, task.end_time, onUpdate]);
+
+  // Handle top resize (changes start time)
+  const handleResizeTopStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    setResizeDirection('top');
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = height;
+    resizeStartTop.current = 0; // Will be adjusted visually
+    
+    const handleMove = (ev: PointerEvent) => {
+      const deltaY = ev.clientY - resizeStartY.current;
+      const newHeight = Math.max(22, resizeStartHeight.current - deltaY);
+      setResizePreviewHeight(newHeight);
+      setResizePreviewTop(deltaY);
+    };
+    
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      
+      const deltaY = ev.clientY - resizeStartY.current;
+      const newStartTime = calculateNewStartTime(deltaY);
+      
+      if (newStartTime && newStartTime !== task.start_time) {
+        onUpdate({ start_time: newStartTime });
+      }
+      
+      setIsResizing(false);
+      setResizeDirection(null);
+      setResizePreviewHeight(null);
+      setResizePreviewTop(null);
+    };
+    
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  }, [height, calculateNewStartTime, task.start_time, onUpdate]);
 
   // Determine layout based on height
   const displayHeight = resizePreviewHeight ?? height;
@@ -152,6 +219,7 @@ const CalendarTask = ({
         style={{
           ...style,
           height: resizePreviewHeight ? `${resizePreviewHeight}px` : undefined,
+          marginTop: resizePreviewTop !== null ? `${resizePreviewTop}px` : undefined,
         }}
         {...attributes}
         {...listeners}
@@ -166,6 +234,20 @@ const CalendarTask = ({
           task.completed && 'opacity-50'
         )}
       >
+        {/* Top resize handle - changes start time */}
+        <div
+          className={cn(
+            'absolute top-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
+            'opacity-0 group-hover:opacity-100 transition-opacity',
+            'bg-gradient-to-b from-background/60 to-transparent',
+            isResizing && resizeDirection === 'top' && 'opacity-100'
+          )}
+          onPointerDown={handleResizeTopStart}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-1 rounded-full bg-foreground/30" />
+        </div>
+
         <div
           className={cn(
             'h-full flex flex-col px-2 leading-snug',
@@ -211,15 +293,15 @@ const CalendarTask = ({
           <Pencil className="w-3 h-3" />
         </Button>
 
-        {/* Resize handle at bottom */}
+        {/* Bottom resize handle - changes end time */}
         <div
           className={cn(
             'absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center',
             'opacity-0 group-hover:opacity-100 transition-opacity',
             'bg-gradient-to-t from-background/60 to-transparent',
-            isResizing && 'opacity-100'
+            isResizing && resizeDirection === 'bottom' && 'opacity-100'
           )}
-          onPointerDown={handleResizeStart}
+          onPointerDown={handleResizeBottomStart}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="w-8 h-1 rounded-full bg-foreground/30" />
