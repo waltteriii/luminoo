@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Task, EnergyLevel } from '@/types';
-import { Users } from 'lucide-react';
+import { Users, GripVertical } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
@@ -114,15 +114,20 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared, isNew }: Dra
           setEditDialogOpen(true);
         }}
         className={cn(
-          'group flex items-center gap-2.5 rounded-lg border-l-[3px] shadow-sm min-h-[44px] px-2.5 py-2 outline-none',
+          'group flex items-center gap-2.5 rounded-lg border-l-[3px] shadow-sm min-h-[44px] px-2.5 py-2 outline-none cursor-grab',
           'hover:shadow-md hover:brightness-105 transition-all',
           energyBorderColors[task.energy_level],
           energyBgColors[task.energy_level],
-          isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight',
+          isDragging && 'opacity-60 shadow-lg ring-2 ring-highlight cursor-grabbing',
           task.completed && 'opacity-60',
           showGlow && 'animate-glow-highlight'
         )}
       >
+        {/* Grip icon - indicates untimed task that can be dragged */}
+        {!isEditing && (
+          <GripVertical className="w-4 h-4 text-foreground-muted/50 group-hover:text-foreground-muted flex-shrink-0 transition-colors" />
+        )}
+
         {isEditing ? (
           <Input
             value={editTitle}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle, Check, Calendar, Clock } from 'lucide-react';
+import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle, Check, Calendar, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
@@ -425,6 +425,31 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                       {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
                     </div>
                   )}
+                  {/* Action buttons for the date picker */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+                    <Button
+                      size="sm"
+                      className="flex-1 h-8 gap-1.5"
+                      onClick={() => setShowDatePicker(false)}
+                      disabled={!selectedDate}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span className="text-xs">Confirm</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => {
+                        setSelectedDate(undefined);
+                        setSelectedStartTime('');
+                        setSelectedEndTime('');
+                        setShowDatePicker(false);
+                      }}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </PopoverContent>
               </Popover>
 
