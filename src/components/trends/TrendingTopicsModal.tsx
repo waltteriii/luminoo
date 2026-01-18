@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, TrendingUp, Sparkles, Plus, Clock, Zap, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -98,8 +99,16 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent
+        className="max-w-2xl max-h-[80vh] flex flex-col"
+        onKeyDown={(e) => {
+          // Allow user to just press ENTER to generate trends when empty.
+          if (e.key === 'Enter' && !e.shiftKey && !loading && trends.length === 0) {
+            e.preventDefault();
+            fetchTrends();
+          }
+        }}
+      >
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
             Trending Topics
@@ -107,9 +116,32 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
         </DialogHeader>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm text-foreground-muted">Analyzing trends for your niche...</p>
+          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-3 pb-4 pr-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="border border-border rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                        <Skeleton className="h-4 w-14" />
+                      </div>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-5/6" />
+                    </div>
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-center py-3">
+              <div className="flex items-center gap-2 text-xs text-foreground-muted">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Analyzing trends for your niche…
+              </div>
+            </div>
           </div>
         ) : trends.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-4">

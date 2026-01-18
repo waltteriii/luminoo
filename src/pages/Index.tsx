@@ -322,7 +322,7 @@ const Index = () => {
           user={user}
           currentEnergy={currentEnergy}
           onEnergyChange={setCurrentEnergy}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
           onProfileClick={() => setProfileOpen(true)}
           onFilterEnergy={handleToggleEnergyFilter}
           onClearFilters={() => setEnergyFilter([])}

@@ -259,6 +259,13 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter = process, Shift+Enter = newline
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleParse();
+                }
+              }}
               placeholder="I need to finish that album artwork by Friday, it's stressing me out. Also should probably do some admin stuff like respond to emails when I'm feeling low energy. And I had this crazy idea for a new series... next tuesday seeing friends for dinner"
               className="flex-1 min-h-[200px] resize-none"
             />

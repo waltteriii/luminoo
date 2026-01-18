@@ -46,6 +46,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [defaultInboxEnergy, setDefaultInboxEnergy] = useState<EnergyLevel>('high');
   const [selectedEnergy, setSelectedEnergy] = useState<EnergyLevel | null>(null);
+  const [energyPickerOpen, setEnergyPickerOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -326,7 +327,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
               />
               
               {/* Energy dropdown - same as existing tasks */}
-              <Popover>
+              <Popover open={energyPickerOpen} onOpenChange={setEnergyPickerOpen}>
                 <PopoverTrigger asChild>
                   <button
                     className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
@@ -357,6 +358,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedEnergy(option.value);
+                          setEnergyPickerOpen(false);
                         }}
                         className={cn(
                           "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-secondary transition-colors",

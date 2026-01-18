@@ -40,6 +40,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
+  const [energyPickerOpen, setEnergyPickerOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
@@ -210,7 +211,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
 
         {/* Energy dot - click shows dropdown to select energy level */}
         {!isEditing && (
-          <Popover>
+          <Popover open={energyPickerOpen} onOpenChange={setEnergyPickerOpen}>
             <PopoverTrigger asChild>
               <button
                 className="cursor-pointer hover:scale-110 min-w-[32px] min-h-[32px] flex items-center justify-center transition-transform"
@@ -241,6 +242,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
                     onClick={(e) => {
                       e.stopPropagation();
                       onEnergyChange?.(task.id, option.value);
+                      setEnergyPickerOpen(false);
                     }}
                     className={cn(
                       "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-secondary transition-colors",
