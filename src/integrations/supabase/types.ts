@@ -450,6 +450,45 @@ export type Database = {
           },
         ]
       }
+      trend_bookmarks: {
+        Row: {
+          category: string | null
+          content_ideas: string[]
+          created_at: string
+          description: string
+          energy_level: string | null
+          id: string
+          platform: string | null
+          title: string
+          urgency: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          content_ideas?: string[]
+          created_at?: string
+          description: string
+          energy_level?: string | null
+          id?: string
+          platform?: string | null
+          title: string
+          urgency?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          content_ideas?: string[]
+          created_at?: string
+          description?: string
+          energy_level?: string | null
+          id?: string
+          platform?: string | null
+          title?: string
+          urgency?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

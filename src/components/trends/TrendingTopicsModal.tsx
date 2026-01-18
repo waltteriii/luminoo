@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, Sparkles, Plus, Clock, Zap, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, TrendingUp, Sparkles, Plus, Clock, Zap, Calendar, ChevronDown, ChevronUp, Bookmark, BookmarkCheck, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel, Platform } from '@/types';
@@ -32,6 +33,11 @@ interface Trend {
   category: 'news' | 'seasonal' | 'industry' | 'viral' | 'evergreen';
 }
 
+interface BookmarkedTrend extends Trend {
+  id: string;
+  created_at: string;
+}
+
 const urgencyConfig = {
   now: { label: 'Act Now', color: 'bg-destructive text-destructive-foreground' },
   this_week: { label: 'This Week', color: 'bg-energy-high text-white' },
@@ -50,12 +56,19 @@ const categoryConfig = {
 const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: TrendingTopicsModalProps) => {
   const [loading, setLoading] = useState(false);
   const [trends, setTrends] = useState<Trend[]>([]);
+  const [bookmarks, setBookmarks] = useState<BookmarkedTrend[]>([]);
+  const [loadingBookmarks, setLoadingBookmarks] = useState(false);
   const [expandedTrend, setExpandedTrend] = useState<number | null>(null);
+  const [expandedBookmark, setExpandedBookmark] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'discover' | 'saved'>('discover');
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open && trends.length === 0) {
-      fetchTrends();
+    if (open) {
+      if (trends.length === 0) {
+        fetchTrends();
+      }
+      fetchBookmarks();
     }
   }, [open]);
 
@@ -85,6 +98,120 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
     }
   };
 
+  const fetchBookmarks = async () => {
+    setLoadingBookmarks(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('trend_bookmarks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setBookmarks((data || []).map((b: any) => ({
+        id: b.id,
+        title: b.title,
+        description: b.description,
+        content_ideas: b.content_ideas || [],
+        platform: b.platform,
+        urgency: b.urgency as Trend['urgency'],
+        energy_level: b.energy_level as EnergyLevel,
+        category: b.category as Trend['category'],
+        created_at: b.created_at,
+      })));
+    } catch (err) {
+      console.error('Fetch bookmarks error:', err);
+    } finally {
+      setLoadingBookmarks(false);
+    }
+  };
+
+  const isBookmarked = (trend: Trend) => {
+    return bookmarks.some(b => b.title === trend.title && b.description === trend.description);
+  };
+
+  const handleBookmark = async (trend: Trend) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Please sign in", variant: "destructive" });
+        return;
+      }
+
+      // Check if already bookmarked
+      if (isBookmarked(trend)) {
+        // Remove bookmark
+        const existing = bookmarks.find(b => b.title === trend.title && b.description === trend.description);
+        if (existing) {
+          const { error } = await supabase
+            .from('trend_bookmarks')
+            .delete()
+            .eq('id', existing.id);
+
+          if (error) throw error;
+
+          setBookmarks(prev => prev.filter(b => b.id !== existing.id));
+          toast({ title: "Bookmark removed" });
+        }
+      } else {
+        // Add bookmark
+        const { data, error } = await supabase
+          .from('trend_bookmarks')
+          .insert({
+            user_id: user.id,
+            title: trend.title,
+            description: trend.description,
+            content_ideas: trend.content_ideas,
+            platform: trend.platform,
+            urgency: trend.urgency,
+            energy_level: trend.energy_level,
+            category: trend.category,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setBookmarks(prev => [{
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          content_ideas: data.content_ideas || [],
+          platform: data.platform,
+          urgency: data.urgency as Trend['urgency'],
+          energy_level: data.energy_level as EnergyLevel,
+          category: data.category as Trend['category'],
+          created_at: data.created_at,
+        }, ...prev]);
+        toast({ title: "Trend bookmarked!" });
+      }
+    } catch (err) {
+      console.error('Bookmark error:', err);
+      toast({ title: "Failed to update bookmark", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteBookmark = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('trend_bookmarks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setBookmarks(prev => prev.filter(b => b.id !== id));
+      toast({ title: "Bookmark removed" });
+    } catch (err) {
+      console.error('Delete bookmark error:', err);
+      toast({ title: "Failed to delete bookmark", variant: "destructive" });
+    }
+  };
+
   const handleAddAsTask = (idea: string, energy: EnergyLevel) => {
     onAddTask(idea, energy);
     toast({
@@ -95,6 +222,10 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
 
   const toggleExpand = (index: number) => {
     setExpandedTrend(expandedTrend === index ? null : index);
+  };
+
+  const toggleBookmarkExpand = (id: string) => {
+    setExpandedBookmark(expandedBookmark === id ? null : id);
   };
 
   return (
@@ -109,153 +240,312 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
           }
         }}
       >
-        <DialogHeader>
+        <DialogHeader className="pb-0">
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
             Trending Topics
           </DialogTitle>
         </DialogHeader>
 
-        {loading ? (
-          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-            <div className="space-y-3 pb-4 pr-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="border border-border rounded-lg p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                        <Skeleton className="h-5 w-20 rounded-full" />
-                        <Skeleton className="h-4 w-14" />
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'discover' | 'saved')} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 mb-3">
+            <TabsTrigger value="discover" className="gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Discover
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="gap-1.5">
+              <Bookmark className="w-3.5 h-3.5" />
+              Saved {bookmarks.length > 0 && `(${bookmarks.length})`}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="discover" className="flex-1 flex flex-col min-h-0 mt-0">
+            {loading ? (
+              <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                <div className="space-y-3 pb-4 pr-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="border border-border rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Skeleton className="h-5 w-16 rounded-full" />
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                            <Skeleton className="h-4 w-14" />
+                          </div>
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-full" />
+                          <Skeleton className="h-3 w-5/6" />
+                        </div>
+                        <Skeleton className="h-8 w-8 rounded-md" />
                       </div>
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-5/6" />
                     </div>
-                    <Skeleton className="h-8 w-8 rounded-md" />
+                  ))}
+                </div>
+                <div className="flex items-center justify-center py-3">
+                  <div className="flex items-center gap-2 text-xs text-foreground-muted">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Analyzing trends for your niche…
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-center py-3">
-              <div className="flex items-center gap-2 text-xs text-foreground-muted">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Analyzing trends for your niche…
               </div>
-            </div>
-          </div>
-        ) : trends.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <TrendingUp className="w-12 h-12 text-foreground-subtle" />
-            <p className="text-foreground-muted">No trends loaded yet</p>
-            <Button onClick={fetchTrends} className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              Generate Trends
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-foreground-muted">
-                {trends.length} trends tailored to your profile
-              </p>
-              <Button variant="ghost" size="sm" onClick={fetchTrends} className="text-xs">
-                Refresh
-              </Button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-foreground/30">
-              <div className="space-y-3 pb-4 pr-2">
-                {trends.map((trend, index) => {
-                  const CategoryIcon = categoryConfig[trend.category]?.icon || TrendingUp;
-                  const isExpanded = expandedTrend === index;
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={cn(
-                        "border border-border rounded-lg p-4 transition-all",
-                        isExpanded && "ring-1 ring-primary/30"
-                      )}
-                    >
-                      <div 
-                        className="flex items-start justify-between cursor-pointer"
-                        onClick={() => toggleExpand(index)}
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <Badge variant="secondary" className={cn("text-2xs", urgencyConfig[trend.urgency].color)}>
-                              {urgencyConfig[trend.urgency].label}
-                            </Badge>
-                            <Badge variant="outline" className="text-2xs gap-1">
-                              <CategoryIcon className="w-3 h-3" />
-                              {categoryConfig[trend.category]?.label}
-                            </Badge>
-                            <span className="text-2xs text-foreground-muted">{trend.platform}</span>
-                          </div>
-                          <h3 className="font-medium text-foreground">{trend.title}</h3>
-                          <p className="text-sm text-foreground-muted mt-1 line-clamp-2">
-                            {trend.description}
-                          </p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="flex-shrink-0 ml-2">
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
+            ) : trends.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <TrendingUp className="w-12 h-12 text-foreground-subtle" />
+                <p className="text-foreground-muted">No trends loaded yet</p>
+                <Button onClick={fetchTrends} className="gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Generate Trends
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-foreground-muted">
+                    {trends.length} trends tailored to your profile
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={fetchTrends} className="text-xs">
+                    Refresh
+                  </Button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-foreground/30">
+                  <div className="space-y-3 pb-4 pr-2">
+                    {trends.map((trend, index) => {
+                      const CategoryIcon = categoryConfig[trend.category]?.icon || TrendingUp;
+                      const isExpanded = expandedTrend === index;
+                      const bookmarked = isBookmarked(trend);
+                      
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            "border border-border rounded-lg p-4 transition-all",
+                            isExpanded && "ring-1 ring-primary/30"
                           )}
-                        </Button>
-                      </div>
-
-                      {isExpanded && (
-                        <div className="mt-4 pt-3 border-t border-border space-y-3">
-                          <div>
-                            <span className="caption">Content Ideas</span>
-                            <div className="space-y-2 mt-2">
-                              {trend.content_ideas.map((idea, ideaIndex) => (
-                                <div 
-                                  key={ideaIndex}
-                                  className="flex items-center justify-between gap-3 p-2 bg-secondary/50 rounded-lg"
-                                >
-                                  <span className="text-sm flex-1">{idea}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAddAsTask(idea, trend.energy_level);
-                                    }}
-                                    className="text-xs gap-1 flex-shrink-0"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                    Add Task
-                                  </Button>
-                                </div>
-                              ))}
+                        >
+                          <div 
+                            className="flex items-start justify-between cursor-pointer"
+                            onClick={() => toggleExpand(index)}
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <Badge variant="secondary" className={cn("text-2xs", urgencyConfig[trend.urgency]?.color)}>
+                                  {urgencyConfig[trend.urgency]?.label}
+                                </Badge>
+                                <Badge variant="outline" className="text-2xs gap-1">
+                                  <CategoryIcon className="w-3 h-3" />
+                                  {categoryConfig[trend.category]?.label}
+                                </Badge>
+                                <span className="text-2xs text-foreground-muted">{trend.platform}</span>
+                              </div>
+                              <h3 className="font-medium text-foreground">{trend.title}</h3>
+                              <p className="text-sm text-foreground-muted mt-1 line-clamp-2">
+                                {trend.description}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className={cn(bookmarked && "text-primary")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBookmark(trend);
+                                }}
+                              >
+                                {bookmarked ? (
+                                  <BookmarkCheck className="w-4 h-4" />
+                                ) : (
+                                  <Bookmark className="w-4 h-4" />
+                                )}
+                              </Button>
+                              <Button variant="ghost" size="icon">
+                                {isExpanded ? (
+                                  <ChevronUp className="w-4 h-4" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4" />
+                                )}
+                              </Button>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-foreground-muted">Energy:</span>
-                            <Badge variant="outline" className={cn(
-                              "text-2xs",
-                              trend.energy_level === 'high' && "border-energy-high text-energy-high",
-                              trend.energy_level === 'medium' && "border-energy-medium text-energy-medium",
-                              trend.energy_level === 'low' && "border-energy-low text-energy-low",
-                              trend.energy_level === 'recovery' && "border-energy-recovery text-energy-recovery",
-                            )}>
-                              {trend.energy_level}
-                            </Badge>
+
+                          {isExpanded && (
+                            <div className="mt-4 pt-3 border-t border-border space-y-3">
+                              <div>
+                                <span className="caption">Content Ideas</span>
+                                <div className="space-y-2 mt-2">
+                                  {trend.content_ideas.map((idea, ideaIndex) => (
+                                    <div 
+                                      key={ideaIndex}
+                                      className="flex items-center justify-between gap-3 p-2 bg-secondary/50 rounded-lg"
+                                    >
+                                      <span className="text-sm flex-1">{idea}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAddAsTask(idea, trend.energy_level);
+                                        }}
+                                        className="text-xs gap-1 flex-shrink-0"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                        Add Task
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-foreground-muted">Energy:</span>
+                                <Badge variant="outline" className={cn(
+                                  "text-2xs",
+                                  trend.energy_level === 'high' && "border-energy-high text-energy-high",
+                                  trend.energy_level === 'medium' && "border-energy-medium text-energy-medium",
+                                  trend.energy_level === 'low' && "border-energy-low text-energy-low",
+                                  trend.energy_level === 'recovery' && "border-energy-recovery text-energy-recovery",
+                                )}>
+                                  {trend.energy_level}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="saved" className="flex-1 flex flex-col min-h-0 mt-0">
+            {loadingBookmarks ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
+              </div>
+            ) : bookmarks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Bookmark className="w-12 h-12 text-foreground-subtle" />
+                <p className="text-foreground-muted">No bookmarked trends yet</p>
+                <p className="text-xs text-foreground-muted/70">Click the bookmark icon on any trend to save it here</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-foreground/30">
+                <div className="space-y-3 pb-4 pr-2">
+                  {bookmarks.map((bookmark) => {
+                    const CategoryIcon = categoryConfig[bookmark.category]?.icon || TrendingUp;
+                    const isExpanded = expandedBookmark === bookmark.id;
+                    
+                    return (
+                      <div
+                        key={bookmark.id}
+                        className={cn(
+                          "border border-border rounded-lg p-4 transition-all",
+                          isExpanded && "ring-1 ring-primary/30"
+                        )}
+                      >
+                        <div 
+                          className="flex items-start justify-between cursor-pointer"
+                          onClick={() => toggleBookmarkExpand(bookmark.id)}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              {bookmark.urgency && urgencyConfig[bookmark.urgency] && (
+                                <Badge variant="secondary" className={cn("text-2xs", urgencyConfig[bookmark.urgency].color)}>
+                                  {urgencyConfig[bookmark.urgency].label}
+                                </Badge>
+                              )}
+                              {bookmark.category && categoryConfig[bookmark.category] && (
+                                <Badge variant="outline" className="text-2xs gap-1">
+                                  <CategoryIcon className="w-3 h-3" />
+                                  {categoryConfig[bookmark.category].label}
+                                </Badge>
+                              )}
+                              {bookmark.platform && (
+                                <span className="text-2xs text-foreground-muted">{bookmark.platform}</span>
+                              )}
+                            </div>
+                            <h3 className="font-medium text-foreground">{bookmark.title}</h3>
+                            <p className="text-sm text-foreground-muted mt-1 line-clamp-2">
+                              {bookmark.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteBookmark(bookmark.id);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon">
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </Button>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+
+                        {isExpanded && (
+                          <div className="mt-4 pt-3 border-t border-border space-y-3">
+                            <div>
+                              <span className="caption">Content Ideas</span>
+                              <div className="space-y-2 mt-2">
+                                {bookmark.content_ideas.map((idea, ideaIndex) => (
+                                  <div 
+                                    key={ideaIndex}
+                                    className="flex items-center justify-between gap-3 p-2 bg-secondary/50 rounded-lg"
+                                  >
+                                    <span className="text-sm flex-1">{idea}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddAsTask(idea, bookmark.energy_level);
+                                      }}
+                                      className="text-xs gap-1 flex-shrink-0"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      Add Task
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {bookmark.energy_level && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-foreground-muted">Energy:</span>
+                                <Badge variant="outline" className={cn(
+                                  "text-2xs",
+                                  bookmark.energy_level === 'high' && "border-energy-high text-energy-high",
+                                  bookmark.energy_level === 'medium' && "border-energy-medium text-energy-medium",
+                                  bookmark.energy_level === 'low' && "border-energy-low text-energy-low",
+                                  bookmark.energy_level === 'recovery' && "border-energy-recovery text-energy-recovery",
+                                )}>
+                                  {bookmark.energy_level}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
