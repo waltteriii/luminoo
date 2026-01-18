@@ -299,10 +299,10 @@ const CalendarTask = ({
                 )}
               </div>
 
-              {/* Reorder buttons - near top but below resize handle */}
+              {/* Reorder buttons - positioned below title area */}
               {(canMoveLeft || canMoveRight) && (
                 <div className={cn(
-                  'absolute left-1 top-4 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10'
+                  'absolute left-1 top-7 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10'
                 )}>
                   {canMoveLeft && (
                     <Button

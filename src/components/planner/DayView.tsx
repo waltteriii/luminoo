@@ -80,22 +80,25 @@ const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, gro
     },
   });
 
+  // Make drop zone wider and span the full column slot
+  const zoneWidth = Math.max(24, columnWidth * 0.3);
+
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'absolute pointer-events-auto z-40 transition-all',
-        isOver && 'bg-primary/20'
+        'absolute pointer-events-auto z-40 transition-all rounded',
+        isOver && 'bg-primary/30'
       )}
       style={{
         top: `${groupTop}px`,
-        height: `${groupHeight}px`,
-        left: `calc(${columnIndex * columnWidth}% - 8px)`,
-        width: '16px',
+        height: `${Math.max(groupHeight, 48)}px`,
+        left: `calc(${columnIndex * columnWidth}% - ${zoneWidth / 2}px)`,
+        width: `${zoneWidth}px`,
       }}
     >
       {isOver && (
-        <div className="absolute left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-primary rounded-full" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-primary rounded-full shadow-lg shadow-primary/50" />
       )}
     </div>
   );
