@@ -25,7 +25,12 @@ interface CalendarTaskProps {
   baseWidth?: number; // Base width percentage (for overlapping tasks)
   minWidth?: number; // Minimum width percentage
   maxWidth?: number; // Maximum width percentage
-  onWidthChange?: (newWidth: number) => void; // Callback when width changes
+  onWidthChange?: (newWidth: number) => void; // Legacy callback when width changes
+  // Split-pane resize props
+  canResizeLeft?: boolean; // Can resize left edge (has left neighbor)
+  canResizeRight?: boolean; // Can resize right edge (has right neighbor)
+  onResizeLeft?: (deltaPercent: number) => void; // Called with delta when resizing left
+  onResizeRight?: (deltaPercent: number) => void; // Called with delta when resizing right
   canMoveLeft?: boolean;
   canMoveRight?: boolean;
   onMoveLeft?: () => void;
@@ -59,6 +64,10 @@ const CalendarTask = ({
   minWidth = 20,
   maxWidth = 100,
   onWidthChange,
+  canResizeLeft = false,
+  canResizeRight = false,
+  onResizeLeft,
+  onResizeRight,
   canMoveLeft,
   canMoveRight,
   onMoveLeft,
@@ -235,9 +244,9 @@ const CalendarTask = ({
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewStartTime, task.start_time, onUpdate]);
 
-  // Handle right resize (changes width) - smooth real-time updates
+  // Handle right resize (split-pane style - steals from right neighbor)
   const handleResizeRightStart = useCallback((e: React.PointerEvent) => {
-    if (!onWidthChange || width === undefined) return;
+    if (!onResizeRight && !onWidthChange) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -245,20 +254,25 @@ const CalendarTask = ({
     setIsResizing(true);
     setResizeDirection('right');
     resizeStartX.current = e.clientX;
-    resizeStartWidth.current = width;
+    resizeStartWidth.current = width ?? 100;
     
-    // Get the parent's parent container (the time grid area) for proper percentage calculation
+    // Get container width for percentage calculation
     const parentElement = containerRef.current?.parentElement;
     const grandParentElement = parentElement?.parentElement;
     const containerWidth = grandParentElement?.offsetWidth || parentElement?.offsetWidth || 400;
     
     const handleMove = (ev: PointerEvent) => {
       const deltaX = ev.clientX - resizeStartX.current;
-      // Calculate delta as percentage of container width
       const deltaPercent = (deltaX / containerWidth) * 100;
-      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
-      // Update in real-time for smooth resizing
-      onWidthChange(newWidth);
+      
+      if (onResizeRight) {
+        // Split-pane mode: pass delta to parent which handles neighbor adjustment
+        onResizeRight(deltaPercent);
+      } else if (onWidthChange) {
+        // Legacy mode: just update this task's width
+        const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
+        onWidthChange(newWidth);
+      }
     };
     
     const handleUp = () => {
@@ -271,11 +285,11 @@ const CalendarTask = ({
     
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
-  }, [width, minWidth, maxWidth, onWidthChange]);
+  }, [width, minWidth, maxWidth, onWidthChange, onResizeRight]);
 
-  // Handle left resize (changes width from left side) - smooth real-time updates
+  // Handle left resize (split-pane style - steals from left neighbor)
   const handleResizeLeftStart = useCallback((e: React.PointerEvent) => {
-    if (!onWidthChange || width === undefined) return;
+    if (!onResizeLeft && !onWidthChange) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -283,7 +297,7 @@ const CalendarTask = ({
     setIsResizing(true);
     setResizeDirection('left');
     resizeStartX.current = e.clientX;
-    resizeStartWidth.current = width;
+    resizeStartWidth.current = width ?? 100;
     
     const parentElement = containerRef.current?.parentElement;
     const grandParentElement = parentElement?.parentElement;
@@ -292,9 +306,15 @@ const CalendarTask = ({
     const handleMove = (ev: PointerEvent) => {
       const deltaX = resizeStartX.current - ev.clientX; // Inverted for left resize
       const deltaPercent = (deltaX / containerWidth) * 100;
-      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
-      // Update in real-time for smooth resizing
-      onWidthChange(newWidth);
+      
+      if (onResizeLeft) {
+        // Split-pane mode: pass delta to parent which handles neighbor adjustment
+        onResizeLeft(deltaPercent);
+      } else if (onWidthChange) {
+        // Legacy mode: just update this task's width
+        const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
+        onWidthChange(newWidth);
+      }
     };
     
     const handleUp = () => {
@@ -307,7 +327,7 @@ const CalendarTask = ({
     
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
-  }, [width, minWidth, maxWidth, onWidthChange]);
+  }, [width, minWidth, maxWidth, onWidthChange, onResizeLeft]);
   const displayHeight = resizePreviewHeight ?? height;
   const isCompact = displayHeight < 36;
   const isMedium = displayHeight >= 36 && displayHeight < 60;
@@ -331,7 +351,9 @@ const CalendarTask = ({
 
   // Calculate display width
   const displayWidth = resizePreviewWidth ?? width;
-  const canResizeHorizontally = !!onWidthChange && width !== undefined;
+  // Can resize horizontally if we have split-pane handlers OR legacy handler
+  const canResizeHorizontallyLeft = canResizeLeft || !!onWidthChange;
+  const canResizeHorizontallyRight = canResizeRight || !!onWidthChange;
 
   return (
     <>
@@ -362,33 +384,33 @@ const CalendarTask = ({
                 task.completed && 'opacity-50'
               )}
             >
-              {/* Left resize handle */}
-              {canResizeHorizontally && (
+              {/* Left resize handle - for split-pane resize */}
+              {canResizeHorizontallyLeft && (
                 <div
                   className={cn(
-                    'absolute left-0 top-1/2 -translate-y-1/2 w-3 h-10 cursor-ew-resize flex items-center justify-center z-20',
-                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground/10 rounded-sm',
-                    isResizing && resizeDirection === 'left' && 'opacity-100 bg-foreground/10'
+                    'absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-20',
+                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20',
+                    isResizing && resizeDirection === 'left' && 'opacity-100 bg-primary/30'
                   )}
                   onPointerDown={handleResizeLeftStart}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <div className="h-5 w-1 rounded-full bg-foreground/50" />
+                  <div className="h-8 w-0.5 rounded-full bg-foreground/40" />
                 </div>
               )}
 
-              {/* Right resize handle */}
-              {canResizeHorizontally && (
+              {/* Right resize handle - for split-pane resize */}
+              {canResizeHorizontallyRight && (
                 <div
                   className={cn(
-                    'absolute right-0 top-1/2 -translate-y-1/2 w-3 h-10 cursor-ew-resize flex items-center justify-center z-20',
-                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground/10 rounded-sm',
-                    isResizing && resizeDirection === 'right' && 'opacity-100 bg-foreground/10'
+                    'absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-20',
+                    'opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20',
+                    isResizing && resizeDirection === 'right' && 'opacity-100 bg-primary/30'
                   )}
                   onPointerDown={handleResizeRightStart}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <div className="h-5 w-1 rounded-full bg-foreground/50" />
+                  <div className="h-8 w-0.5 rounded-full bg-foreground/40" />
                 </div>
               )}
 
