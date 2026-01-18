@@ -22,6 +22,7 @@ interface CalendarTaskProps {
   showTimeRange?: boolean;
   height: number;
   width?: number; // Current width in percentage
+  baseWidth?: number; // Base width percentage (for overlapping tasks)
   minWidth?: number; // Minimum width percentage
   maxWidth?: number; // Maximum width percentage
   onWidthChange?: (newWidth: number) => void; // Callback when width changes
@@ -54,6 +55,7 @@ const CalendarTask = ({
   showTimeRange = false,
   height,
   width,
+  baseWidth = 100,
   minWidth = 20,
   maxWidth = 100,
   onWidthChange,
@@ -233,9 +235,9 @@ const CalendarTask = ({
     window.addEventListener('pointerup', handleUp);
   }, [height, calculateNewStartTime, task.start_time, onUpdate]);
 
-  // Handle right resize (changes width)
+  // Handle right resize (changes width) - smooth real-time updates
   const handleResizeRightStart = useCallback((e: React.PointerEvent) => {
-    if (!onWidthChange || !width) return;
+    if (!onWidthChange || width === undefined) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -245,40 +247,35 @@ const CalendarTask = ({
     resizeStartX.current = e.clientX;
     resizeStartWidth.current = width;
     
-    // Get parent container width for percentage calculation
-    const parentWidth = containerRef.current?.parentElement?.offsetWidth || 200;
+    // Get the parent's parent container (the time grid area) for proper percentage calculation
+    const parentElement = containerRef.current?.parentElement;
+    const grandParentElement = parentElement?.parentElement;
+    const containerWidth = grandParentElement?.offsetWidth || parentElement?.offsetWidth || 400;
     
     const handleMove = (ev: PointerEvent) => {
       const deltaX = ev.clientX - resizeStartX.current;
-      const deltaPercent = (deltaX / parentWidth) * 100;
+      // Calculate delta as percentage of container width
+      const deltaPercent = (deltaX / containerWidth) * 100;
       const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
-      setResizePreviewWidth(newWidth);
+      // Update in real-time for smooth resizing
+      onWidthChange(newWidth);
     };
     
-    const handleUp = (ev: PointerEvent) => {
+    const handleUp = () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
       
-      const deltaX = ev.clientX - resizeStartX.current;
-      const deltaPercent = (deltaX / parentWidth) * 100;
-      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
-      
-      if (newWidth !== width) {
-        onWidthChange(newWidth);
-      }
-      
       setIsResizing(false);
       setResizeDirection(null);
-      setResizePreviewWidth(null);
     };
     
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
   }, [width, minWidth, maxWidth, onWidthChange]);
 
-  // Handle left resize (changes width from left side)
+  // Handle left resize (changes width from left side) - smooth real-time updates
   const handleResizeLeftStart = useCallback((e: React.PointerEvent) => {
-    if (!onWidthChange || !width) return;
+    if (!onWidthChange || width === undefined) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -288,30 +285,24 @@ const CalendarTask = ({
     resizeStartX.current = e.clientX;
     resizeStartWidth.current = width;
     
-    const parentWidth = containerRef.current?.parentElement?.offsetWidth || 200;
+    const parentElement = containerRef.current?.parentElement;
+    const grandParentElement = parentElement?.parentElement;
+    const containerWidth = grandParentElement?.offsetWidth || parentElement?.offsetWidth || 400;
     
     const handleMove = (ev: PointerEvent) => {
       const deltaX = resizeStartX.current - ev.clientX; // Inverted for left resize
-      const deltaPercent = (deltaX / parentWidth) * 100;
+      const deltaPercent = (deltaX / containerWidth) * 100;
       const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
-      setResizePreviewWidth(newWidth);
+      // Update in real-time for smooth resizing
+      onWidthChange(newWidth);
     };
     
-    const handleUp = (ev: PointerEvent) => {
+    const handleUp = () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
       
-      const deltaX = resizeStartX.current - ev.clientX;
-      const deltaPercent = (deltaX / parentWidth) * 100;
-      const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartWidth.current + deltaPercent));
-      
-      if (newWidth !== width) {
-        onWidthChange(newWidth);
-      }
-      
       setIsResizing(false);
       setResizeDirection(null);
-      setResizePreviewWidth(null);
     };
     
     window.addEventListener('pointermove', handleMove);
