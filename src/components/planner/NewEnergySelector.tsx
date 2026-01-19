@@ -113,27 +113,6 @@ const EnergySelector = memo(({
   return (
     <TooltipProvider>
       <div className="flex items-center gap-2">
-        {/* Quick action buttons */}
-        <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-foreground-muted hover:text-foreground hover:bg-primary/10"
-                onClick={onBrainDump}
-              >
-                <Sparkles className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <p>Brain dump</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-
-        <div className="w-px h-6 bg-border" />
-
         {/* Energy filter buttons */}
         <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-1">
           <Tooltip>
