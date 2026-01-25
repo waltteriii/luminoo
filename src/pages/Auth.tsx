@@ -136,13 +136,13 @@ const Auth = () => {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <Squirrel className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-medium text-foreground">Luminoo</span>
+              <span className="text-xl font-medium text-foreground">luminoo-demo-0.1</span>
             </div>
           </div>
           
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl font-light text-foreground leading-tight">
-              Luminoo
+              luminoo-demo-0.1
             </h1>
             <p className="text-lg text-foreground-muted max-w-md">
               An AI-powered marketing calendar that understands your creative energy 
@@ -184,7 +184,7 @@ const Auth = () => {
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
               <Squirrel className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-medium text-foreground">Luminoo</span>
+            <span className="text-xl font-medium text-foreground">luminoo-demo-0.1</span>
           </div>
 
           <div className="space-y-2 text-center lg:text-left">
