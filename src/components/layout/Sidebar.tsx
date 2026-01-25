@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import { 
-  Grid3X3, 
+import {
+  Grid3X3,
   Calendar,
   Brain,
   TrendingUp,
@@ -8,7 +8,7 @@ import {
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ViewMode } from '@/types';
+import { ViewMode, EnergyLevel } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sheet,
@@ -28,19 +28,25 @@ interface SidebarProps {
   memoryOpen?: boolean;
   onMemoryClick?: () => void;
   onClose?: () => void;
+  selectedEnergies?: EnergyLevel[];
+  onToggleEnergy?: (energy: EnergyLevel) => void;
+  onClearEnergies?: () => void;
 }
 
 // Layout modes - currently only 'grid' is enabled
 const ENABLED_LAYOUTS: ViewMode[] = ['grid'];
 
-const SidebarContent = ({ 
-  viewMode, 
-  onViewModeChange, 
+const SidebarContent = ({
+  viewMode,
+  onViewModeChange,
   onBrainDumpClick,
   onTrendingClick,
   onFriendsClick,
   onJumpToToday,
-  onClose
+  onClose,
+  selectedEnergies = [],
+  onToggleEnergy,
+  onClearEnergies
 }: Omit<SidebarProps, 'open' | 'memoryOpen' | 'onMemoryClick'>) => {
   const viewModes = [
     { value: 'grid' as ViewMode, icon: <Grid3X3 className="w-4 h-4" />, label: 'Grid' },
@@ -110,21 +116,92 @@ const SidebarContent = ({
           </Button>
         </div>
       </div>
+
+      {/* Energy Filters */}
+      {onToggleEnergy && onClearEnergies && (
+        <div className="space-y-1.5 lg:space-y-2">
+          <span className="caption text-[10px] lg:text-xs">Energy Filters</span>
+          <div className="space-y-0.5 lg:space-y-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAction(onClearEnergies)}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm",
+                selectedEnergies.length === 0 && "bg-secondary text-foreground"
+              )}
+            >
+              All
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAction(() => onToggleEnergy('high'))}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm",
+                selectedEnergies.includes('high') && "bg-secondary text-foreground"
+              )}
+            >
+              <div className="w-2 h-2 rounded-full bg-energy-high" />
+              High Focus
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAction(() => onToggleEnergy('medium'))}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm",
+                selectedEnergies.includes('medium') && "bg-secondary text-foreground"
+              )}
+            >
+              <div className="w-2 h-2 rounded-full bg-energy-medium" />
+              Steady
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAction(() => onToggleEnergy('low'))}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm",
+                selectedEnergies.includes('low') && "bg-secondary text-foreground"
+              )}
+            >
+              <div className="w-2 h-2 rounded-full bg-energy-low" />
+              Low Energy
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAction(() => onToggleEnergy('recovery'))}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm",
+                selectedEnergies.includes('recovery') && "bg-secondary text-foreground"
+              )}
+            >
+              <div className="w-2 h-2 rounded-full bg-energy-recovery" />
+              Recovery
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const Sidebar = ({ 
-  open, 
-  viewMode, 
-  onViewModeChange, 
+const Sidebar = ({
+  open,
+  viewMode,
+  onViewModeChange,
   onBrainDumpClick,
   onTrendingClick,
   onFriendsClick,
   onJumpToToday,
   memoryOpen,
   onMemoryClick,
-  onClose
+  onClose,
+  selectedEnergies,
+  onToggleEnergy,
+  onClearEnergies
 }: SidebarProps) => {
   const isMobile = useIsMobile();
 
@@ -144,6 +221,9 @@ const Sidebar = ({
             onFriendsClick={onFriendsClick}
             onJumpToToday={onJumpToToday}
             onClose={onClose}
+            selectedEnergies={selectedEnergies}
+            onToggleEnergy={onToggleEnergy}
+            onClearEnergies={onClearEnergies}
           />
         </SheetContent>
       </Sheet>
@@ -152,7 +232,7 @@ const Sidebar = ({
 
   // Desktop: static sidebar
   return (
-    <aside 
+    <aside
       className={cn(
         "w-48 lg:w-52 xl:w-56 border-r border-border bg-sidebar flex-shrink-0 transition-all duration-300 overflow-hidden",
         !open && "w-0 border-r-0"
@@ -165,6 +245,9 @@ const Sidebar = ({
         onTrendingClick={onTrendingClick}
         onFriendsClick={onFriendsClick}
         onJumpToToday={onJumpToToday}
+        selectedEnergies={selectedEnergies}
+        onToggleEnergy={onToggleEnergy}
+        onClearEnergies={onClearEnergies}
       />
     </aside>
   );

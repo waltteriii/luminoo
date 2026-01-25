@@ -23,10 +23,6 @@ interface HeaderProps {
   onEnergyChange: (energy: EnergyLevel) => void;
   onToggleSidebar: () => void;
   onProfileClick: () => void;
-  onFilterEnergy?: (energy: EnergyLevel) => void;
-  onClearFilters?: () => void;
-  onViewInbox?: (energy: EnergyLevel) => void;
-  activeFilters?: EnergyLevel[];
   avatarUrl?: string | null;
   highlightColor?: string;
   onAddTask?: () => void;
@@ -35,15 +31,11 @@ interface HeaderProps {
 }
 
 const Header = memo(({
-  user, 
-  currentEnergy, 
-  onEnergyChange, 
-  onToggleSidebar, 
+  user,
+  currentEnergy,
+  onEnergyChange,
+  onToggleSidebar,
   onProfileClick,
-  onFilterEnergy,
-  onClearFilters,
-  onViewInbox,
-  activeFilters = [],
   avatarUrl,
   highlightColor = 'blue',
   onAddTask,
@@ -78,9 +70,9 @@ const Header = memo(({
     )}>
       {/* Left section - hamburger + logo */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={(e) => {
             e.stopPropagation();
             onToggleSidebar();
@@ -89,14 +81,14 @@ const Header = memo(({
         >
           <Menu className="w-5 h-5" />
         </Button>
-        
+
         {/* Logo - hidden on mobile for space */}
         {!isMobile && (
-          <button 
+          <button
             onClick={onLogoClick}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity touch-manipulation"
           >
-            <div 
+            <div
               className={cn(
                 "group w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
                 highlightColor === 'blue' && "bg-blue-500",
@@ -116,28 +108,14 @@ const Header = memo(({
         )}
       </div>
 
-      {/* Center section - Energy selector */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
-        <EnergySelector 
-          value={currentEnergy} 
-          onChange={onEnergyChange}
-          onFilterClick={onFilterEnergy}
-          activeFilters={activeFilters}
-          onShowAll={onClearFilters}
-          onViewInbox={onViewInbox}
-          onAddTask={onAddTask}
-          onBrainDump={onBrainDump}
-        />
-      </div>
-
       {/* Right section - theme toggle + avatar */}
       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         <ThemeToggle />
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="flex items-center gap-2 text-foreground-muted hover:text-foreground h-11 px-2 min-h-[44px] touch-manipulation"
             >
               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -161,7 +139,7 @@ const Header = memo(({
               Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={handleSignOut}
               className="text-destructive focus:text-destructive min-h-[44px] touch-manipulation"
             >

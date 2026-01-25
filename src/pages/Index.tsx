@@ -97,7 +97,7 @@ const Index = () => {
   const [currentEnergy, setCurrentEnergy] = useState<EnergyLevel>('medium');
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [energyFilter, setEnergyFilter] = useState<EnergyLevel[]>([]);
-  
+
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [trendingOpen, setTrendingOpen] = useState(false);
@@ -159,7 +159,7 @@ const Index = () => {
 
     if (data) {
       const highlightColor = ((data as any).highlight_color as string) || 'blue';
-      
+
       const profile = {
         creatorType: data.creator_type,
         platforms: (data.platforms || []) as Platform[],
@@ -171,11 +171,11 @@ const Index = () => {
         highlightColor,
       };
       setUserProfile(profile);
-      
+
       // Cache and apply highlight color
       localStorage.setItem(HIGHLIGHT_KEY, highlightColor);
       document.documentElement.setAttribute('data-highlight', highlightColor);
-      
+
       // Only set view from profile if no cached view state exists
       if (!cachedViewState && profile.defaultView) {
         setZoomLevel(profile.defaultView);
@@ -234,8 +234,8 @@ const Index = () => {
   }, []);
 
   const handleToggleEnergyFilter = useCallback((energy: EnergyLevel) => {
-    setEnergyFilter(prev => 
-      prev.includes(energy) 
+    setEnergyFilter(prev =>
+      prev.includes(energy)
         ? prev.filter(e => e !== energy)
         : [...prev, energy]
     );
@@ -247,11 +247,11 @@ const Index = () => {
 
   const handleBrainDumpItems = useCallback(async (items: ParsedItem[]) => {
     if (!user) return;
-    
+
     for (const item of items) {
       if (item.type === 'task') {
         const dueDate = (item as any).due_date || null;
-        
+
         await supabase.from('tasks').insert({
           user_id: user.id,
           title: item.text,
@@ -268,7 +268,7 @@ const Index = () => {
 
   const handleAddTrendTask = useCallback(async (title: string, energy: EnergyLevel) => {
     if (!user) return;
-    
+
     await supabase.from('tasks').insert({
       user_id: user.id,
       title,
@@ -318,133 +318,132 @@ const Index = () => {
     <TasksProvider userId={user.id}>
       <DndProvider>
         <div className="min-h-screen bg-background flex flex-col w-full">
-        <Header 
-          user={user}
-          currentEnergy={currentEnergy}
-          onEnergyChange={setCurrentEnergy}
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-          onProfileClick={() => setProfileOpen(true)}
-          onFilterEnergy={handleToggleEnergyFilter}
-          onClearFilters={() => setEnergyFilter([])}
-          onViewInbox={handleViewEnergyInbox}
-          activeFilters={energyFilter}
-          avatarUrl={userProfile?.avatarUrl}
-          highlightColor={userProfile.highlightColor || 'blue'}
-          onAddTask={() => setQuickAddOpen(true)}
-          onBrainDump={() => setBrainDumpOpen(true)}
-          onLogoClick={() => {
-            setZoomLevel('day');
-            setFocusedDate(new Date());
-            setFocusedMonth(new Date().getMonth());
-          }}
-        />
-        <div className="flex-1 flex overflow-hidden w-full">
-          <Sidebar 
-            open={sidebarOpen}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            onBrainDumpClick={() => setBrainDumpOpen(true)}
-            onTrendingClick={() => setTrendingOpen(true)}
-            onFriendsClick={() => setFriendsOpen(true)}
-            onJumpToToday={handleJumpToToday}
-            memoryOpen={memoryOpen}
-            onMemoryClick={() => setMemoryOpen(!memoryOpen)}
-            onClose={handleCloseSidebar}
+          <Header
+            user={user}
+            currentEnergy={currentEnergy}
+            onEnergyChange={setCurrentEnergy}
+            onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+            onProfileClick={() => setProfileOpen(true)}
+            avatarUrl={userProfile?.avatarUrl}
+            highlightColor={userProfile.highlightColor || 'blue'}
+            onAddTask={() => setQuickAddOpen(true)}
+            onBrainDump={() => setBrainDumpOpen(true)}
+            onLogoClick={() => {
+              setZoomLevel('day');
+              setFocusedDate(new Date());
+              setFocusedMonth(new Date().getMonth());
+            }}
           />
-          <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* Centered content container for large screens */}
-            <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
-              {/* Hero widgets - Brain Dump & Trending Topics */}
-              <HeroWidgets
-                onBrainDumpClick={() => setBrainDumpOpen(true)}
-                onTrendingClick={() => setTrendingOpen(true)}
-              />
-              
-              {/* Unscheduled tasks inbox */}
-              <UnscheduledTasks 
-                energyFilter={energyFilter}
-                onScheduleTask={handleScheduleTask}
-              />
-            </div>
-            
-            {/* Main planner view */}
-            <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6">
+          <div className="flex-1 flex overflow-hidden w-full">
+            <Sidebar
+              open={sidebarOpen}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onBrainDumpClick={() => setBrainDumpOpen(true)}
+              onTrendingClick={() => setTrendingOpen(true)}
+              onFriendsClick={() => setFriendsOpen(true)}
+              onJumpToToday={handleJumpToToday}
+              memoryOpen={memoryOpen}
+              onMemoryClick={() => setMemoryOpen(!memoryOpen)}
+              onClose={handleCloseSidebar}
+              selectedEnergies={energyFilter}
+              onToggleEnergy={handleToggleEnergyFilter}
+              onClearEnergies={() => setEnergyFilter([])}
+            />
+            <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+              {/* Centered content container for large screens */}
               <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
-                <PlannerView
-                  viewMode={viewMode}
-                  zoomLevel={zoomLevel}
-                  focusedMonth={focusedMonth}
-                  focusedDate={focusedDate}
-                  currentEnergy={currentEnergy}
+                {/* Hero widgets - Brain Dump & Trending Topics */}
+                <HeroWidgets
+                  onBrainDumpClick={() => setBrainDumpOpen(true)}
+                  onTrendingClick={() => setTrendingOpen(true)}
+                />
+
+                {/* Unscheduled tasks inbox */}
+                <UnscheduledTasks
                   energyFilter={energyFilter}
-                  onMonthClick={handleMonthClick}
-                  onDayClick={handleDayClick}
-                  onWeekClick={handleWeekClick}
-                  onZoomOut={handleZoomOut}
-                  onZoomLevelChange={handleZoomLevelChange}
-                  onJumpToToday={handleJumpToToday}
-                  onSetFocusedDate={setFocusedDate}
-                  onSetFocusedMonth={setFocusedMonth}
+                  onScheduleTask={handleScheduleTask}
                 />
               </div>
-            </div>
-          </main>
-          
-          {/* Memory Panel - right side (hidden on mobile) */}
-          {user && !isMobile && (
-            <MemoryPanel
-              userId={user.id}
-              isOpen={memoryOpen}
-              onClose={() => setMemoryOpen(false)}
-            />
-          )}
-        </div>
 
-        {/* Lazy loaded modals */}
-        <Suspense fallback={null}>
-          {brainDumpOpen && (
-            <BrainDumpModal
-              open={brainDumpOpen}
-              onOpenChange={setBrainDumpOpen}
-              onItemsAdded={handleBrainDumpItems}
-            />
-          )}
+              {/* Main planner view */}
+              <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6">
+                <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
+                  <PlannerView
+                    viewMode={viewMode}
+                    zoomLevel={zoomLevel}
+                    focusedMonth={focusedMonth}
+                    focusedDate={focusedDate}
+                    currentEnergy={currentEnergy}
+                    energyFilter={energyFilter}
+                    onMonthClick={handleMonthClick}
+                    onDayClick={handleDayClick}
+                    onWeekClick={handleWeekClick}
+                    onZoomOut={handleZoomOut}
+                    onZoomLevelChange={handleZoomLevelChange}
+                    onJumpToToday={handleJumpToToday}
+                    onSetFocusedDate={setFocusedDate}
+                    onSetFocusedMonth={setFocusedMonth}
+                  />
+                </div>
+              </div>
+            </main>
 
-          {profileOpen && (
-            <ProfileModal
-              open={profileOpen}
-              onOpenChange={handleProfileClose}
-              userId={user.id}
-              onDefaultViewChange={handleDefaultViewChange}
-            />
-          )}
+            {/* Memory Panel - right side (hidden on mobile) */}
+            {user && !isMobile && (
+              <MemoryPanel
+                userId={user.id}
+                isOpen={memoryOpen}
+                onClose={() => setMemoryOpen(false)}
+              />
+            )}
+          </div>
 
-          {trendingOpen && (
-            <TrendingTopicsModal
-              open={trendingOpen}
-              onOpenChange={setTrendingOpen}
-              userProfile={userProfile}
-              onAddTask={handleAddTrendTask}
-            />
-          )}
+          {/* Lazy loaded modals */}
+          <Suspense fallback={null}>
+            {brainDumpOpen && (
+              <BrainDumpModal
+                open={brainDumpOpen}
+                onOpenChange={setBrainDumpOpen}
+                onItemsAdded={handleBrainDumpItems}
+              />
+            )}
 
-          {friendsOpen && (
-            <FriendsModal
-              open={friendsOpen}
-              onOpenChange={setFriendsOpen}
-              userId={user.id}
-            />
-          )}
+            {profileOpen && (
+              <ProfileModal
+                open={profileOpen}
+                onOpenChange={handleProfileClose}
+                userId={user.id}
+                onDefaultViewChange={handleDefaultViewChange}
+              />
+            )}
 
-          {quickAddOpen && (
-            <QuickAddTaskDialog
-              open={quickAddOpen}
-              onOpenChange={setQuickAddOpen}
-              userId={user.id}
-              defaultEnergy={currentEnergy}
-            />
-          )}
-        </Suspense>
+            {trendingOpen && (
+              <TrendingTopicsModal
+                open={trendingOpen}
+                onOpenChange={setTrendingOpen}
+                userProfile={userProfile}
+                onAddTask={handleAddTrendTask}
+              />
+            )}
+
+            {friendsOpen && (
+              <FriendsModal
+                open={friendsOpen}
+                onOpenChange={setFriendsOpen}
+                userId={user.id}
+              />
+            )}
+
+            {quickAddOpen && (
+              <QuickAddTaskDialog
+                open={quickAddOpen}
+                onOpenChange={setQuickAddOpen}
+                userId={user.id}
+                defaultEnergy={currentEnergy}
+              />
+            )}
+          </Suspense>
         </div>
       </DndProvider>
     </TasksProvider>
