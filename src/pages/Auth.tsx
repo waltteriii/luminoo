@@ -74,7 +74,7 @@ const Auth = () => {
               and helps you plan content that resonates.
             </p>
             <p className="text-base text-foreground-subtle max-w-md">
-              Dump your thoughts, ideas, tasks, and half-formed plans into Luminoo.
+              Dump your thoughts, ideas, tasks, and half-formed plans into luminoo-demo.
               It turns mental noise into clarity, structure, and realistic action,
               without forcing you into rigid systems.
             </p>

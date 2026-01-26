@@ -93,7 +93,7 @@ const Header = memo(({
             >
               <Squirrel className="w-4 h-4 text-white group-hover:animate-squirrel-hello" />
             </div>
-            <span className="font-medium text-foreground text-sm hidden lg:block">Luminoo</span>
+            <span className="font-medium text-foreground text-sm hidden lg:block">luminoo-demo</span>
           </button>
         )}
       </div>
