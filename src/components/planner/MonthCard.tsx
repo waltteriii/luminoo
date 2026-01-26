@@ -56,7 +56,7 @@ const MonthCard = ({
       className={cn(
         "group relative rounded-lg border transition-all duration-200 cursor-pointer",
         "bg-card hover:bg-card-hover border-border hover:border-highlight/30",
-        isCurrentMonth && "border-highlight/50 bg-highlight-muted/20",
+        isCurrentMonth && "ring-2 ring-inset ring-highlight/40 border-highlight bg-highlight-muted/20 z-10",
         isCompact && "p-3 sm:p-4 aspect-[4/3] flex flex-col",
         !isCompact && !isExpanded && "p-4 lg:p-6 min-h-[160px] lg:min-h-[200px]",
         isExpanded && "p-6 lg:p-8 min-h-[300px] lg:min-h-[400px]"
@@ -78,7 +78,7 @@ const MonthCard = ({
             </span>
           )}
         </div>
-        
+
         <span className={cn(
           "text-foreground-subtle/50 font-light flex-shrink-0",
           isCompact && "text-xs sm:text-sm",
@@ -164,8 +164,8 @@ const MonthCard = ({
         <TooltipTrigger asChild>
           {cardContent}
         </TooltipTrigger>
-        <TooltipContent 
-          side="bottom" 
+        <TooltipContent
+          side="bottom"
           className="max-w-[200px] p-2 space-y-1.5"
           sideOffset={4}
         >

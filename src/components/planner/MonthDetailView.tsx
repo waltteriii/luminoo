@@ -2,20 +2,22 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, getWeek, addMonths, parseISO, isWithinInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
-import { ChevronLeft, ChevronRight, CalendarDays, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { useDroppable, useDraggable as useDndDraggable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useDensity } from '@/contexts/DensityContext';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useDndContext } from '@/components/dnd/DndProvider';
 
 interface MonthDetailViewProps {
   month: number;
@@ -40,10 +42,178 @@ interface DroppableDayCellProps {
   onDayClick: (date: Date) => void;
   onEditTask: (task: Task) => void;
   compact?: boolean;
+  hoveredTaskId: string | null;
+  setHoveredTaskId: (id: string | null) => void;
+  selectedTaskId: string | null;
+  setSelectedTaskId: (id: string | null) => void;
+  onResizeTask: (taskId: string, newDate: Date) => void;
+  maxLanes: number;
 }
 
-const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, userId, onDayClick, onEditTask, compact = false }: DroppableDayCellProps) => {
+const ResizeHandle = memo(({
+  taskId,
+  type,
+  className
+}: {
+  taskId: string;
+  type: 'start' | 'end';
+  className: string
+}) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDndDraggable({
+    id: `resize-${type}-${taskId}`,
+    data: { type: `resize-${type}`, taskId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        className,
+        "cursor-ew-resize active:cursor-grabbing touch-none z-[210] pointer-events-auto",
+        isDragging && "opacity-0"
+      )}
+    />
+  );
+});
+
+ResizeHandle.displayName = 'ResizeHandle';
+
+const DraggableMultiDaySegment = memo(({
+  task,
+  dateStr,
+  isStart,
+  isEnd,
+  isHovered,
+  isSelected,
+  onEditTask,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+  date,
+}: {
+  task: Task;
+  dateStr: string;
+  isStart: boolean;
+  isEnd: boolean;
+  isHovered: boolean;
+  isSelected: boolean;
+  onEditTask: (task: Task) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onClick: (e: React.MouseEvent) => void;
+  date: Date;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `multi-${task.id}-${dateStr}`,
+    data: { type: 'calendar-task', task },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 200 : (isSelected || isHovered ? 130 : 1),
+  };
+
+  const formatTime = (time: string | null | undefined) => {
+    if (!time) return null;
+    try {
+      const normalized = time.length === 5 ? time : time.slice(0, 5);
+      return format(new Date(`2000-01-01T${normalized}`), 'h:mm a');
+    } catch {
+      return null;
+    }
+  };
+
+  const showHandles = isSelected || (isHovered && !isDragging);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className={cn(
+        "group relative flex flex-col justify-center px-1.5 py-0.5 cursor-grab active:cursor-grabbing transition-all min-h-[32px] touch-none",
+        "bg-secondary/40 border-y border-highlight/10 text-foreground hover:bg-secondary/60",
+        isHovered && "bg-highlight/10 border-highlight/30 shadow-[0_0_10px_rgba(var(--highlight-rgb),0.1)]",
+        isSelected && "bg-highlight/20 border-highlight/50 ring-2 ring-inset ring-highlight shadow-[0_2px_10px_rgba(var(--highlight-rgb),0.2)]",
+        isStart ? "rounded-l-lg border-l border-highlight/20 ml-0.5" : "-ml-1.5",
+        isEnd ? "rounded-r-lg border-r border-highlight/20 mr-0.5" : "-mr-1.5",
+        !isStart && !isEnd && "border-x-0",
+        isDragging && "opacity-0"
+      )}
+    >
+      {showHandles && (
+        <>
+          {isStart && (
+            <ResizeHandle
+              taskId={task.id}
+              type="start"
+              className="absolute left-[-4px] top-1/4 bottom-1/4 w-4 h-5 bg-highlight rounded-full shadow-[0_0_10px_rgba(var(--highlight-rgb),0.6)] flex items-center justify-center after:content-[''] after:w-0.5 after:h-3 after:bg-white/50 after:rounded-full z-[200] hover:scale-110 active:scale-125 transition-transform"
+            />
+          )}
+          {isEnd && (
+            <ResizeHandle
+              taskId={task.id}
+              type="end"
+              className="absolute right-[-4px] top-1/4 bottom-1/4 w-4 h-5 bg-highlight rounded-full shadow-[0_0_10px_rgba(var(--highlight-rgb),0.6)] flex items-center justify-center after:content-[''] after:w-0.5 after:h-3 after:bg-white/50 after:rounded-full z-[200] hover:scale-110 active:scale-125 transition-transform"
+            />
+          )}
+        </>
+      )}
+
+      <div className="flex items-center gap-1 min-w-0">
+        <div className="flex flex-col min-w-0">
+          {(isStart || (date.getDay() === 1)) && (
+            <span className={cn(
+              "text-[9px] font-semibold truncate leading-tight",
+              task.completed && "line-through opacity-60"
+            )}>
+              {task.title}
+            </span>
+          )}
+
+          {(isStart || (date.getDay() === 1)) && task.start_time && (
+            <div className="flex items-center gap-0.5 text-[8px] text-foreground-muted leading-tight">
+              <Clock className="w-2 h-2 flex-shrink-0" />
+              <span className="truncate tabular-nums">
+                {formatTime(task.start_time)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+DraggableMultiDaySegment.displayName = 'DraggableMultiDaySegment';
+
+const DroppableDayCell = memo(({ day, tasks, multiDayTasks, allTasksInView, inMonth, today, userId, onDayClick, onEditTask,
+  compact = false,
+  hoveredTaskId,
+  setHoveredTaskId,
+  selectedTaskId,
+  setSelectedTaskId,
+  onResizeTask,
+  maxLanes,
+}: DroppableDayCellProps & { allTasksInView: Task[] }) => {
   const dateStr = format(day, 'yyyy-MM-dd');
+  const { resizeInfo } = useDndContext();
+
   const { isOver, setNodeRef } = useDroppable({
     id: dateStr,
     data: { type: 'day', date: day },
@@ -54,80 +224,177 @@ const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, user
     onEditTask(task);
   }, [onEditTask]);
 
-  const maxTasks = compact ? 1 : 2;
-  const maxMultiDay = compact ? 1 : 1;
+  const activeResizeTask = useMemo(() => {
+    if (!resizeInfo || !resizeInfo.targetDate) return null;
+    const task = allTasksInView.find(t => t.id === resizeInfo.taskId);
+    if (!task) return null;
+
+    let previewStart = parseISO(task.due_date!);
+    let previewEnd = task.end_date ? parseISO(task.end_date) : previewStart;
+
+    if (resizeInfo.type === 'resize-start') {
+      previewStart = resizeInfo.targetDate;
+    } else {
+      previewEnd = resizeInfo.targetDate;
+    }
+
+    if (previewStart > previewEnd) {
+      [previewStart, previewEnd] = [previewEnd, previewStart];
+    }
+
+    const isInRange = isWithinInterval(day, { start: previewStart, end: previewEnd }) ||
+      isSameDay(day, previewStart) || isSameDay(day, previewEnd);
+
+    if (!isInRange) return null;
+
+    return {
+      ...task,
+      isStart: isSameDay(day, previewStart),
+      isEnd: isSameDay(day, previewEnd),
+    };
+  }, [resizeInfo, day, multiDayTasks, tasks]);
+
+  const maxTasks = compact ? 2 : 4;
 
   return (
-    <button
+    <div
       ref={setNodeRef}
-      onClick={() => onDayClick(day)}
+      onClick={(e) => {
+        if (selectedTaskId) {
+          onResizeTask(selectedTaskId, day);
+          e.stopPropagation();
+        } else {
+          onDayClick(day);
+        }
+      }}
       className={cn(
-        "p-1 lg:p-2 rounded-lg border text-left transition-all overflow-hidden min-h-[50px] sm:min-h-[70px] lg:min-h-[90px]",
+        "p-1 lg:p-2 rounded-lg border text-left transition-all min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] flex flex-col group/cell shadow-sm relative",
         inMonth
-          ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50"
+          ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50 cursor-pointer"
           : "bg-secondary/50 border-transparent opacity-50",
-        today && "border-highlight ring-1 ring-highlight/30",
-        isOver && "ring-2 ring-highlight bg-highlight-muted"
+        today && "border-highlight ring-2 ring-inset ring-highlight/40 z-10",
+        isOver && "ring-2 ring-highlight bg-highlight-muted z-20",
+        selectedTaskId && "cursor-cell hover:bg-highlight/5"
       )}
     >
       <div className={cn(
-        "text-[10px] sm:text-xs lg:text-sm font-medium mb-0.5",
+        "text-[10px] sm:text-xs lg:text-sm font-medium mb-1",
         today ? "text-highlight" : inMonth ? "text-foreground" : "text-foreground-muted"
       )}>
         {format(day, 'd')}
       </div>
 
-      {/* Multi-day tasks */}
-      {multiDayTasks.slice(0, maxMultiDay).map(task => (
-        <TooltipProvider key={task.id} delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditTask(task);
-                }}
-                className={cn(
-                  "text-[7px] sm:text-[8px] lg:text-[9px] px-1 py-0.5 rounded cursor-pointer mb-0.5",
-                  "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20",
-                  "flex items-center gap-0.5"
-                )}
-              >
-                <CalendarDays className="w-2 h-2 flex-shrink-0" />
-                <span className="truncate">{task.title}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-[180px]">
-              <p className="font-medium text-sm">{task.title}</p>
-              <p className="text-xs text-muted-foreground">
-                {format(parseISO(task.due_date!), 'MMM d')} - {format(parseISO(task.end_date!), 'MMM d')}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ))}
-      {multiDayTasks.length > maxMultiDay && (
-        <div className="text-[7px] sm:text-[8px] text-foreground-muted">
-          +{multiDayTasks.length - maxMultiDay} multi-day
-        </div>
-      )}
+      <div
+        className="space-y-1 mb-2 relative"
+        style={{ minHeight: `${maxLanes * 36}px` }}
+      >
+        <SortableContext
+          items={multiDayTasks.map(t => `multi-${t.id}-${dateStr}`)}
+          strategy={verticalListSortingStrategy}
+        >
+          {multiDayTasks.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).map(task => {
+            const laneIndex = Math.max(0, task.display_order || 0);
+            const isBeingResized = resizeInfo?.taskId === task.id;
 
-      <div className="space-y-0.5">
-        {tasks.slice(0, maxTasks).map(task => (
-          <DraggableMonthTask
-            key={task.id}
-            task={task}
-            userId={userId}
-            onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
-          />
-        ))}
+            if (isBeingResized && activeResizeTask) {
+              return (
+                <div key={task.id} className="absolute left-0 right-0 z-50" style={{ top: `${laneIndex * 34}px` }}>
+                  <div className={cn(
+                    "flex flex-col justify-center px-1.5 py-0.5 min-h-[32px]",
+                    "bg-highlight/40 border-y border-highlight/50 text-foreground ring-1 ring-inset ring-highlight shadow-[0_0_10px_rgba(var(--highlight-rgb),0.3)]",
+                    activeResizeTask.isStart ? "rounded-l-lg border-l ml-0.5" : "-ml-1.5",
+                    activeResizeTask.isEnd ? "rounded-r-lg border-r mr-0.5" : "-mr-1.5",
+                  )}>
+                    {activeResizeTask.isStart && (
+                      <span className="text-[9px] font-bold truncate">{task.title}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            if (isBeingResized) return null;
+
+            return (
+              <div
+                key={task.id}
+                className="absolute left-0 right-0"
+                style={{ top: `${laneIndex * 34}px` }}
+              >
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DraggableMultiDaySegment
+                        task={task}
+                        date={day}
+                        dateStr={dateStr}
+                        isStart={task.due_date === dateStr}
+                        isEnd={task.end_date === dateStr}
+                        isHovered={hoveredTaskId === task.id}
+                        isSelected={selectedTaskId === task.id}
+                        onEditTask={onEditTask}
+                        onMouseEnter={() => setHoveredTaskId(task.id)}
+                        onMouseLeave={() => setHoveredTaskId(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (selectedTaskId === task.id) {
+                            setSelectedTaskId(null);
+                          } else {
+                            setSelectedTaskId(task.id);
+                          }
+                        }}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[180px]">
+                      <p className="font-medium text-sm">{task.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(parseISO(task.due_date!), 'MMM d')} - {format(parseISO(task.end_date!), 'MMM d')}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            );
+          })}
+
+          {activeResizeTask && !multiDayTasks.find(t => t.id === activeResizeTask.id) && (
+            <div className="absolute left-0 right-0 z-50 pointer-events-none" style={{ top: '0px' }}>
+              <div className={cn(
+                "flex flex-col justify-center px-1.5 py-0.5 min-h-[32px]",
+                "bg-highlight/40 border-y border-highlight/50 text-foreground ring-1 ring-inset ring-highlight shadow-[0_0_15px_rgba(var(--highlight-rgb),0.3)]",
+                activeResizeTask.isStart ? "rounded-l-lg border-l ml-0.5" : "-ml-1.5",
+                activeResizeTask.isEnd ? "rounded-r-lg border-r mr-0.5" : "-mr-1.5",
+              )}>
+                {activeResizeTask.isStart && (
+                  <span className="text-[9px] font-bold truncate">{activeResizeTask.title}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </SortableContext>
+      </div>
+
+      <div className="space-y-0.5 mt-auto pt-2">
+        {tasks.slice(0, maxTasks).map(task => {
+          const isBeingResized = resizeInfo?.taskId === task.id;
+          if (isBeingResized) return null;
+
+          return (
+            <DraggableMonthTask
+              key={task.id}
+              task={task}
+              userId={userId}
+              onDoubleClick={(e) => handleTaskDoubleClick(e, task)}
+            />
+          );
+        })}
         {tasks.length > maxTasks && (
-          <div className="text-[8px] sm:text-[9px] lg:text-[10px] text-foreground-muted">
-            +{tasks.length - maxTasks}
+          <div className="text-[8px] sm:text-[9px] lg:text-[10px] text-foreground-muted pl-1">
+            +{tasks.length - maxTasks} more
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 });
 
@@ -141,23 +408,18 @@ interface DraggableMonthTaskProps {
 }
 
 const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonthTaskProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: `month-task-${task.id}`,
     data: { task, type: 'calendar-task' },
   });
 
-  const style = transform
-    ? {
-      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      zIndex: isDragging ? 1000 : undefined,
-    }
-    : undefined;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    zIndex: isDragging ? 1000 : undefined,
+  };
 
-  // Handle click vs double-click
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Single click does nothing - let the day click bubble (but we stopped it)
-    // Double click opens edit
   };
 
   return (
@@ -172,19 +434,18 @@ const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonth
             onClick={handleClick}
             onDoubleClick={onDoubleClick}
             className={cn(
-              "text-[8px] sm:text-[9px] lg:text-[10px] px-1 py-0.5 rounded cursor-grab active:cursor-grabbing overflow-hidden touch-none",
-              "hover:ring-1 hover:ring-primary/30 transition-all",
-              task.energy_level === 'high' && "bg-energy-high/20 text-energy-high",
-              task.energy_level === 'medium' && "bg-energy-medium/20 text-energy-medium",
-              task.energy_level === 'low' && "bg-energy-low/20 text-energy-low",
-              task.energy_level === 'recovery' && "bg-energy-recovery/20 text-energy-recovery",
+              "text-[8px] sm:text-[9px] lg:text-[10px] px-1.5 py-1 rounded-md cursor-grab active:cursor-grabbing overflow-hidden touch-none",
+              "bg-secondary/40 border-l-2 border-highlight/20 hover:bg-secondary/60 transition-all",
+              task.energy_level === 'high' && "border-l-energy-high",
+              task.energy_level === 'medium' && "border-l-energy-medium",
+              task.energy_level === 'low' && "border-l-energy-low",
+              task.energy_level === 'recovery' && "border-l-energy-recovery",
               task.completed && "line-through opacity-60",
               isDragging && "opacity-50 shadow-lg ring-2 ring-primary"
             )}
           >
-            <div className="flex items-center gap-0.5">
-              <GripVertical className="w-2 h-2 text-current opacity-50 flex-shrink-0" />
-              <span className="truncate flex-1">{task.title}</span>
+            <div className="flex items-center gap-1">
+              <span className="truncate flex-1 font-medium">{task.title}</span>
               {task.user_id !== userId && (
                 <span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" />
               )}
@@ -210,6 +471,8 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(month);
   const [currentYear, setCurrentYear] = useState(year);
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -230,14 +493,12 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
 
   const { tasks: allTasks, updateTask, deleteTask } = useTasksContext();
 
-  // Filter tasks for the calendar range from centralized context
   const tasks = useMemo(() => {
     const startStr = format(calendarStart, 'yyyy-MM-dd');
     const endStr = format(calendarEnd, 'yyyy-MM-dd');
     return allTasks.filter(t => t.due_date && t.due_date >= startStr && t.due_date <= endStr);
   }, [allTasks, calendarStart, calendarEnd]);
 
-  // Separate regular tasks and multi-day tasks
   const { regularTasks, multiDayTasks } = useMemo(() => {
     const regular: Task[] = [];
     const multiDay: Task[] = [];
@@ -264,16 +525,34 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     return dayTasks;
   }, [regularTasks, energyFilter]);
 
-  // Get multi-day tasks that span a specific day
+  const fullViewportLanes = useMemo(() => {
+    const multiSet = multiDayTasks.filter(t => t.end_date && t.end_date !== t.due_date);
+    return multiSet.sort((a, b) => {
+      const startA = a.due_date || '';
+      const startB = b.due_date || '';
+      if (startA !== startB) return startA.localeCompare(startB);
+      const durA = new Date(a.end_date!).getTime() - new Date(a.due_date!).getTime();
+      const durB = new Date(b.end_date!).getTime() - new Date(b.due_date!).getTime();
+      return durB - durA;
+    }).map(t => t.id);
+  }, [multiDayTasks]);
+
+  const maxLanes = fullViewportLanes.length || 1;
+
   const getMultiDayTasksForDay = useCallback((date: Date) => {
-    return multiDayTasks.filter(t => {
+    const dayMultiTasks = multiDayTasks.filter(t => {
       if (!t.due_date || !t.end_date) return false;
       const startDate = parseISO(t.due_date);
       const endDate = parseISO(t.end_date);
       return isWithinInterval(date, { start: startDate, end: endDate }) ||
         isSameDay(date, startDate) || isSameDay(date, endDate);
     });
-  }, [multiDayTasks]);
+
+    return dayMultiTasks.map(t => ({
+      ...t,
+      display_order: fullViewportLanes.indexOf(t.id)
+    }));
+  }, [multiDayTasks, fullViewportLanes]);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -285,6 +564,21 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     setEditDialogOpen(false);
     setEditingTask(null);
   }, [updateTask]);
+
+  const handleResizeTask = useCallback((taskId: string, newDate: Date) => {
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task || !task.due_date) return;
+
+    const start = parseISO(task.due_date);
+    const dateStr = format(newDate, 'yyyy-MM-dd');
+
+    if (newDate < start) {
+      updateTask(taskId, { due_date: dateStr });
+    } else {
+      updateTask(taskId, { end_date: dateStr });
+    }
+    setSelectedTaskId(null);
+  }, [allTasks, updateTask]);
 
   const handlePrevMonth = useCallback(() => {
     const newDate = addMonths(monthDate, -1);
@@ -310,85 +604,34 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
 
   return (
     <div className="animate-fade-in">
-      {/* Header: Month name + navigation */}
       <div className={cn(
         "flex items-center justify-between gap-3",
         isMobile ? "mb-4" : "mb-6"
       )}>
-        {/* Left: Back + Month name */}
         <div className="flex items-center gap-3 min-w-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className={cn(
-              "flex-shrink-0 gap-1.5",
-              isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
-            )}
-          >
+          <Button variant="ghost" size="sm" onClick={onBack} className={cn("flex-shrink-0 gap-1.5", isMobile ? "h-11 w-11 p-0" : "h-10 px-3")}>
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-
-          <h2 className={cn(
-            "font-semibold tracking-tight text-foreground truncate",
-            isMobile ? "text-xl" : "text-2xl"
-          )}>
-            {format(monthDate, 'MMMM yyyy')}
-          </h2>
+          <h2 className={cn("font-semibold tracking-tight text-foreground truncate", isMobile ? "text-xl" : "text-2xl")}>{format(monthDate, 'MMMM yyyy')}</h2>
         </div>
-
-        {/* Right: Nav buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrevMonth}
-            className={cn(
-              "border-border/50",
-              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
-            )}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNextMonth}
-            className={cn(
-              "border-border/50",
-              isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
-            )}
-          >
-            <ChevronRight className="w-5 h-5" />
-          </Button>
+          <Button variant="outline" size="sm" onClick={handlePrevMonth} className={cn("border-border/50", isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0")}><ChevronLeft className="w-5 h-5" /></Button>
+          <Button variant="outline" size="sm" onClick={handleNextMonth} className={cn("border-border/50", isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0")}><ChevronRight className="w-5 h-5" /></Button>
         </div>
       </div>
 
-      {/* Weekday headers - responsive grid */}
-      <div className={cn(
-        "grid gap-0.5 lg:gap-1 mb-1 lg:mb-2",
-        isMobile ? "grid-cols-[auto_repeat(7,1fr)]" : "grid-cols-[auto_repeat(7,1fr)]"
-      )}>
+      <div className={cn("grid gap-px mb-2 lg:mb-3", "grid-cols-[auto_repeat(7,1fr)]")}>
         <div className="w-6 sm:w-8 lg:w-12" />
         {weekdayLabels.map((day, idx) => (
-          <div key={idx} className="text-center text-[9px] sm:text-[10px] lg:text-xs text-foreground-muted uppercase py-0.5 lg:py-2">
-            {day}
-          </div>
+          <div key={idx} className="text-center text-[9px] sm:text-[10px] lg:text-xs text-foreground-muted uppercase py-0.5 lg:py-2">{day}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div className="space-y-0.5 lg:space-y-1">
+      <div className="space-y-px">
         {weeks.map((week, weekIdx) => (
-          <div key={weekIdx} className="grid grid-cols-[auto_repeat(7,1fr)] gap-0.5 lg:gap-1">
-            <button
-              onClick={() => onWeekClick(week[0])}
-              className="w-6 sm:w-8 lg:w-12 flex items-center justify-center text-[9px] sm:text-[10px] lg:text-xs text-foreground-muted hover:text-primary hover:bg-secondary rounded transition-colors min-h-[36px] lg:min-h-[40px]"
-            >
-              W{getWeek(week[0])}
-            </button>
-
+          <div key={weekIdx} className="grid grid-cols-[auto_repeat(7,1fr)] gap-px bg-border/5">
+            <button onClick={() => onWeekClick(week[0])} className="w-6 sm:w-8 lg:w-12 flex items-center justify-center text-[9px] sm:text-[10px] lg:text-xs text-foreground-muted hover:text-primary hover:bg-secondary rounded transition-colors min-h-[36px] lg:min-h-[40px]">W{getWeek(week[0])}</button>
             {week.map((day) => (
               <DroppableDayCell
                 key={day.toISOString()}
@@ -401,23 +644,20 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
                 onDayClick={onDayClick}
                 onEditTask={handleEditTask}
                 compact={isMobile}
+                hoveredTaskId={hoveredTaskId}
+                setHoveredTaskId={setHoveredTaskId}
+                selectedTaskId={selectedTaskId}
+                setSelectedTaskId={setSelectedTaskId}
+                onResizeTask={handleResizeTask}
+                maxLanes={maxLanes}
+                allTasksInView={allTasks}
               />
             ))}
           </div>
         ))}
       </div>
 
-      <EditTaskDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        task={editingTask}
-        onSave={handleSaveTask}
-        onDelete={editingTask ? () => {
-          deleteTask(editingTask.id);
-          setEditDialogOpen(false);
-          setEditingTask(null);
-        } : undefined}
-      />
+      <EditTaskDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} task={editingTask} onSave={handleSaveTask} onDelete={editingTask ? () => { deleteTask(editingTask.id); setEditDialogOpen(false); setEditingTask(null); } : undefined} />
     </div>
   );
 };

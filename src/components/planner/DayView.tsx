@@ -795,7 +795,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                     className={cn(
                       'group relative border-b border-border/50 transition-all',
                       !isMobile && 'cursor-crosshair',
-                      isInSelection && 'bg-highlight/20 ring-1 ring-highlight/50',
+                      isInSelection && 'bg-highlight/20 ring-2 ring-inset ring-highlight/50 z-10',
                       // Subtle night hour background tint
                       showNightIndicator && 'bg-secondary/30'
                     )}

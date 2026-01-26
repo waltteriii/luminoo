@@ -130,7 +130,7 @@ const DraggableTask = ({
         style={style}
         {...dragProps}
         className={cn(
-          'group flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs bg-secondary border-l-2 h-full',
+          'group flex items-center gap-2 pl-2.5 pr-1.5 py-1.5 rounded-lg text-xs bg-secondary/50 hover:bg-secondary border-l-2 transition-colors',
           energyColors[task.energy_level],
           isDragging && 'opacity-50 shadow-lg',
           task.completed && 'opacity-60',
@@ -156,18 +156,18 @@ const DraggableTask = ({
               onDoubleClick={
                 enableInlineTitleEdit
                   ? (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setEditTitle(task.title);
-                      setIsEditing(true);
-                    }
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setEditTitle(task.title);
+                    setIsEditing(true);
+                  }
                   : undefined
               }
             >
               {task.title}
             </span>
           )}
-          
+
           {/* Show time if enabled and task has time */}
           {showTime && task.start_time && (
             <div className="flex items-center gap-1 text-[10px] text-foreground-muted leading-tight mt-0.5">

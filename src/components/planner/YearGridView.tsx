@@ -127,7 +127,7 @@ const YearGridView = ({
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6 animate-fade-in px-1">
+    <div className="space-y-6 lg:space-y-8 animate-fade-in">
       {/* Header - cleaner on mobile */}
       <div className="flex items-center justify-between">
         <div>
@@ -149,8 +149,8 @@ const YearGridView = ({
         )}
       </div>
 
-      {/* Grid - tighter gaps on mobile */}
-      <div className={cn('grid gap-2 sm:gap-3 lg:gap-4', gridClass)}>
+      {/* Grid - hairline gaps */}
+      <div className={cn('grid gap-px bg-border/20 rounded-xl overflow-hidden', gridClass)}>
         {visibleMonths.map((monthIndex) => (
           <DroppableMonthCard
             key={monthIndex}

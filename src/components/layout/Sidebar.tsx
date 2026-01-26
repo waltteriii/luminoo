@@ -87,24 +87,7 @@ const SidebarContent = ({
       <div className="space-y-1.5 lg:space-y-2">
         <span className="caption text-[10px] lg:text-xs">Quick Actions</span>
         <div className="space-y-0.5 lg:space-y-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleAction(onBrainDumpClick)}
-            className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm"
-          >
-            <Brain className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            Brain Dump
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleAction(onTrendingClick)}
-            className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground min-h-[36px] lg:min-h-[40px] text-xs lg:text-sm"
-          >
-            <TrendingUp className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            Trending Topics
-          </Button>
+
           <Button
             variant="ghost"
             size="sm"

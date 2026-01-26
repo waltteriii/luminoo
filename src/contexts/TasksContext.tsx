@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { Task, TaskInsert, TaskUpdate } from '@/types';
+import { Task } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUndoOptional } from '@/contexts/UndoContext';
 
 // Local types for context
-// type TaskInsert = Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>> & { title: string };
-// type TaskUpdate = Partial<Task>;
+export type TaskInsert = Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>> & { title: string };
+export type TaskUpdate = Partial<Task>;
 
 interface TasksContextValue {
   tasks: Task[];
@@ -37,7 +37,7 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { showUndo } = useUndoOptional();
+  const { pushUndo } = useUndoOptional() || {};
 
   const fetchTasks = useCallback(async () => {
     if (!userId) {
@@ -138,10 +138,11 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
 
         if (error) throw error;
         return true;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Update task error:', err);
         toast({
           title: 'Update failed',
+          description: err.message || 'Could not save changes to database',
           variant: 'destructive',
         });
         return false;
@@ -164,25 +165,26 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
 
         if (error) throw error;
 
-        if (taskToDelete) {
-          showUndo('Task deleted', async () => {
+        if (taskToDelete && pushUndo) {
+          pushUndo('Task deleted', async () => {
             // Restore logic
-            const { id: _, ...rest } = taskToDelete;
-            await addTask(rest);
+            const { id: _, created_at: __, updated_at: ___, ...rest } = taskToDelete;
+            await addTask(rest as TaskInsert);
           });
         }
 
         return true;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Delete task error:', err);
         toast({
           title: 'Delete failed',
+          description: err.message || 'Could not delete from database',
           variant: 'destructive',
         });
         return false;
       }
     },
-    [tasks, toast, showUndo, addTask]
+    [tasks, toast, pushUndo, addTask]
   );
 
   const rescheduleTask = useCallback(

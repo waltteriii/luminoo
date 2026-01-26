@@ -49,7 +49,7 @@ const PlannerView = ({
   // Track Day view layout reset capability
   const [canResetLayout, setCanResetLayout] = useState(false);
   const [resetLayoutFn, setResetLayoutFn] = useState<(() => void) | null>(null);
-  
+
   // Year state for year view navigation
   const [viewYear, setViewYear] = useState(currentYear);
 
@@ -133,8 +133,8 @@ const PlannerView = ({
     return (
       <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
-          <ViewSelector 
-            zoomLevel={zoomLevel} 
+          <ViewSelector
+            zoomLevel={zoomLevel}
             onZoomLevelChange={onZoomLevelChange}
             onJumpToToday={onJumpToToday}
           />
@@ -155,8 +155,8 @@ const PlannerView = ({
     return (
       <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
-          <ViewSelector 
-            zoomLevel={zoomLevel} 
+          <ViewSelector
+            zoomLevel={zoomLevel}
             onZoomLevelChange={onZoomLevelChange}
             onJumpToToday={onJumpToToday}
           />
@@ -186,8 +186,8 @@ const PlannerView = ({
   return (
     <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-4 sm:mb-5">
-        <ViewSelector 
-          zoomLevel={zoomLevel} 
+        <ViewSelector
+          zoomLevel={zoomLevel}
           onZoomLevelChange={onZoomLevelChange}
           onJumpToToday={onJumpToToday}
         />

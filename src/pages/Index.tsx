@@ -173,7 +173,7 @@ const AuthenticatedApp = ({
   cachedViewState: any,
   cachedHighlight: string
 }) => {
-  const { addTask } = useTasksContext();
+  const { addTask, refreshTasks } = useTasksContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -313,7 +313,7 @@ const AuthenticatedApp = ({
   }, []);
 
   return (
-    <DndProvider>
+    <DndProvider onTaskScheduled={refreshTasks}>
       <Header
         user={user as any}
         currentEnergy={currentEnergy}
@@ -323,7 +323,6 @@ const AuthenticatedApp = ({
         avatarUrl={userProfile?.avatarUrl}
         highlightColor={userProfile.highlightColor || 'blue'}
         onAddTask={() => setQuickAddOpen(true)}
-        onBrainDump={() => setBrainDumpOpen(true)}
         onLogoClick={() => {
           setZoomLevel('day');
           setFocusedDate(new Date());
@@ -347,12 +346,7 @@ const AuthenticatedApp = ({
           onClearEnergies={() => setEnergyFilter([])}
         />
         <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto">
-            <HeroWidgets
-              onBrainDumpClick={() => setBrainDumpOpen(true)}
-              onTrendingClick={() => setTrendingOpen(true)}
-            />
-
+          <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto pt-4">
             <UnscheduledTasks
               energyFilter={energyFilter}
               onScheduleTask={handleScheduleTask}
