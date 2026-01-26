@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft, ChevronRight, CalendarDays, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
@@ -44,7 +44,7 @@ interface DroppableDayCellProps {
 
 const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, userId, onDayClick, onEditTask, compact = false }: DroppableDayCellProps) => {
   const dateStr = format(day, 'yyyy-MM-dd');
-  const { isOver, setNodeRef } = useDroppable({ 
+  const { isOver, setNodeRef } = useDroppable({
     id: dateStr,
     data: { type: 'day', date: day },
   });
@@ -63,8 +63,8 @@ const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, user
       onClick={() => onDayClick(day)}
       className={cn(
         "p-1 lg:p-2 rounded-lg border text-left transition-all overflow-hidden min-h-[50px] sm:min-h-[70px] lg:min-h-[90px]",
-        inMonth 
-          ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50" 
+        inMonth
+          ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50"
           : "bg-secondary/50 border-transparent opacity-50",
         today && "border-highlight ring-1 ring-highlight/30",
         isOver && "ring-2 ring-highlight bg-highlight-muted"
@@ -76,7 +76,7 @@ const DroppableDayCell = memo(({ day, tasks, multiDayTasks, inMonth, today, user
       )}>
         {format(day, 'd')}
       </div>
-      
+
       {/* Multi-day tasks */}
       {multiDayTasks.slice(0, maxMultiDay).map(task => (
         <TooltipProvider key={task.id} delayDuration={200}>
@@ -148,9 +148,9 @@ const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonth
 
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: isDragging ? 1000 : undefined,
-      }
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      zIndex: isDragging ? 1000 : undefined,
+    }
     : undefined;
 
   // Handle click vs double-click
@@ -213,9 +213,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
+    setUserId('demo-user');
   }, []);
 
   useEffect(() => {
@@ -231,7 +229,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const calendarDays = useMemo(() => eachDayOfInterval({ start: calendarStart, end: calendarEnd }), [calendarStart, calendarEnd]);
 
   const { tasks: allTasks, updateTask, deleteTask } = useTasksContext();
-  
+
   // Filter tasks for the calendar range from centralized context
   const tasks = useMemo(() => {
     const startStr = format(calendarStart, 'yyyy-MM-dd');
@@ -243,7 +241,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const { regularTasks, multiDayTasks } = useMemo(() => {
     const regular: Task[] = [];
     const multiDay: Task[] = [];
-    
+
     tasks.forEach(t => {
       if (t.end_date && t.end_date !== t.due_date) {
         multiDay.push(t);
@@ -251,18 +249,18 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
         regular.push(t);
       }
     });
-    
+
     return { regularTasks: regular, multiDayTasks: multiDay };
   }, [tasks]);
 
   const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     let dayTasks = regularTasks.filter(t => t.due_date === dateStr);
-    
+
     if (energyFilter.length > 0) {
       dayTasks = dayTasks.filter(t => energyFilter.includes(t.energy_level));
     }
-    
+
     return dayTasks;
   }, [regularTasks, energyFilter]);
 
@@ -273,7 +271,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
       const startDate = parseISO(t.due_date);
       const endDate = parseISO(t.end_date);
       return isWithinInterval(date, { start: startDate, end: endDate }) ||
-             isSameDay(date, startDate) || isSameDay(date, endDate);
+        isSameDay(date, startDate) || isSameDay(date, endDate);
     });
   }, [multiDayTasks]);
 
@@ -319,10 +317,10 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
       )}>
         {/* Left: Back + Month name */}
         <div className="flex items-center gap-3 min-w-0">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onBack} 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
             className={cn(
               "flex-shrink-0 gap-1.5",
               isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
@@ -331,7 +329,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-          
+
           <h2 className={cn(
             "font-semibold tracking-tight text-foreground truncate",
             isMobile ? "text-xl" : "text-2xl"
@@ -339,13 +337,13 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
             {format(monthDate, 'MMMM yyyy')}
           </h2>
         </div>
-        
+
         {/* Right: Nav buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handlePrevMonth} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrevMonth}
             className={cn(
               "border-border/50",
               isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
@@ -353,10 +351,10 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleNextMonth} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextMonth}
             className={cn(
               "border-border/50",
               isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
@@ -390,7 +388,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
             >
               W{getWeek(week[0])}
             </button>
-            
+
             {week.map((day) => (
               <DroppableDayCell
                 key={day.toISOString()}

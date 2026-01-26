@@ -1,16 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import type { Task, Task as TaskType } from '@/types'; // Import from local types
 import { useUndoOptional } from '@/contexts/UndoContext';
 
-type Task = Tables<'tasks'>;
-type TaskInsert = TablesInsert<'tasks'>;
-type TaskUpdate = TablesUpdate<'tasks'>;
+// Local types for context
+type TaskInsert = Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>> & { title: string };
+type TaskUpdate = Partial<Task>;
 
 interface TasksContextValue {
   tasks: Task[];
   loading: boolean;
-  addTask: (task: Omit<TaskInsert, 'user_id'>) => Promise<Task | null>;
+  addTask: (task: TaskInsert) => Promise<Task | null>;
   updateTask: (id: string, updates: TaskUpdate) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
   rescheduleTask: (id: string, newDate: string | null, startTime?: string | null, endTime?: string | null) => Promise<boolean>;
@@ -34,94 +33,29 @@ interface TasksProviderProps {
 
 export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // No loading since local
   const previousTasksRef = useRef<Task[]>([]);
   const undoContext = useUndoOptional();
 
-  // Load all tasks for the user
+  // Load all tasks for the user (Mock implementation)
   const loadTasks = useCallback(async () => {
-    if (!userId) {
-      setTasks([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading tasks:', error);
-        return;
-      }
-
-      setTasks(data || []);
-      previousTasksRef.current = data || [];
-    } catch (err) {
-      console.error('Error loading tasks:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+    // In a real app this would fetch from backend.
+    // For now we keep local state.
+    setLoading(false);
+  }, []);
 
   // Initial load
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
 
-  // Real-time subscription
-  useEffect(() => {
-    if (!userId) return;
-
-    const channel = supabase
-      .channel(`tasks-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tasks',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newTask = payload.new as Task;
-            setTasks((prev) => {
-              // Check if task already exists (from optimistic update)
-              if (prev.some((t) => t.id === newTask.id)) {
-                return prev.map((t) => (t.id === newTask.id ? newTask : t));
-              }
-              return [newTask, ...prev];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedTask = payload.new as Task;
-            setTasks((prev) =>
-              prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedId = payload.old.id as string;
-            setTasks((prev) => prev.filter((t) => t.id !== deletedId));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId]);
-
-  // Add task with optimistic update
+  // Add task (Local implementation)
   const addTask = useCallback(
-    async (taskData: Omit<TaskInsert, 'user_id'>): Promise<Task | null> => {
+    async (taskData: TaskInsert): Promise<Task | null> => {
       if (!userId) return null;
 
       const tempId = crypto.randomUUID();
-      const optimisticTask: Task = {
+      const newTask: Task = {
         id: tempId,
         user_id: userId,
         title: taskData.title,
@@ -129,7 +63,7 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
         due_date: taskData.due_date ?? null,
         start_time: taskData.start_time ?? null,
         end_time: taskData.end_time ?? null,
-        energy_level: taskData.energy_level ?? null,
+        energy_level: taskData.energy_level ?? 'medium',
         completed: taskData.completed ?? false,
         location: taskData.location ?? null,
         campaign_id: taskData.campaign_id ?? null,
@@ -139,161 +73,70 @@ export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }
         emotional_note: taskData.emotional_note ?? null,
         end_date: taskData.end_date ?? null,
         is_shared: taskData.is_shared ?? false,
-        shared_with: taskData.shared_with ?? null,
+        shared_with: taskData.shared_with ?? [],
         suggested_timeframe: taskData.suggested_timeframe ?? null,
-        time_model: taskData.time_model ?? null,
-        urgency: taskData.urgency ?? null,
+        time_model: taskData.time_model ?? 'event-based',
+        urgency: taskData.urgency ?? 'normal',
         display_order: taskData.display_order ?? 0,
       };
 
-      // Optimistic update
-      previousTasksRef.current = tasks;
-      setTasks((prev) => [optimisticTask, ...prev]);
-
-      try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .insert({ ...taskData, user_id: userId })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error adding task:', error);
-          // Revert on error
-          setTasks(previousTasksRef.current);
-          return null;
-        }
-
-        // Replace optimistic task with real one
-        setTasks((prev) =>
-          prev.map((t) => (t.id === tempId ? data : t))
-        );
-
-        return data;
-      } catch (err) {
-        console.error('Error adding task:', err);
-        setTasks(previousTasksRef.current);
-        return null;
-      }
+      setTasks((prev) => [newTask, ...prev]);
+      return newTask;
     },
-    [userId, tasks]
+    [userId]
   );
 
-  // Update task with optimistic update and undo support
+  // Update task (Local implementation)
   const updateTask = useCallback(
     async (id: string, updates: TaskUpdate): Promise<boolean> => {
-      const sanitizedUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([, v]) => v !== undefined)
-      ) as TaskUpdate;
-
-      if (Object.keys(sanitizedUpdates).length === 0) return true;
-
       const taskToUpdate = tasks.find((t) => t.id === id);
       if (!taskToUpdate) return false;
 
-      // Store previous state for undo
       const previousState = { ...taskToUpdate };
 
-      // Store previous state for rollback
-      previousTasksRef.current = tasks;
-
-      // Optimistic update
       setTasks((prev) =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, ...sanitizedUpdates, updated_at: new Date().toISOString() }
+            ? { ...t, ...updates, updated_at: new Date().toISOString() }
             : t
         )
       );
 
-      try {
-        const { error } = await supabase
-          .from('tasks')
-          .update(sanitizedUpdates)
-          .eq('id', id);
+      // Push undo action
+      if (undoContext) {
+        const description = `Reverted "${previousState.title.slice(0, 30)}${previousState.title.length > 30 ? '...' : ''}"`;
 
-        if (error) {
-          console.error('Error updating task:', error);
-          setTasks(previousTasksRef.current);
-          return false;
-        }
-
-        // Push undo action
-        if (undoContext) {
-          const changedFields = Object.keys(sanitizedUpdates);
-          const description = `Reverted "${previousState.title.slice(0, 30)}${previousState.title.length > 30 ? '...' : ''}"`;
-          
-          undoContext.pushUndo(description, async () => {
-            // Restore previous values
-            const restoreUpdates: TaskUpdate = {};
-            for (const field of changedFields) {
-              (restoreUpdates as any)[field] = (previousState as any)[field];
-            }
-            await supabase.from('tasks').update(restoreUpdates).eq('id', id);
-            // Update local state
-            setTasks((prev) =>
-              prev.map((t) =>
-                t.id === id ? { ...t, ...restoreUpdates } : t
-              )
-            );
-          });
-        }
-
-        return true;
-      } catch (err) {
-        console.error('Error updating task:', err);
-        setTasks(previousTasksRef.current);
-        return false;
+        undoContext.pushUndo(description, async () => {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === id ? previousState : t
+            )
+          );
+        });
       }
+
+      return true;
     },
     [tasks, undoContext]
   );
 
-  // Delete task with optimistic update and undo support
+  // Delete task (Local implementation)
   const deleteTask = useCallback(
     async (id: string): Promise<boolean> => {
       const taskToDelete = tasks.find((t) => t.id === id);
       if (!taskToDelete) return false;
 
-      previousTasksRef.current = tasks;
-
-      // Optimistic delete
       setTasks((prev) => prev.filter((t) => t.id !== id));
 
-      try {
-        const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (undoContext) {
+        const description = `Restored "${taskToDelete.title.slice(0, 30)}${taskToDelete.title.length > 30 ? '...' : ''}"`;
 
-        if (error) {
-          console.error('Error deleting task:', error);
-          setTasks(previousTasksRef.current);
-          return false;
-        }
-
-        // Push undo action - re-create the task
-        if (undoContext) {
-          const description = `Restored "${taskToDelete.title.slice(0, 30)}${taskToDelete.title.length > 30 ? '...' : ''}"`;
-          
-          undoContext.pushUndo(description, async () => {
-            // Re-insert the task
-            const { id: _id, created_at: _created, updated_at: _updated, ...taskData } = taskToDelete;
-            const { data, error: insertError } = await supabase
-              .from('tasks')
-              .insert(taskData)
-              .select()
-              .single();
-            
-            if (!insertError && data) {
-              setTasks((prev) => [data, ...prev]);
-            }
-          });
-        }
-
-        return true;
-      } catch (err) {
-        console.error('Error deleting task:', err);
-        setTasks(previousTasksRef.current);
-        return false;
+        undoContext.pushUndo(description, async () => {
+          setTasks((prev) => [taskToDelete, ...prev]);
+        });
       }
+
+      return true;
     },
     [tasks, undoContext]
   );

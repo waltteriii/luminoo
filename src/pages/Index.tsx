@@ -1,7 +1,5 @@
-import { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { User, Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
@@ -74,19 +72,25 @@ if (cachedHighlight) {
 }
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Use a dummy user for demo mode
+  const [user, setUser] = useState<{ id: string, email: string } | null>({
+    id: 'demo-user',
+    email: 'demo@luminoo.com'
+  });
+  const [session, setSession] = useState<any>(null); // Stub session
+  const [loading, setLoading] = useState(false);
+
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    creatorType: null,
-    platforms: [],
-    nicheKeywords: [],
-    audienceDescription: null,
-    aiProfileSummary: null,
+    creatorType: 'content_creator',
+    platforms: ['instagram', 'tiktok'],
+    nicheKeywords: ['productivity', 'lifestyle'],
+    audienceDescription: 'People looking for organization tips',
+    aiProfileSummary: 'Productivity enthusiast',
     avatarUrl: null,
     defaultView: null,
     highlightColor: cachedHighlight,
   });
+
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -117,76 +121,13 @@ const Index = () => {
   }, [zoomLevel, focusedMonth, focusedDate, viewMode]);
 
   // Close sidebar when switching to mobile, but don't force open on desktop
-  // (allows user's toggle state to persist on desktop)
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [isMobile]);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate('/auth');
-      } else {
-        loadUserProfile(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate('/auth');
-      } else {
-        loadUserProfile(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const loadUserProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('creator_type, platforms, niche_keywords, audience_description, ai_profile_summary, avatar_url, default_view, highlight_color')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (data) {
-      const highlightColor = ((data as any).highlight_color as string) || 'blue';
-
-      const profile = {
-        creatorType: data.creator_type,
-        platforms: (data.platforms || []) as Platform[],
-        nicheKeywords: data.niche_keywords || [],
-        audienceDescription: data.audience_description,
-        aiProfileSummary: data.ai_profile_summary,
-        avatarUrl: data.avatar_url,
-        defaultView: ((data as any).default_view as ZoomLevel) || null,
-        highlightColor,
-      };
-      setUserProfile(profile);
-
-      // Cache and apply highlight color
-      localStorage.setItem(HIGHLIGHT_KEY, highlightColor);
-      document.documentElement.setAttribute('data-highlight', highlightColor);
-
-      // Only set view from profile if no cached view state exists
-      if (!cachedViewState && profile.defaultView) {
-        setZoomLevel(profile.defaultView);
-        if (profile.defaultView === 'month') {
-          setFocusedMonth(new Date().getMonth());
-        } else if (profile.defaultView === 'week' || profile.defaultView === 'day') {
-          setFocusedDate(new Date());
-        }
-      }
-    }
-  }, []);
+  // Removed Supabase auth listener and profile loading
 
   const handleMonthClick = useCallback((month: number) => {
     setFocusedMonth(month);
@@ -248,33 +189,16 @@ const Index = () => {
   const handleBrainDumpItems = useCallback(async (items: ParsedItem[]) => {
     if (!user) return;
 
-    for (const item of items) {
-      if (item.type === 'task') {
-        const dueDate = (item as any).due_date || null;
-
-        await supabase.from('tasks').insert({
-          user_id: user.id,
-          title: item.text,
-          energy_level: item.user_override_energy || item.detected_energy,
-          urgency: item.urgency,
-          emotional_note: item.emotional_note,
-          suggested_timeframe: item.suggested_timeframe,
-          due_date: dueDate,
-          detected_from_brain_dump: true,
-        });
-      }
-    }
+    // In a real app we'd save to DB here. 
+    // Since we are in demo/clean mode, we just log it.
+    // The TasksContext isn't accessible here to add items to state directly 
+    // without refactoring Index to be inside a provider.
+    console.log("Brain dump items (demo mode):", items);
   }, [user]);
 
   const handleAddTrendTask = useCallback(async (title: string, energy: EnergyLevel) => {
     if (!user) return;
-
-    await supabase.from('tasks').insert({
-      user_id: user.id,
-      title,
-      energy_level: energy,
-      detected_from_brain_dump: false,
-    });
+    console.log("Add trend task (demo mode):", title);
   }, [user]);
 
   const handleScheduleTask = useCallback(async (taskId: string, date: Date) => {
@@ -283,10 +207,7 @@ const Index = () => {
 
   const handleProfileClose = useCallback((open: boolean) => {
     setProfileOpen(open);
-    if (!open && user) {
-      loadUserProfile(user.id);
-    }
-  }, [user, loadUserProfile]);
+  }, []);
 
   const handleDefaultViewChange = useCallback((view: ZoomLevel) => {
     setZoomLevel(view);
@@ -319,7 +240,7 @@ const Index = () => {
       <DndProvider>
         <div className="min-h-screen bg-background flex flex-col w-full">
           <Header
-            user={user}
+            user={user as any}
             currentEnergy={currentEnergy}
             onEnergyChange={setCurrentEnergy}
             onToggleSidebar={() => setSidebarOpen((prev) => !prev)}

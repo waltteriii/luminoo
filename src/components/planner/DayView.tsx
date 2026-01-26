@@ -15,7 +15,7 @@ import DayViewTimeControls from '@/components/planner/DayViewTimeControls';
 import { useDroppable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { supabase } from '@/integrations/supabase/client';
+
 import { useDndContext } from '@/components/dnd/DndProvider';
 import { useDensity } from '@/contexts/DensityContext';
 import {
@@ -52,7 +52,7 @@ const TimeSlotDropZone = memo(({ hour, slotIndex, date, children }: TimeSlotDrop
   });
 
   const { activeTaskDuration, activeTask } = useDndContext();
-  
+
   // Calculate if this slot should be highlighted based on active task duration
   const durationHours = activeTaskDuration ?? 1;
 
@@ -67,7 +67,7 @@ const TimeSlotDropZone = memo(({ hour, slotIndex, date, children }: TimeSlotDrop
       {children}
       {/* Duration-matching highlight overlay */}
       {isOver && activeTask && durationHours > 1 && (
-        <div 
+        <div
           className="absolute left-14 right-2 bg-primary/15 border-2 border-dashed border-primary/40 rounded-lg pointer-events-none z-30"
           style={{
             top: 0,
@@ -94,9 +94,9 @@ interface ReorderDropZoneProps {
 const ReorderDropZone = memo(({ groupIdx, columnIndex, groupTasks, groupTop, groupHeight, edgeLeftPercent }: ReorderDropZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `reorder-zone-${groupIdx}-${columnIndex}`,
-    data: { 
-      type: 'reorder-zone', 
-      columnIndex, 
+    data: {
+      type: 'reorder-zone',
+      columnIndex,
       groupTasks,
       groupTop,
       groupHeight,
@@ -140,10 +140,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const isMobile = useIsMobile();
   const { activeTask, dragOverInfo } = useDndContext();
   const { isTooltipEnabledForView, timeRangeSettings } = useDensity();
-  
+
   // Time range configuration from settings - with per-day overrides
   const BASE_HOUR_HEIGHT = isMobile ? 72 : 64;
-  
+
   // Apply per-day overrides to settings for this specific date
   const effectiveSettings = useMemo(() => {
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
@@ -154,7 +154,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       focusEndTime: effectiveTimes.focusEndTime,
     };
   }, [timeRangeSettings, currentDate]);
-  
+
   // Get unified time range config based on mode and showNight toggle
   const timeRangeConfig = useMemo(() => {
     // Use showNight to determine display mode: false = DAY only, true = BOTH (day + night)
@@ -168,36 +168,36 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       BASE_HOUR_HEIGHT
     );
   }, [effectiveSettings, BASE_HOUR_HEIGHT]);
-  
+
   const { hours, hourHeight: HOUR_HEIGHT, startHour: rangeStartHour, endHour: rangeEndHour, isCrossingMidnight, nightSegments } = timeRangeConfig;
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createTimeRange, setCreateTimeRange] = useState<{ start: string; end: string } | null>(null);
-  
+
   // Track which task is currently selected (only one at a time)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  
+
   // Track copied task for paste functionality
   const [copiedTask, setCopiedTask] = useState<Task | null>(null);
-  
+
   // Track custom widths AND left positions for tasks (percentage values)
   // For single tasks: width + left offset. For groups: just widths that sum to 100%
   const [taskWidths, setTaskWidths] = useState<Record<string, number>>({});
   const [taskLefts, setTaskLefts] = useState<Record<string, number>>({});
-  
+
   const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
 
   // Deselect task when clicking outside any task
   useEffect(() => {
     if (!selectedTaskId) return;
-    
+
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // If clicking on a task item, don't deselect (task will handle its own selection)
       if (target.closest('.task-item')) return;
       setSelectedTaskId(null);
     };
-    
+
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
   }, [selectedTaskId]);
@@ -210,21 +210,21 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   // Handle pasting a task
   const handlePasteTask = useCallback(async () => {
     if (!copiedTask) return;
-    
+
     // Create a duplicate with a slightly offset time (15 min later) or next to it
     const startHour = parseTimeToHours(copiedTask.start_time);
     const endHour = parseTimeToHours(copiedTask.end_time);
-    
+
     let newStartTime = copiedTask.start_time;
     let newEndTime = copiedTask.end_time;
-    
+
     // Offset by 15 minutes if timed
     if (startHour !== null) {
       const newStartMins = (startHour * 60) + 15;
       const newStartH = Math.floor(newStartMins / 60);
       const newStartM = newStartMins % 60;
       newStartTime = `${newStartH.toString().padStart(2, '0')}:${newStartM.toString().padStart(2, '0')}`;
-      
+
       if (endHour !== null) {
         const duration = endHour - startHour;
         const newEndMins = newStartMins + (duration * 60);
@@ -233,7 +233,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         newEndTime = `${newEndH.toString().padStart(2, '0')}:${newEndM.toString().padStart(2, '0')}`;
       }
     }
-    
+
     await addTask({
       title: copiedTask.title + ' (copy)',
       description: copiedTask.description,
@@ -253,14 +253,14 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         return; // Let native paste work
       }
-      
+
       // Paste: Ctrl+V or Cmd+V
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedTask) {
         e.preventDefault();
         handlePasteTask();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [copiedTask, handlePasteTask]);
@@ -284,7 +284,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const getGroupWidths = useCallback((group: Task[]): number[] => {
     const defaultWidth = 100 / group.length;
     const widths = group.map(t => taskWidths[t.id] ?? defaultWidth);
-    
+
     // Normalize to ensure sum is exactly 100%
     const sum = widths.reduce((a, b) => a + b, 0);
     if (Math.abs(sum - 100) > 0.1) {
@@ -305,21 +305,21 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     const widths = getGroupWidths(group);
     const currentWidth = widths[taskIndex];
     const delta = newWidth - currentWidth;
-    
+
     if (Math.abs(delta) < 0.5) return;
-    
+
     // Find neighbor to steal from / give to
     const neighborIndex = direction === 'right' ? taskIndex + 1 : taskIndex - 1;
-    
+
     if (neighborIndex < 0 || neighborIndex >= group.length) return;
-    
+
     const neighborWidth = widths[neighborIndex];
     const newNeighborWidth = neighborWidth - delta;
-    
+
     // Clamp both to min width
     let finalNewWidth = newWidth;
     let finalNeighborWidth = newNeighborWidth;
-    
+
     if (finalNewWidth < MIN_WIDTH) {
       finalNewWidth = MIN_WIDTH;
       finalNeighborWidth = currentWidth + neighborWidth - MIN_WIDTH;
@@ -328,7 +328,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       finalNeighborWidth = MIN_WIDTH;
       finalNewWidth = currentWidth + neighborWidth - MIN_WIDTH;
     }
-    
+
     // Update both widths
     setTaskWidths(prev => ({
       ...prev,
@@ -347,7 +347,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     const MAX_WIDTH = 100; // Can resize back to full width
     const currentWidth = taskWidths[taskId] ?? 100;
     const currentLeft = taskLefts[taskId] ?? 0;
-    
+
     if (direction === 'right') {
       // Right edge: delta > 0 means dragging right = grow width
       const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.min(100 - currentLeft, currentWidth + delta)));
@@ -356,16 +356,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       // Left edge: delta > 0 means dragging left = move left edge left = decrease left position, increase width
       const potentialLeft = currentLeft - delta;  // Subtract delta: dragging left (positive) moves left edge left
       const potentialWidth = currentWidth + delta; // Add delta: dragging left (positive) increases width
-      
+
       // Clamp left position to 0 minimum and width to limits
       let newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
       let newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, potentialWidth));
-      
+
       // Ensure left + width <= 100
       if (newLeft + newWidth > 100) {
         newWidth = 100 - newLeft;
       }
-      
+
       setTaskLefts(prev => ({ ...prev, [taskId]: newLeft }));
       setTaskWidths(prev => ({ ...prev, [taskId]: newWidth }));
     }
@@ -373,9 +373,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
 
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
+    setUserId('demo-user');
   }, []);
 
   useEffect(() => {
@@ -383,9 +381,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   }, [date]);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
-  
+
   // Filter tasks for current date from the centralized context
-  const tasks = useMemo(() => 
+  const tasks = useMemo(() =>
     allTasks.filter(t => t.due_date === dateStr),
     [allTasks, dateStr]
   );
@@ -519,7 +517,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
     setCurrentDate(prev => addDays(prev, 1));
   }, []);
 
-  const filteredTasks = useMemo(() => 
+  const filteredTasks = useMemo(() =>
     energyFilter.length > 0
       ? tasks.filter(t => energyFilter.includes(t.energy_level))
       : tasks,
@@ -533,21 +531,21 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const prevUntimedTaskIds = useRef<Set<string>>(new Set());
   const prevUntimedCount = useRef<number>(0);
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
-  
+
   useEffect(() => {
     const currentIds = new Set(untimedTasks.map(t => t.id));
     const currentCount = untimedTasks.length;
-    
+
     // Only detect new tasks when count INCREASES (not on delete or edit)
     if (currentCount > prevUntimedCount.current) {
       const newIds = new Set<string>();
-      
+
       currentIds.forEach(id => {
         if (!prevUntimedTaskIds.current.has(id)) {
           newIds.add(id);
         }
       });
-      
+
       if (newIds.size > 0) {
         setNewTaskIds(newIds);
         // Clear after animation
@@ -557,7 +555,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         return () => clearTimeout(timer);
       }
     }
-    
+
     prevUntimedTaskIds.current = currentIds;
     prevUntimedCount.current = currentCount;
   }, [untimedTasks]);
@@ -565,16 +563,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   // Filter timed tasks based on the unified time range (visible range)
   const visibleTimedTasks = useMemo(() => {
     if (effectiveSettings.dayTimeRangeMode === 'FULL_24H') return timedTasks;
-    
+
     const displayMode = effectiveSettings.timeDisplayMode || 'BOTH';
-    
+
     // BOTH mode shows all hours, so show all tasks
     if (displayMode === 'BOTH') return timedTasks;
-    
+
     return timedTasks.filter(task => {
       const startHour = parseTimeToHours(task.start_time);
       if (startHour === null) return false;
-      
+
       if (displayMode === 'DAY') {
         // Show only tasks within focus hours
         return startHour >= effectiveSettings.focusStartTime && startHour < effectiveSettings.focusEndTime;
@@ -582,7 +580,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         // Show only tasks in night hours (before focusStart or at/after focusEnd)
         return startHour < effectiveSettings.focusStartTime || startHour >= effectiveSettings.focusEndTime;
       }
-      
+
       return true;
     });
   }, [timedTasks, effectiveSettings]);
@@ -602,11 +600,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   // Get position in night mode timeline (handles midnight crossing)
   const getNightModePosition = useCallback((taskStartHour: number, taskEndHour: number): { top: number; height: number } | null => {
     if (!nightSegments || nightSegments.length < 2) return null;
-    
+
     const segment1 = nightSegments[0]; // Evening segment (focusEnd to 24)
     const segment2 = nightSegments[1]; // Morning segment (0 to focusStart)
     const segment1Hours = segment1.endHour - segment1.startHour;
-    
+
     // Check if task is in evening segment
     if (taskStartHour >= segment1.startHour && taskStartHour < segment1.endHour) {
       const clampedEnd = Math.min(taskEndHour, segment1.endHour);
@@ -614,7 +612,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       const height = (clampedEnd - taskStartHour) * HOUR_HEIGHT;
       return { top, height };
     }
-    
+
     // Check if task is in morning segment  
     if (taskStartHour >= segment2.startHour && taskStartHour < segment2.endHour) {
       const clampedEnd = Math.min(taskEndHour, segment2.endHour);
@@ -622,22 +620,22 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       const height = (clampedEnd - taskStartHour) * HOUR_HEIGHT;
       return { top, height };
     }
-    
+
     return null; // Task is in daytime, not visible in night mode
   }, [nightSegments, HOUR_HEIGHT]);
 
   const getTaskPosition = useCallback((task: Task) => {
     const startHour = parseTimeToHours(task.start_time);
     if (startHour === null) return null;
-    
+
     let endHour = startHour + 1;
     const parsedEnd = parseTimeToHours(task.end_time);
     if (parsedEnd !== null) {
       endHour = parsedEnd;
     }
-    
+
     const duration = endHour - startHour;
-    
+
     // Handle night mode with midnight crossing
     if (isCrossingMidnight && nightSegments) {
       const nightPos = getNightModePosition(startHour, endHour);
@@ -646,11 +644,11 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       }
       return null; // Task not visible in night mode
     }
-    
+
     // Standard positioning for Day, Both, or Full 24H modes
     const top = (startHour - rangeStartHour) * HOUR_HEIGHT;
     const height = duration * HOUR_HEIGHT;
-    
+
     return { top, height, startHour, endHour, duration };
   }, [HOUR_HEIGHT, rangeStartHour, isCrossingMidnight, nightSegments, getNightModePosition]);
 
@@ -674,7 +672,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       for (const group of groups) {
         const groupEnd = Math.max(...group.map(t => getTaskPosition(t)?.endHour || 0));
         const groupStart = Math.min(...group.map(t => getTaskPosition(t)?.startHour || 0));
-        
+
         if (taskPos.startHour < groupEnd && taskPos.endHour > groupStart) {
           group.push(task);
           foundGroup = true;
@@ -704,10 +702,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       )}>
         {/* Left: Back + Date info */}
         <div className="flex items-center gap-3 min-w-0">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onBack} 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
             className={cn(
               "flex-shrink-0 gap-1.5",
               isMobile ? "h-11 w-11 p-0" : "h-10 px-3"
@@ -716,7 +714,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-          
+
           <div className="min-w-0 flex flex-col">
             <h2 className={cn(
               "font-semibold tracking-tight text-foreground truncate leading-tight",
@@ -732,16 +730,16 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
             </p>
           </div>
         </div>
-        
+
         {/* Right: Settings + Nav */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <DayViewTimeControls date={currentDate} />
-          
+
           <div className="flex items-center gap-1">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handlePrevDay} 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrevDay}
               className={cn(
                 "border-border/50",
                 isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
@@ -749,10 +747,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleNextDay} 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextDay}
               className={cn(
                 "border-border/50",
                 isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0"
@@ -768,10 +766,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       <div className={cn("flex gap-4", isMobile ? "flex-col" : "flex-row")}>
         {/* Time grid - unified timeline */}
         <div className={cn("flex-1", isMobile && "order-2")}>
-          
-          <div 
-            ref={timeGridRef} 
-            className="border-l border-border select-none relative" 
+
+          <div
+            ref={timeGridRef}
+            className="border-l border-border select-none relative"
             style={{ height: `${hours.length * HOUR_HEIGHT}px` }}
           >
             {isToday(currentDate) && (
@@ -785,7 +783,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 hour <= selectionEnd;
 
               const timeStr = format(addHours(startOfDay(currentDate), hour), 'h a');
-              
+
               // Determine if this hour is night (for subtle visual distinction when showNight is ON)
               const showNightEnabled = effectiveSettings.showNight ?? false;
               const isNight = isNightHour(hour);
@@ -857,7 +855,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               {overlappingGroups.map((group, groupIdx) => {
                 const columnWidth = 100 / group.length;
                 const isMultiTask = group.length > 1;
-                
+
                 // Calculate group bounds for drop indicator
                 const groupPositions = group.map(t => getTaskPosition(t)).filter(Boolean);
                 const groupTop = Math.min(...groupPositions.map(p => p!.top));
@@ -865,7 +863,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                 const groupHeight = groupBottom - groupTop;
 
                 // Check if this group is the target for drop indicator
-                const isTargetGroup = dragOverInfo && 
+                const isTargetGroup = dragOverInfo &&
                   dragOverInfo.groupTasks.length === group.length &&
                   dragOverInfo.groupTasks.every((t, i) => t.id === group[i]?.id);
 
@@ -892,7 +890,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         </div>
                       );
                     })()}
-                    
+
                     {/* Reorder drop zones - invisible areas at actual task edges */}
                     {isMultiTask && activeTask && group.some(t => t.id === activeTask.id) && (
                       <>
@@ -905,7 +903,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             cumulative += w;
                             edges.push(cumulative);
                           }
-                          
+
                           return edges.map((edgePercent, zoneIdx) => (
                             <ReorderDropZone
                               key={`zone-${groupIdx}-${zoneIdx}`}
@@ -920,12 +918,12 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         })()}
                       </>
                     )}
-                    
+
                     {(() => {
                       // Calculate split-pane widths for this group
                       const groupWidths = getGroupWidths(group);
                       let cumulativeLeft = 0;
-                      
+
                       return group.map((task, columnIdx) => {
                         const pos = getTaskPosition(task);
                         if (!pos) return null;
@@ -934,7 +932,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         const taskWidth = groupWidths[columnIdx];
                         const taskLeft = cumulativeLeft;
                         cumulativeLeft += taskWidth;
-                        
+
                         // Swap handlers - swap positions AND widths with neighbor
                         const handleMoveLeft = isMultiTask && columnIdx > 0 ? () => {
                           const leftTask = group[columnIdx - 1];
@@ -952,7 +950,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             [leftTask.id]: currentWidth,
                           }));
                         } : undefined;
-                        
+
                         const handleMoveRight = isMultiTask && columnIdx < group.length - 1 ? () => {
                           const rightTask = group[columnIdx + 1];
                           // Swap display_order
@@ -974,7 +972,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                         // Disable horizontal resizing on mobile/touch devices for better UX
                         const canResizeLeft = !isMobile && (isMultiTask ? columnIdx > 0 : true);
                         const canResizeRight = !isMobile && (isMultiTask ? columnIdx < group.length - 1 : true);
-                        
+
                         // Resize handlers - different logic for single vs group
                         // For LEFT edge: dragging left (positive delta from CalendarTask) = this task grows, left neighbor shrinks
                         // For RIGHT edge: dragging right (positive delta) = this task grows, right neighbor shrinks
@@ -987,7 +985,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
                             handleSingleTaskResize(task.id, delta, 'left');
                           }
                         } : undefined;
-                        
+
                         const handleResizeRight = canResizeRight ? (delta: number) => {
                           if (isMultiTask) {
                             // delta > 0 means dragging right = grow this task, shrink right neighbor
@@ -1051,7 +1049,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
               })}
             </div>
           </div>
-          
+
         </div>
 
         {/* Untimed tasks */}

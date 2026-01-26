@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { supabase } from '@/integrations/supabase/client';
 import { Task, EnergyLevel } from '@/types';
 import { cn } from '@/lib/utils';
 import { Archive, Plus, Search, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import MemoryItem from './MemoryItem';
+import { useTasksContext } from '@/contexts/TasksContext';
 
 interface MemoryPanelProps {
   userId: string;
@@ -18,8 +18,7 @@ interface MemoryPanelProps {
 const MAX_VISIBLE_ITEMS = 8;
 
 const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
-  const [items, setItems] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { tasks, addTask, updateTask, deleteTask } = useTasksContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -31,49 +30,23 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
     data: { type: 'memory' },
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      loadItems();
-    }
-  }, [isOpen, userId]);
-
-  const loadItems = async () => {
-    setLoading(true);
-    try {
-      // Memory items are tasks with a special marker - using location field as "memory"
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('location', 'memory')
-        .is('due_date', null)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setItems((data || []) as Task[]);
-    } catch (error) {
-      console.error('Error loading memory items:', error);
-      toast.error('Failed to load memory items');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const memoryItems = useMemo(() =>
+    tasks.filter(t => t.location === 'memory' && !t.due_date)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [tasks]
+  );
 
   const handleCreateItem = async () => {
     if (!newItemTitle.trim()) return;
 
     try {
-      const { error } = await supabase.from('tasks').insert({
-        user_id: userId,
+      await addTask({
         title: newItemTitle.trim(),
         location: 'memory',
         energy_level: 'medium',
       });
 
-      if (error) throw error;
-
       setNewItemTitle('');
-      loadItems();
       toast.success('Memory item created');
     } catch (error) {
       console.error('Error creating memory item:', error);
@@ -83,16 +56,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
 
   const handleTitleChange = async (itemId: string, title: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ title })
-        .eq('id', itemId);
-
-      if (error) throw error;
-
-      setItems(prev => prev.map(item => 
-        item.id === itemId ? { ...item, title } : item
-      ));
+      await updateTask(itemId, { title });
     } catch (error) {
       console.error('Error updating memory item:', error);
       toast.error('Failed to update memory item');
@@ -101,16 +65,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
 
   const handleEnergyChange = async (itemId: string, energy: EnergyLevel) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ energy_level: energy })
-        .eq('id', itemId);
-
-      if (error) throw error;
-
-      setItems(prev => prev.map(item => 
-        item.id === itemId ? { ...item, energy_level: energy } : item
-      ));
+      await updateTask(itemId, { energy_level: energy });
     } catch (error) {
       console.error('Error updating energy:', error);
     }
@@ -118,14 +73,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
 
   const handleDelete = async (itemId: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', itemId);
-
-      if (error) throw error;
-
-      setItems(prev => prev.filter(item => item.id !== itemId));
+      await deleteTask(itemId);
       toast.success('Memory item deleted');
     } catch (error) {
       console.error('Error deleting memory item:', error);
@@ -135,14 +83,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
 
   const handleMoveToInbox = async (itemId: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ location: null })
-        .eq('id', itemId);
-
-      if (error) throw error;
-
-      setItems(prev => prev.filter(item => item.id !== itemId));
+      await updateTask(itemId, { location: null });
       toast.success('Moved to inbox');
     } catch (error) {
       console.error('Error moving to inbox:', error);
@@ -150,7 +91,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
     }
   };
 
-  const filteredItems = items.filter(item =>
+  const filteredItems = memoryItems.filter(item =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -173,7 +114,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
         <div className="flex items-center gap-2">
           <Archive className="w-4 h-4 text-foreground-muted" />
           <span className="text-sm font-medium">Memory</span>
-          <span className="text-xs text-foreground-muted">({items.length})</span>
+          <span className="text-xs text-foreground-muted">({memoryItems.length})</span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -188,7 +129,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0"
-            onClick={loadItems}
+            onClick={() => { }} // No-op refresh since local
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
@@ -232,11 +173,7 @@ const MemoryPanel = ({ userId, isOpen, onClose }: MemoryPanelProps) => {
 
       {/* Items list */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {loading ? (
-          <div className="text-xs text-foreground-muted text-center py-4">
-            Loading...
-          </div>
-        ) : visibleItems.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div className="text-xs text-foreground-muted text-center py-4">
             {searchQuery ? 'No matching items' : 'Drop tasks here or add new ones'}
           </div>

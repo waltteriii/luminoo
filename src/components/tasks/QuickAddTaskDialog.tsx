@@ -15,8 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { EnergyLevel } from '@/types';
 import EnergyPill from '@/components/shared/EnergyPill';
 import TaskTimeSelector from './TaskTimeSelector';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTasksContext } from '@/contexts/TasksContext';
 import {
   Popover,
   PopoverContent,
@@ -49,6 +49,7 @@ const QuickAddTaskDialog = ({
   const [useTime, setUseTime] = useState(false);
   const [isMultiDay, setIsMultiDay] = useState(false);
   const { toast } = useToast();
+  const { addTask } = useTasksContext();
 
   useEffect(() => {
     if (open) {
@@ -68,8 +69,7 @@ const QuickAddTaskDialog = ({
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('tasks').insert({
-        user_id: userId,
+      await addTask({
         title: title.trim(),
         energy_level: energy,
         due_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null,
@@ -77,8 +77,6 @@ const QuickAddTaskDialog = ({
         start_time: selectedDate && useTime ? startTime : null,
         end_time: selectedDate && useTime ? endTime : null,
       });
-
-      if (error) throw error;
 
       toast({
         title: 'Task created',

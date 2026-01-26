@@ -3,14 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Brain, Loader2, Sparkles, Check, History, ArrowLeft, Trash2, Copy, Calendar, Zap, Clock, MessageSquare } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Brain, Loader2, Sparkles, Check, History, ArrowLeft, Trash2, Copy, Calendar } from 'lucide-react';
 import { EnergyLevel, ParsedItem, BrainDump } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ParsedItemCard from './ParsedItemCard';
 import { format } from 'date-fns';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface BrainDumpModalProps {
   open: boolean;
@@ -36,33 +33,11 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
   const loadHistory = async () => {
     setLoadingHistory(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('brain_dumps')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      
-      // Transform the data to match our BrainDump type
-      const transformedData = (data || []).map(item => ({
-        ...item,
-        ai_parsed_result: item.ai_parsed_result as unknown as BrainDump['ai_parsed_result'],
-        user_highlights: (item.user_highlights as unknown as BrainDump['user_highlights']) || [],
-        items_added_to_planner: item.items_added_to_planner || []
-      }));
-      
-      setHistory(transformedData);
-    } catch (err) {
-      console.error('Load history error:', err);
-    } finally {
+    // Mock history
+    setTimeout(() => {
+      setHistory([]);
       setLoadingHistory(false);
-    }
+    }, 500);
   };
 
   const handleParse = async () => {
@@ -70,108 +45,52 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
     setParsing(true);
 
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-    const isRetryable = (err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      return msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network');
-    };
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      let data: any = null;
-      let invokeError: any = null;
-
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const res = await supabase.functions.invoke('parse-brain-dump', {
-          body: { text },
-        });
-
-        data = res.data;
-        invokeError = res.error;
-
-        if (!invokeError) break;
-
-        if (attempt < 2 && isRetryable(invokeError)) {
-          await sleep(500 * attempt);
-          continue;
+    // Mock parse
+    setTimeout(() => {
+      setParsedItems([
+        {
+          text: "Parsed task 1 from brain dump",
+          type: 'task',
+          detected_energy: 'medium',
+          user_override_energy: null,
+          suggested_timeframe: 'today',
+          urgency: 'normal',
+          emotional_note: null,
+          confidence: 0.9,
+          related_items: []
+        },
+        {
+          text: "Another task extracted by AI",
+          type: 'task',
+          detected_energy: 'high',
+          user_override_energy: null,
+          suggested_timeframe: null,
+          urgency: 'high',
+          emotional_note: null,
+          confidence: 0.85,
+          related_items: []
         }
-      }
-
-      if (invokeError) {
-        const msg = invokeError?.message || 'Could not analyze your brain dump.';
-        toast({
-          title: 'Failed to parse',
-          description: msg,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (data?.error) {
-        toast({
-          title: 'AI Error',
-          description: data.error,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (!data?.items || !Array.isArray(data.items)) {
-        toast({
-          title: 'AI Error',
-          description: 'Invalid response from AI. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const items = data.items.map((item: ParsedItem) => ({
-        ...item,
-        user_override_energy: null,
-        // Default to Inbox; user can schedule via the calendar chip
-        due_date: null,
-      }));
-
-      setParsedItems(items);
-      setSummary(data.summary);
+      ]);
+      setSummary("Identified 2 actionable tasks.");
       setStep('review');
-
-      // Save brain dump to history (non-blocking)
-      if (user) {
-        supabase.from('brain_dumps').insert({
-          user_id: user.id,
-          raw_text: text,
-          ai_parsed_result: data,
-        });
-      }
-    } catch (err) {
-      console.error('Parse error:', err);
-      toast({
-        title: 'Failed to parse',
-        description: err instanceof Error ? err.message : 'Could not analyze your brain dump. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
       setParsing(false);
-    }
+    }, 2000);
   };
 
   const handleEnergyChange = (index: number, energy: EnergyLevel) => {
-    setParsedItems(prev => prev.map((item, i) => 
+    setParsedItems(prev => prev.map((item, i) =>
       i === index ? { ...item, user_override_energy: energy } : item
     ));
   };
 
   const handleDateChange = (index: number, date: string | null) => {
-    setParsedItems(prev => prev.map((item, i) => 
+    setParsedItems(prev => prev.map((item, i) =>
       i === index ? { ...item, due_date: date } : item
     ));
   };
 
   const handleTextChange = (index: number, text: string) => {
-    setParsedItems(prev => prev.map((item, i) => 
+    setParsedItems(prev => prev.map((item, i) =>
       i === index ? { ...item, text } : item
     ));
   };
@@ -203,29 +122,13 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
   };
 
   const handleDeleteFromHistory = async (dumpId: string) => {
-    try {
-      const { error } = await supabase
-        .from('brain_dumps')
-        .delete()
-        .eq('id', dumpId);
-
-      if (error) throw error;
-      setHistory(prev => prev.filter(d => d.id !== dumpId));
-      toast({ title: "Deleted", description: "Brain dump removed from history" });
-    } catch (err) {
-      console.error('Delete error:', err);
-      toast({ title: "Error", description: "Could not delete", variant: "destructive" });
-    }
-  };
-
-  const handleReparseFromHistory = (dump: BrainDump) => {
-    setText(dump.raw_text);
-    setStep('input');
+    setHistory(prev => prev.filter(d => d.id !== dumpId));
+    toast({ title: "Deleted", description: "Brain dump removed from history" });
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl h-[85vh] p-0 gap-0 overflow-hidden flex flex-col"> 
+      <DialogContent className="max-w-2xl h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -238,9 +141,9 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
               )}
             </div>
             {step === 'input' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => { setStep('history'); loadHistory(); }}
                 className="gap-1"
               >
@@ -256,7 +159,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             <p className="text-sm text-foreground-muted shrink-0">
               Write everything on your mind. AI will detect tasks, energy levels, dates, and emotional context.
             </p>
-            
+
             {parsing ? (
               /* Enhanced Loading State */
               <div className="flex-1 flex flex-col min-h-0 animate-fade-in">
@@ -333,8 +236,8 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                   <Button variant="outline" onClick={handleClose}>
                     Cancel
                   </Button>
-                  <Button 
-                    onClick={handleParse} 
+                  <Button
+                    onClick={handleParse}
                     disabled={!text.trim() || parsing}
                     className="gap-2"
                   >

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,33 +13,12 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        navigate('/');
-      }
-      setCheckingAuth(false);
-    });
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate('/');
-      }
-      setCheckingAuth(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: "Missing fields",
@@ -61,69 +39,16 @@ const Auth = () => {
 
     setLoading(true);
 
-    try {
-      if (mode === 'signup') {
-        const redirectUrl = `${window.location.origin}/`;
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-          },
-        });
-
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              title: "Account exists",
-              description: "This email is already registered. Try signing in instead.",
-              variant: "destructive",
-            });
-          } else {
-            throw error;
-          }
-        } else {
-          toast({
-            title: "Welcome aboard!",
-            description: "Your account has been created. Signing you in...",
-          });
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast({
-              title: "Invalid credentials",
-              description: "Please check your email and password.",
-              variant: "destructive",
-            });
-          } else {
-            throw error;
-          }
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: "Authentication error",
-        description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+    // Mock authentication - just simulate delay and redirect
+    setTimeout(() => {
       setLoading(false);
-    }
+      navigate('/');
+      toast({
+        title: "Note",
+        description: "Backend connections removed. Entering demo mode.",
+      });
+    }, 1000);
   };
-
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -139,18 +64,18 @@ const Auth = () => {
               <span className="text-xl font-medium text-foreground">luminoo-demo-0.2</span>
             </div>
           </div>
-          
+
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl font-light text-foreground leading-tight">
               luminoo-demo-0.2
             </h1>
             <p className="text-lg text-foreground-muted max-w-md">
-              An AI-powered marketing calendar that understands your creative energy 
+              An AI-powered marketing calendar that understands your creative energy
               and helps you plan content that resonates.
             </p>
             <p className="text-base text-foreground-subtle max-w-md">
-              Dump your thoughts, ideas, tasks, and half-formed plans into Luminoo. 
-              It turns mental noise into clarity, structure, and realistic action, 
+              Dump your thoughts, ideas, tasks, and half-formed plans into Luminoo.
+              It turns mental noise into clarity, structure, and realistic action,
               without forcing you into rigid systems.
             </p>
           </div>
@@ -192,8 +117,8 @@ const Auth = () => {
               {mode === 'signin' ? 'Welcome back' : 'Create account'}
             </h2>
             <p className="text-foreground-muted">
-              {mode === 'signin' 
-                ? 'Sign in to continue planning' 
+              {mode === 'signin'
+                ? 'Sign in to continue planning'
                 : 'Start your creative planning journey'}
             </p>
           </div>
@@ -258,8 +183,8 @@ const Auth = () => {
               className="text-sm text-foreground-muted hover:text-foreground transition-colors"
               disabled={loading}
             >
-              {mode === 'signin' 
-                ? "Don't have an account? Sign up" 
+              {mode === 'signin'
+                ? "Don't have an account? Sign up"
                 : 'Already have an account? Sign in'}
             </button>
           </div>

@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
-import { EnergyLevel, Task } from '@/types';
+import { EnergyLevel } from '@/types';
 import { InboxIcon, ChevronRight, ChevronDown, Plus, Search, ChevronUp, AlertTriangle, Check, Calendar, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTasksContext } from '@/contexts/TasksContext';
-import { supabase } from '@/integrations/supabase/client';
+
 import {
   Popover,
   PopoverContent,
@@ -29,9 +29,6 @@ interface UnscheduledTasksProps {
 }
 
 // Smart grid: show complete rows only (accounting for new task input taking 1 slot)
-// 3 cols × 3 rows = 9 slots → 8 tasks + input
-// 2 cols × 3 rows = 6 slots → 5 tasks + input
-// 1 col × 4 rows = 4 slots → 3 tasks + input
 const ROWS_MOBILE = 4;
 const ROWS_TABLET = 3;
 const ROWS_DESKTOP = 3;
@@ -63,34 +60,20 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const isMobile = useIsMobile();
 
   // Filter to only unscheduled, uncompleted tasks
-  const tasks = useMemo(() => 
+  const tasks = useMemo(() =>
     allTasks.filter(t => !t.due_date && !t.completed && t.location !== 'memory'),
     [allTasks]
   );
 
   // Fetch user's default inbox energy setting
   useEffect(() => {
-    const fetchDefaultEnergy = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('default_inbox_energy')
-        .eq('id', user.id)
-        .single();
-      
-      if (data?.default_inbox_energy) {
-        setDefaultInboxEnergy(data.default_inbox_energy as EnergyLevel);
-      }
-    };
-    
-    fetchDefaultEnergy();
+    // Stub: use default 'high'
+    setDefaultInboxEnergy('high');
   }, []);
 
   // Responsive columns and max visible tasks
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  
+
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
@@ -101,7 +84,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const { columns, maxVisible } = useMemo(() => {
     let cols: number;
     let rows: number;
-    
+
     if (windowWidth >= 1536) {
       cols = 3;
       rows = ROWS_DESKTOP;
@@ -112,11 +95,11 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
       cols = 1;
       rows = ROWS_MOBILE;
     }
-    
+
     // Total slots minus 1 for the new task input
     const totalSlots = cols * rows;
     const maxTasks = totalSlots - 1;
-    
+
     return { columns: cols, maxVisible: maxTasks };
   }, [windowWidth]);
 
@@ -134,8 +117,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   ) => {
     const updates: Record<string, unknown> = { due_date: dueDate };
 
-    // Only set times when explicitly provided.
-    // This avoids accidentally clearing an existing start_time/end_time.
     if (startTime !== undefined) {
       if (startTime === 'none' || startTime === '') {
         updates.start_time = null;
@@ -187,7 +168,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
       completed: false,
       detected_from_brain_dump: false,
     });
-    
+
     setNewTaskTitle('');
     setSelectedEnergy(null);
     setSelectedDate(undefined);
@@ -196,7 +177,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     setShowDatePicker(false);
   }, [newTaskTitle, addTask, defaultInboxEnergy, selectedEnergy, selectedDate, selectedStartTime, selectedEndTime]);
 
-  const energyFilteredTasks = useMemo(() => 
+  const energyFilteredTasks = useMemo(() =>
     energyFilter.length > 0
       ? tasks.filter(t => energyFilter.includes(t.energy_level))
       : tasks,
@@ -206,17 +187,17 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) return energyFilteredTasks;
     const query = searchQuery.toLowerCase();
-    return energyFilteredTasks.filter(t => 
+    return energyFilteredTasks.filter(t =>
       t.title.toLowerCase().includes(query) ||
       t.description?.toLowerCase().includes(query)
     );
   }, [energyFilteredTasks, searchQuery]);
 
-  const visibleTasks = useMemo(() => 
+  const visibleTasks = useMemo(() =>
     expanded ? filteredTasks : filteredTasks.slice(0, maxVisible),
     [expanded, filteredTasks, maxVisible]
   );
-  
+
   const hiddenCount = filteredTasks.length - maxVisible;
   const isOverflowing = filteredTasks.length > maxVisible;
 
@@ -235,12 +216,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
         tabIndex={0}
         aria-expanded={!collapsed}
         onClick={() => setCollapsed(!collapsed)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setCollapsed((v) => !v);
-          }
-        }}
         className="w-full flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2 lg:py-2.5 hover:bg-secondary/50 transition-colors min-h-[44px] lg:min-h-[48px]"
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -249,8 +224,8 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
           {filteredTasks.length > 0 && (
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full flex-shrink-0",
-              isOverflowing 
-                ? "bg-highlight-muted text-highlight-foreground" 
+              isOverflowing
+                ? "bg-highlight-muted text-highlight-foreground"
                 : "bg-secondary text-foreground-muted"
             )}>
               {filteredTasks.length}
@@ -305,9 +280,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             </div>
           )}
 
-          {/* Task grid - responsive 1/2/3 columns */}
           <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-            {/* New task input - with quick add icons */}
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-highlight focus-within:border-highlight transition-colors min-h-[48px] group">
               <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-highlight flex-shrink-0 transition-colors" />
               <input
@@ -325,13 +298,11 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 placeholder="New task…"
                 className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0 min-w-0"
               />
-              
-              {/* Energy dropdown - same as existing tasks */}
+
               <Popover open={energyPickerOpen} onOpenChange={setEnergyPickerOpen}>
                 <PopoverTrigger asChild>
                   <button
                     className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
-                    title={`Energy: ${(selectedEnergy || defaultInboxEnergy).charAt(0).toUpperCase() + (selectedEnergy || defaultInboxEnergy).slice(1)} (click to change)`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <span
@@ -376,7 +347,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 </PopoverContent>
               </Popover>
 
-              {/* Calendar toggle - click opens picker, click when active clears schedule */}
               <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                 <PopoverTrigger asChild>
                   <Button
@@ -388,7 +358,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // If date is already selected, clicking clears it
                       if (selectedDate) {
                         e.preventDefault();
                         setSelectedDate(undefined);
@@ -397,13 +366,11 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                         setShowDatePicker(false);
                       }
                     }}
-                    title={selectedDate ? "Click to remove schedule" : "Schedule date & time"}
                   >
                     <Calendar className="w-4 h-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-3 space-y-3" align="end" onClick={(e) => e.stopPropagation()}>
-                  {/* Header with close button */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">Schedule Task</span>
                     <Button
@@ -420,7 +387,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
-                  
+
                   <CalendarPicker
                     mode="single"
                     selected={selectedDate}
@@ -464,12 +431,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                       </Select>
                     </div>
                   </div>
-                  {selectedDate && (
-                    <div className="text-xs text-foreground-muted">
-                      Scheduling for {format(selectedDate, 'MMM d, yyyy')}
-                      {selectedStartTime && selectedStartTime !== 'none' && ` at ${format(new Date(`2000-01-01T${selectedStartTime}`), 'h:mm a')}`}
-                    </div>
-                  )}
                   {/* Confirm button */}
                   <Button
                     size="sm"
@@ -483,7 +444,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                 </PopoverContent>
               </Popover>
 
-              {/* Add task button - more prominent */}
               {newTaskTitle.trim() && (
                 <Button
                   size="sm"
@@ -492,15 +452,13 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                     e.stopPropagation();
                     createNewTask(!!selectedDate);
                   }}
-                  title={selectedDate ? "Add to calendar (Enter)" : "Add to inbox (Enter)"}
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span className="text-xs">{selectedDate ? 'Schedule' : 'Add'}</span>
                 </Button>
               )}
             </div>
-            
-            {/* Task list */}
+
             {visibleTasks.map(task => (
               <InboxTaskItem
                 key={task.id}
@@ -513,7 +471,6 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             ))}
           </div>
 
-          {/* Clean overflow indicator */}
           {isOverflowing && (
             <button
               onClick={() => setExpanded(v => !v)}

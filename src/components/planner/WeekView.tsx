@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { EnergyLevel, Task } from '@/types';
 import { ChevronLeft, ChevronRight, Plus, Clock, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+
 import DraggableTask from '@/components/tasks/DraggableTask';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
 import CreateTaskDialog from '@/components/tasks/CreateTaskDialog';
@@ -69,7 +69,7 @@ const DroppableDay = memo(({
   // No longer needed - double-click is handled in DraggableTask now
 
   const maxTasks = compact ? 3 : 5;
-  
+
   // Count tasks with times
   const timedTasks = tasks.filter(t => t.start_time);
 
@@ -180,7 +180,7 @@ const DroppableDay = memo(({
             />
           ))}
           {tasks.length > maxTasks && (
-            <button 
+            <button
               onClick={() => onDayClick(date)}
               className="text-[11px] text-foreground-muted hover:text-primary pl-1 py-1 touch-manipulation min-h-[28px]"
             >
@@ -188,7 +188,7 @@ const DroppableDay = memo(({
             </button>
           )}
         </div>
-        
+
         {/* Add task button - touch-friendly */}
         <div className="mt-auto pt-2 border-t border-border/50">
           <Button
@@ -218,9 +218,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
+    setUserId('demo-user');
   }, []);
 
   useEffect(() => {
@@ -228,13 +226,13 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   }, [startDate]);
 
   const weekStart = startOfWeek(currentStartDate, { weekStartsOn: 1 });
-  const weekDays = useMemo(() => 
+  const weekDays = useMemo(() =>
     Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart]
   );
 
   const { tasks: allTasks, addTask, updateTask, deleteTask } = useTasksContext();
-  
+
   // Filter tasks for the week from centralized context
   const tasks = useMemo(() => {
     const startStr = format(weekStart, 'yyyy-MM-dd');
@@ -246,7 +244,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const { regularTasks, multiDayTasks } = useMemo(() => {
     const regular: Task[] = [];
     const multiDay: Task[] = [];
-    
+
     tasks.forEach(t => {
       if (t.end_date && t.end_date !== t.due_date) {
         multiDay.push(t);
@@ -254,18 +252,18 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
         regular.push(t);
       }
     });
-    
+
     return { regularTasks: regular, multiDayTasks: multiDay };
   }, [tasks]);
 
   const getTasksForDay = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     let dayTasks = regularTasks.filter(t => t.due_date === dateStr);
-    
+
     if (energyFilter.length > 0) {
       dayTasks = dayTasks.filter(t => energyFilter.includes(t.energy_level));
     }
-    
+
     // Sort: timed tasks first, then by time
     return dayTasks.sort((a, b) => {
       if (a.start_time && !b.start_time) return -1;
@@ -282,7 +280,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
       const startDate = parseISO(t.due_date);
       const endDate = parseISO(t.end_date);
       return isWithinInterval(date, { start: startDate, end: endDate }) ||
-             isSameDay(date, startDate) || isSameDay(date, endDate);
+        isSameDay(date, startDate) || isSameDay(date, endDate);
     });
   }, [multiDayTasks]);
 
@@ -340,15 +338,15 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
       <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
         {/* Left: Back + Week info */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onBack} 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
             className="flex-shrink-0 h-11 w-11 min-h-[44px] min-w-[44px] p-0 touch-manipulation"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          
+
           <div className="min-w-0 flex flex-col">
             <h2 className="font-semibold tracking-tight text-foreground truncate leading-tight text-lg sm:text-2xl">
               Week of {format(weekStart, 'MMM d')}
@@ -365,21 +363,21 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             </div>
           </div>
         </div>
-        
+
         {/* Right: Nav buttons - touch-friendly */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handlePrevWeek} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrevWeek}
             className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 border-border/50 touch-manipulation"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleNextWeek} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextWeek}
             className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 border-border/50 touch-manipulation"
           >
             <ChevronRight className="w-5 h-5" />
