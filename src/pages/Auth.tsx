@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Mail, Lock, ArrowRight, Squirrel } from 'lucide-react';
+import { AuthError } from '@supabase/supabase-js';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -37,17 +39,34 @@ const Auth = () => {
       return;
     }
 
-    setLoading(true);
-
-    // Mock authentication - just simulate delay and redirect
-    setTimeout(() => {
-      setLoading(false);
-      navigate('/');
+    try {
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        navigate('/');
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast({
+          title: "Account created",
+          description: "Please check your email for the confirmation link.",
+        });
+      }
+    } catch (error: any) {
       toast({
-        title: "Note",
-        description: "Backend connections removed. Entering demo mode.",
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
       });
-    }, 1000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

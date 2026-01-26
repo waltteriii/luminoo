@@ -1,5 +1,5 @@
 // Creator Types
-export type CreatorType = 
+export type CreatorType =
   | 'musician'
   | 'visual_artist'
   | 'writer'
@@ -8,7 +8,7 @@ export type CreatorType =
   | 'entrepreneur'
   | 'other';
 
-export type Platform = 
+export type Platform =
   | 'instagram'
   | 'youtube'
   | 'tiktok'
@@ -142,6 +142,7 @@ export interface ParsedItem {
   emotional_note: string | null;
   confidence: number;
   related_items: string[];
+  due_date?: string | null;
 }
 
 // Content Suggestion (AI-generated)

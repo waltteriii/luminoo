@@ -12,8 +12,8 @@ import { CreatorType, Platform, ZoomLevel } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useDensity, UIDensity, ViewType } from '@/contexts/DensityContext';
 import { Switch } from '@/components/ui/switch';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProfileModalProps {
   open: boolean;
@@ -57,16 +57,16 @@ const ALL_TIMEZONES = [
 type HighlightColor = 'blue' | 'teal' | 'pink' | 'amber' | 'purple';
 
 const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: ProfileModalProps) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [displayName, setDisplayName] = useState('Demo User');
+  const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [creatorType, setCreatorType] = useState<CreatorType | ''>('content_creator');
-  const [audienceDescription, setAudienceDescription] = useState('My awesome audience');
-  const [nicheKeywords, setNicheKeywords] = useState<string[]>(['demo']);
+  const [audienceDescription, setAudienceDescription] = useState('');
+  const [nicheKeywords, setNicheKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState('');
-  const [platforms, setPlatforms] = useState<string[]>(['Instagram']);
+  const [platforms, setPlatforms] = useState<string[]>([]);
   const [newPlatform, setNewPlatform] = useState('');
   const [moreAboutYou, setMoreAboutYou] = useState('');
   const [timezone, setTimezone] = useState('UTC');
@@ -78,6 +78,49 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
   const [defaultInboxEnergy, setDefaultInboxEnergy] = useState<'high' | 'medium' | 'low' | 'recovery'>('high');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (open && userId) {
+      loadProfile();
+    }
+  }, [open, userId]);
+
+  const loadProfile = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        // If 406 (Not Acceptable) - maybe no profile? But wait, .single() might error if none. 
+        // Or if we just signed up, maybe profile wasn't created yet (trigger issues? or manual insertion missing?)
+        // For new projects, trigger is usually essential.
+        console.error('Error fetching profile:', error);
+      }
+
+      if (data) {
+        setDisplayName(data.display_name || '');
+        setAvatarUrl(data.avatar_url);
+        setCreatorType(data.creator_type as CreatorType || 'content_creator');
+        setAudienceDescription(data.audience_description || '');
+        setNicheKeywords(data.niche_keywords || []);
+        setDefaultView(data.default_view as ZoomLevel || 'year');
+        setHighlightColor(data.highlight_color as HighlightColor || 'blue');
+
+        // Apply highlight color on load
+        if (data.highlight_color) {
+          document.documentElement.setAttribute('data-highlight', data.highlight_color);
+        }
+      }
+    } catch (err) {
+      console.error('Load profile error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Update current time every second
   useEffect(() => {
@@ -119,19 +162,62 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
     if (!file) return;
 
     setUploadingAvatar(true);
-    // Mock upload
-    setTimeout(() => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setAvatarUrl(publicUrl);
+
+      // Update profile immediately with new avatar
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', userId);
+
+      toast({ title: "Avatar updated" });
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      toast({
+        title: "Error uploading avatar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
       setUploadingAvatar(false);
-      setAvatarUrl('https://github.com/shadcn.png'); // Dummy
-      toast({ title: "Avatar updated (demo)" });
-    }, 1000);
+    }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Mock save
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      const updates = {
+        id: userId,
+        display_name: displayName,
+        creator_type: creatorType,
+        audience_description: audienceDescription,
+        niche_keywords: nicheKeywords,
+        default_view: defaultView,
+        highlight_color: highlightColor,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(updates);
+
+      if (error) throw error;
+
       // Apply highlight color immediately
       document.documentElement.setAttribute('data-highlight', highlightColor);
 
@@ -141,11 +227,20 @@ const ProfileModal = ({ open, onOpenChange, userId, onDefaultViewChange }: Profi
       }
 
       toast({
-        title: "Profile saved (demo)",
+        title: "Profile saved",
         description: "Your profile has been updated successfully."
       });
       onOpenChange(false);
-    }, 1000);
+    } catch (error: any) {
+      console.error('Save profile error:', error);
+      toast({
+        title: "Error saving profile",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addKeyword = () => {

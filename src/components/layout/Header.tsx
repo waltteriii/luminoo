@@ -1,7 +1,7 @@
 import { memo, useCallback, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-// import { User } from '@supabase/supabase-js';
-// import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { Squirrel, Menu, LogOut, User as UserIcon, ChevronDown, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HeaderProps {
-  user: any;
+  user: User;
   currentEnergy: EnergyLevel;
   onEnergyChange: (energy: EnergyLevel) => void;
   onToggleSidebar: () => void;
@@ -46,9 +46,14 @@ const Header = memo(({
   const isMobile = useIsMobile();
 
   const handleSignOut = useCallback(async () => {
-    toast({ title: "Signed out (local mode)" });
-    // In a real app we'd redirect or clear state
-    window.location.reload();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   }, [toast]);
 
   const displayName = user.email?.split('@')[0] || 'User';

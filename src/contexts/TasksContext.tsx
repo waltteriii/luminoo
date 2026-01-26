@@ -1,10 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import type { Task, Task as TaskType } from '@/types'; // Import from local types
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { Task, TaskInsert, TaskUpdate } from '@/types';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { useUndoOptional } from '@/contexts/UndoContext';
 
 // Local types for context
-type TaskInsert = Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>> & { title: string };
-type TaskUpdate = Partial<Task>;
+// type TaskInsert = Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>> & { title: string };
+// type TaskUpdate = Partial<Task>;
 
 interface TasksContextValue {
   tasks: Task[];
@@ -13,10 +15,10 @@ interface TasksContextValue {
   updateTask: (id: string, updates: TaskUpdate) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
   rescheduleTask: (id: string, newDate: string | null, startTime?: string | null, endTime?: string | null) => Promise<boolean>;
-  reload: () => Promise<void>;
+  refreshTasks: () => Promise<void>;
 }
 
-const TasksContext = createContext<TasksContextValue | null>(null);
+const TasksContext = createContext<TasksContextValue | undefined>(undefined);
 
 export const useTasksContext = () => {
   const context = useContext(TasksContext);
@@ -27,148 +29,186 @@ export const useTasksContext = () => {
 };
 
 interface TasksProviderProps {
-  children: React.ReactNode;
-  userId: string | null;
+  children: ReactNode;
+  userId: string;
 }
 
-export const TasksProvider: React.FC<TasksProviderProps> = ({ children, userId }) => {
+export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(false); // No loading since local
-  const previousTasksRef = useRef<Task[]>([]);
-  const undoContext = useUndoOptional();
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { showUndo } = useUndoOptional();
 
-  // Load all tasks for the user (Mock implementation)
-  const loadTasks = useCallback(async () => {
-    // In a real app this would fetch from backend.
-    // For now we keep local state.
-    setLoading(false);
-  }, []);
+  const fetchTasks = useCallback(async () => {
+    if (!userId) {
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
 
-  // Initial load
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+      toast({
+        title: 'Error loading tasks',
+        description: 'Please check your connection',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, toast]);
+
+  // Initial fetch
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    fetchTasks();
 
-  // Add task (Local implementation)
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${userId}`,
+        },
+        async (payload) => {
+          // Simple refresh strategy for now
+          fetchTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchTasks, userId]);
+
+  // Add task
   const addTask = useCallback(
     async (taskData: TaskInsert): Promise<Task | null> => {
       if (!userId) return null;
 
-      const tempId = crypto.randomUUID();
-      const newTask: Task = {
-        id: tempId,
-        user_id: userId,
-        title: taskData.title,
-        description: taskData.description ?? null,
-        due_date: taskData.due_date ?? null,
-        start_time: taskData.start_time ?? null,
-        end_time: taskData.end_time ?? null,
-        energy_level: taskData.energy_level ?? 'medium',
-        completed: taskData.completed ?? false,
-        location: taskData.location ?? null,
-        campaign_id: taskData.campaign_id ?? null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        detected_from_brain_dump: taskData.detected_from_brain_dump ?? false,
-        emotional_note: taskData.emotional_note ?? null,
-        end_date: taskData.end_date ?? null,
-        is_shared: taskData.is_shared ?? false,
-        shared_with: taskData.shared_with ?? [],
-        suggested_timeframe: taskData.suggested_timeframe ?? null,
-        time_model: taskData.time_model ?? 'event-based',
-        urgency: taskData.urgency ?? 'normal',
-        display_order: taskData.display_order ?? 0,
-      };
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert({
+            ...taskData,
+            user_id: userId,
+          })
+          .select()
+          .single();
 
-      setTasks((prev) => [newTask, ...prev]);
-      return newTask;
+        if (error) throw error;
+
+        // Optimistic update done by realtime subscription or explicit fetch
+        // But for speed we can append locally too if we want, but fetch is safer
+        return data;
+      } catch (err) {
+        console.error('Add task error:', err);
+        toast({
+          title: 'Error creating task',
+          description: 'Could not save task to database',
+          variant: 'destructive',
+        });
+        return null;
+      }
     },
-    [userId]
+    [userId, toast]
   );
 
-  // Update task (Local implementation)
+  // Update task
   const updateTask = useCallback(
     async (id: string, updates: TaskUpdate): Promise<boolean> => {
-      const taskToUpdate = tasks.find((t) => t.id === id);
-      if (!taskToUpdate) return false;
+      try {
+        const { error } = await supabase
+          .from('tasks')
+          .update(updates)
+          .eq('id', id);
 
-      const previousState = { ...taskToUpdate };
-
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === id
-            ? { ...t, ...updates, updated_at: new Date().toISOString() }
-            : t
-        )
-      );
-
-      // Push undo action
-      if (undoContext) {
-        const description = `Reverted "${previousState.title.slice(0, 30)}${previousState.title.length > 30 ? '...' : ''}"`;
-
-        undoContext.pushUndo(description, async () => {
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === id ? previousState : t
-            )
-          );
+        if (error) throw error;
+        return true;
+      } catch (err) {
+        console.error('Update task error:', err);
+        toast({
+          title: 'Update failed',
+          variant: 'destructive',
         });
+        return false;
       }
-
-      return true;
     },
-    [tasks, undoContext]
+    [toast]
   );
 
-  // Delete task (Local implementation)
+  // Delete task
   const deleteTask = useCallback(
     async (id: string): Promise<boolean> => {
+      // Find task for undo
       const taskToDelete = tasks.find((t) => t.id === id);
-      if (!taskToDelete) return false;
 
-      setTasks((prev) => prev.filter((t) => t.id !== id));
+      try {
+        const { error } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', id);
 
-      if (undoContext) {
-        const description = `Restored "${taskToDelete.title.slice(0, 30)}${taskToDelete.title.length > 30 ? '...' : ''}"`;
+        if (error) throw error;
 
-        undoContext.pushUndo(description, async () => {
-          setTasks((prev) => [taskToDelete, ...prev]);
+        if (taskToDelete) {
+          showUndo('Task deleted', async () => {
+            // Restore logic
+            const { id: _, ...rest } = taskToDelete;
+            await addTask(rest);
+          });
+        }
+
+        return true;
+      } catch (err) {
+        console.error('Delete task error:', err);
+        toast({
+          title: 'Delete failed',
+          variant: 'destructive',
         });
+        return false;
       }
-
-      return true;
     },
-    [tasks, undoContext]
+    [tasks, toast, showUndo, addTask]
   );
 
-  // Reschedule task
   const rescheduleTask = useCallback(
-    async (
-      id: string,
-      newDate: string | null,
-      startTime?: string | null,
-      endTime?: string | null
-    ): Promise<boolean> => {
-      const updates: TaskUpdate = {
+    async (id: string, newDate: string | null, startTime?: string | null, endTime?: string | null): Promise<boolean> => {
+      return updateTask(id, {
         due_date: newDate,
-      };
-      if (startTime !== undefined) updates.start_time = startTime;
-      if (endTime !== undefined) updates.end_time = endTime;
-
-      return updateTask(id, updates);
+        start_time: startTime ?? null,
+        end_time: endTime ?? null,
+      });
     },
     [updateTask]
   );
 
-  const value: TasksContextValue = {
-    tasks,
-    loading,
-    addTask,
-    updateTask,
-    deleteTask,
-    rescheduleTask,
-    reload: loadTasks,
-  };
-
-  return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
+  return (
+    <TasksContext.Provider
+      value={{
+        tasks,
+        loading,
+        addTask,
+        updateTask,
+        deleteTask,
+        rescheduleTask,
+        refreshTasks: fetchTasks,
+      }}
+    >
+      {children}
+    </TasksContext.Provider>
+  );
 };

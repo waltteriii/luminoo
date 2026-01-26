@@ -8,6 +8,7 @@ import { EnergyLevel, ParsedItem, BrainDump } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import ParsedItemCard from './ParsedItemCard';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BrainDumpModalProps {
   open: boolean;
@@ -33,11 +34,33 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
   const loadHistory = async () => {
     setLoadingHistory(true);
-    // Mock history
-    setTimeout(() => {
-      setHistory([]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('brain_dumps')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      // Transform the data to match our BrainDump type
+      const transformedData = (data || []).map(item => ({
+        ...item,
+        ai_parsed_result: item.ai_parsed_result as unknown as BrainDump['ai_parsed_result'],
+        user_highlights: (item.user_highlights as unknown as BrainDump['user_highlights']) || [],
+        items_added_to_planner: item.items_added_to_planner || []
+      }));
+
+      setHistory(transformedData);
+    } catch (err) {
+      console.error('Load history error:', err);
+    } finally {
       setLoadingHistory(false);
-    }, 500);
+    }
   };
 
   const handleParse = async () => {
@@ -45,36 +68,51 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
 
     setParsing(true);
 
-    // Mock parse
-    setTimeout(() => {
-      setParsedItems([
-        {
-          text: "Parsed task 1 from brain dump",
-          type: 'task',
-          detected_energy: 'medium',
-          user_override_energy: null,
-          suggested_timeframe: 'today',
-          urgency: 'normal',
-          emotional_note: null,
-          confidence: 0.9,
-          related_items: []
-        },
-        {
-          text: "Another task extracted by AI",
-          type: 'task',
-          detected_energy: 'high',
-          user_override_energy: null,
-          suggested_timeframe: null,
-          urgency: 'high',
-          emotional_note: null,
-          confidence: 0.85,
-          related_items: []
-        }
-      ]);
-      setSummary("Identified 2 actionable tasks.");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data, error } = await supabase.functions.invoke('parse-brain-dump', {
+        body: { text },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data?.items || !Array.isArray(data.items)) {
+        throw new Error('Invalid response from AI');
+      }
+
+      const items = data.items.map((item: ParsedItem) => ({
+        ...item,
+        user_override_energy: null,
+        due_date: null,
+      }));
+
+      setParsedItems(items);
+      setSummary(data.summary);
       setStep('review');
+
+      // Save brain dump to history
+      if (user) {
+        supabase.from('brain_dumps').insert({
+          user_id: user.id,
+          raw_text: text,
+          ai_parsed_result: data,
+        });
+      }
+    } catch (err) {
+      console.error('Parse error:', err);
+      toast({
+        title: 'Failed to parse',
+        description: err instanceof Error ? err.message : 'Could not analyze your brain dump.',
+        variant: 'destructive',
+      });
+    } finally {
       setParsing(false);
-    }, 2000);
+    }
   };
 
   const handleEnergyChange = (index: number, energy: EnergyLevel) => {
@@ -122,8 +160,19 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
   };
 
   const handleDeleteFromHistory = async (dumpId: string) => {
-    setHistory(prev => prev.filter(d => d.id !== dumpId));
-    toast({ title: "Deleted", description: "Brain dump removed from history" });
+    try {
+      const { error } = await supabase
+        .from('brain_dumps')
+        .delete()
+        .eq('id', dumpId);
+
+      if (error) throw error;
+      setHistory(prev => prev.filter(d => d.id !== dumpId));
+      toast({ title: "Deleted", description: "Brain dump removed from history" });
+    } catch (err) {
+      console.error('Delete error:', err);
+      toast({ title: "Error", description: "Could not delete", variant: "destructive" });
+    }
   };
 
   return (
@@ -161,9 +210,7 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
             </p>
 
             {parsing ? (
-              /* Enhanced Loading State */
               <div className="flex-1 flex flex-col min-h-0 animate-fade-in">
-                {/* Pulsing brain header */}
                 <div className="flex items-center justify-center gap-3 py-6 mb-4">
                   <div className="relative">
                     <Brain className="w-10 h-10 text-primary animate-pulse" />
@@ -175,7 +222,6 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                   </div>
                 </div>
 
-                {/* Skeleton cards with staggered animation */}
                 <div className="flex-1 overflow-hidden space-y-3">
                   {[0, 1, 2, 3].map((i) => (
                     <div
@@ -186,49 +232,26 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                       <div className="flex items-start gap-3">
                         <Skeleton className="h-5 w-5 rounded-full shrink-0" />
                         <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Skeleton className="h-5 w-16 rounded-full" />
-                            <Skeleton className="h-5 w-20 rounded-full" />
-                          </div>
                           <Skeleton className="h-4 w-4/5" />
                           <Skeleton className="h-3 w-2/3" />
                         </div>
-                        <Skeleton className="h-8 w-8 rounded-md shrink-0" />
                       </div>
                     </div>
                   ))}
                 </div>
-
-                {/* Progress indicator */}
-                <div className="flex items-center justify-center py-4 gap-2">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <div
-                        key={i}
-                        className="w-2 h-2 rounded-full bg-primary animate-bounce"
-                        style={{ animationDelay: `${i * 150}ms` }}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-foreground-muted ml-2">
-                    Detecting patterns in your brain dump…
-                  </span>
-                </div>
               </div>
             ) : (
-              /* Normal Input State */
               <>
                 <Textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => {
-                    // Enter = process, Shift+Enter = newline
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       handleParse();
                     }
                   }}
-                  placeholder="I need to finish that album artwork by Friday, it's stressing me out. Also should probably do some admin stuff like respond to emails when I'm feeling low energy. And I had this crazy idea for a new series... next tuesday seeing friends for dinner"
+                  placeholder="I need to finish that album artwork by Friday..."
                   className="flex-1 min-h-[200px] resize-none"
                 />
 
@@ -307,7 +330,6 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                 <div className="text-center py-8 text-foreground-muted">
                   <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p>No brain dumps yet</p>
-                  <p className="text-sm">Start dumping your thoughts!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -321,20 +343,10 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                           <div className="flex items-center gap-2 text-xs text-foreground-muted mb-2">
                             <Calendar className="w-3 h-3" />
                             {format(new Date(dump.created_at), 'MMM d, yyyy h:mm a')}
-                            {dump.ai_parsed_result?.items && (
-                              <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary">
-                                {dump.ai_parsed_result.items.length} items
-                              </span>
-                            )}
                           </div>
                           <p className="text-sm text-foreground line-clamp-3">
                             {dump.raw_text}
                           </p>
-                          {dump.ai_parsed_result?.summary && (
-                            <p className="text-xs text-foreground-muted mt-2 italic">
-                              {dump.ai_parsed_result.summary}
-                            </p>
-                          )}
                         </div>
                         <div className="flex gap-1">
                           <Button
@@ -342,7 +354,6 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleCopyFromHistory(dump)}
-                            title="Copy to editor"
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
@@ -351,7 +362,6 @@ const BrainDumpModal = ({ open, onOpenChange, onItemsAdded }: BrainDumpModalProp
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => handleDeleteFromHistory(dump.id)}
-                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
