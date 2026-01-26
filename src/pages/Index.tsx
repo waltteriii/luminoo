@@ -91,7 +91,58 @@ const Index = () => {
   });
 
   const navigate = useNavigate();
-  if (!session || !user) return null;
+
+  useEffect(() => {
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+
+    // Listener for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+
+    // Safety timeout in case Supabase hangs
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
+      </div>
+    );
+  }
+
+  if (!session || !user) {
+    // If not loading and no user, we should have redirected. 
+    // Showing a fallback ensuring we don't render black screen.
+    return (
+      <div className="flex items-center justify-center min-h-screen text-foreground-muted">
+        Redirecting to login...
+      </div>
+    );
+  }
 
   return (
     <TasksProvider userId={user.id}>
@@ -262,7 +313,7 @@ const AuthenticatedApp = ({
   }, []);
 
   return (
-    <>
+    <DndProvider>
       <Header
         user={user as any}
         currentEnergy={currentEnergy}
@@ -353,6 +404,7 @@ const AuthenticatedApp = ({
             open={profileOpen}
             onOpenChange={handleProfileClose}
             userId={user.id}
+            userEmail={user.email}
             onDefaultViewChange={handleDefaultViewChange}
           />
         )}
@@ -383,7 +435,7 @@ const AuthenticatedApp = ({
           />
         )}
       </Suspense>
-    </>
+    </DndProvider>
   );
 };
 
