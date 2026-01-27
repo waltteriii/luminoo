@@ -1,61 +1,16 @@
 import { useMemo, useState } from 'react';
-import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import WindowFrame from './WindowFrame';
 import { useTasksContext } from '@/contexts/TasksContext';
 import type { Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GripVertical, Plus, StickyNote } from 'lucide-react';
-
-function NotesTaskRow({ task }: { task: Task }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `notes-${task.id}`,
-    data: { type: 'notes-task', task },
-  });
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: isDragging ? 1000 : undefined }
-    : undefined;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      data-dnd-item
-      className={cn(
-        'group flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-2 min-h-[44px] min-w-0',
-        isDragging && 'opacity-70 shadow-lg ring-2 ring-blue-500/60'
-      )}
-    >
-      <div
-        {...attributes}
-        {...listeners}
-        data-task-draggable="true"
-        data-task-handle
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="flex-shrink-0 p-1 -m-1 rounded touch-none cursor-grab active:cursor-grabbing opacity-50 group-hover:opacity-80 select-none"
-        aria-label="Drag"
-      >
-        <GripVertical className="w-4 h-4 text-foreground-muted" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="text-sm font-medium truncate flex-1">{task.title}</div>
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground border border-border rounded-md px-1.5 py-0.5 flex-shrink-0">
-            <StickyNote className="w-3 h-3" />
-            Note
-          </div>
-        </div>
-        {task.description && <div className="text-xs text-muted-foreground truncate">{task.description}</div>}
-      </div>
-    </div>
-  );
-}
+import { Plus, StickyNote } from 'lucide-react';
+import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 
 export default function NotesPane() {
-  const { tasks, addTask } = useTasksContext();
+  const { tasks, addTask, updateTask, deleteTask } = useTasksContext();
   const { setNodeRef, isOver } = useDroppable({ id: 'notes', data: { type: 'notes' } });
 
   const notes = useMemo(() => tasks.filter((t) => t.location === 'notes' && !t.completed), [tasks]);
@@ -108,7 +63,27 @@ export default function NotesPane() {
               Drop tasks here to pin them. Drag back out to Inbox or Calendar.
             </div>
           ) : (
-            notes.map((t) => <NotesTaskRow key={t.id} task={t} />)
+            notes.map((t: Task) => (
+              <InboxTaskItem
+                key={t.id}
+                task={t}
+                dndType="notes-task"
+                dndIdPrefix="notes-"
+                showSchedulingControls={false}
+                badge={
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground border border-border rounded-md px-1.5 py-0.5 flex-shrink-0">
+                    <StickyNote className="w-3 h-3" />
+                    Note
+                  </span>
+                }
+                onSchedule={() => {
+                  // Notes are scheduled via drag-and-drop (keep UI simple).
+                }}
+                onTitleChange={(taskId, title) => updateTask(taskId, { title })}
+                onEnergyChange={(taskId, energy_level) => updateTask(taskId, { energy_level })}
+                onDelete={(taskId) => deleteTask(taskId)}
+              />
+            ))
           )}
         </div>
       </div>

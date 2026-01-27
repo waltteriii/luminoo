@@ -26,6 +26,10 @@ interface InboxTaskItemProps {
   onEnergyChange?: (taskId: string, energy: EnergyLevel) => void;
   onTitleChange?: (taskId: string, title: string) => void;
   onDelete?: (taskId: string) => void;
+  dndType?: 'inbox-task' | 'notes-task';
+  dndIdPrefix?: string;
+  showSchedulingControls?: boolean;
+  badge?: React.ReactNode;
 }
 
 const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
@@ -33,7 +37,18 @@ const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
   const minute = (i % 2) * 30;
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 });
-const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, onDelete }: InboxTaskItemProps) => {
+const InboxTaskItem = memo(
+  ({
+    task,
+    onSchedule,
+    onEnergyChange,
+    onTitleChange,
+    onDelete,
+    dndType = 'inbox-task',
+    dndIdPrefix = 'inbox-',
+    showSchedulingControls = true,
+    badge,
+  }: InboxTaskItemProps) => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -51,8 +66,8 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
     transform,
     isDragging,
   } = useDraggable({
-    id: `inbox-${task.id}`,
-    data: { task, type: 'inbox-task' },
+    id: `${dndIdPrefix}${task.id}`,
+    data: { task, type: dndType },
   });
 
   const style = transform
@@ -213,6 +228,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
             {task.title}
           </span>
         )}
+        {badge}
 
         {/* Energy dot - click shows dropdown to select energy level */}
         {!isEditing && (
@@ -279,130 +295,136 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs min-w-[36px] lg:min-w-[44px]"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickSchedule(0);
-            }}
-          >
-            Today
-          </Button>
-          {!isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQuickSchedule(1);
-              }}
-            >
-              Tomorrow
-            </Button>
-          )}
-
-          {/* Full date/time picker */}
-          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-            <PopoverTrigger asChild>
+          {showSchedulingControls && (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 lg:h-8 lg:w-8 p-0 min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px]"
-                onClick={(e) => e.stopPropagation()}
+                className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs min-w-[36px] lg:min-w-[44px]"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleQuickSchedule(0);
+                }}
               >
-                <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                Today
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
-              <div className="p-3 space-y-3">
-                {/* Close button for mobile */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Schedule Task</span>
+              {!isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 lg:h-8 px-1.5 lg:px-2 text-xs"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleQuickSchedule(1);
+                  }}
+                >
+                  Tomorrow
+                </Button>
+              )}
+
+              {/* Full date/time picker */}
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsDatePickerOpen(false);
-                    }}
+                    className="h-7 w-7 lg:h-8 lg:w-8 p-0 min-w-[36px] lg:min-w-[40px] min-h-[36px] lg:min-h-[40px]"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <X className="w-4 h-4" />
+                    <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   </Button>
-                </div>
-                <CalendarPicker
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-xs text-foreground-muted mb-1 block">
-                      <Clock className="w-3 h-3 inline mr-1" />
-                      Start
-                    </label>
-                    <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
-                      <SelectTrigger className="h-10 text-xs">
-                        <SelectValue placeholder="Start time" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-48">
-                        <SelectItem value="none">No time</SelectItem>
-                        {TIME_OPTIONS.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-3 space-y-3">
+                    {/* Close button for mobile */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Schedule Task</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsDatePickerOpen(false);
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <CalendarPicker
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={handleDateSelect}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-foreground-muted mb-1 block">
+                          <Clock className="w-3 h-3 inline mr-1" />
+                          Start
+                        </label>
+                        <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
+                          <SelectTrigger className="h-10 text-xs">
+                            <SelectValue placeholder="Start time" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-48">
+                            <SelectItem value="none">No time</SelectItem>
+                            {TIME_OPTIONS.map((time) => (
+                              <SelectItem key={time} value={time}>
+                                {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-foreground-muted mb-1 block">End</label>
+                        <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
+                          <SelectTrigger className="h-10 text-xs">
+                            <SelectValue placeholder="End time" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-48">
+                            <SelectItem value="none">No time</SelectItem>
+                            {TIME_OPTIONS
+                              .filter((t) => !selectedStartTime || selectedStartTime === 'none' || t > selectedStartTime)
+                              .map((time) => (
+                                <SelectItem key={time} value={time}>
+                                  {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsDatePickerOpen(false);
+                        }}
+                        className="flex-1 min-h-[44px]"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleConfirmSchedule}
+                        disabled={!selectedDate}
+                        className="flex-1 min-h-[44px]"
+                        size="sm"
+                      >
+                        Schedule
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-foreground-muted mb-1 block">End</label>
-                    <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
-                      <SelectTrigger className="h-10 text-xs">
-                        <SelectValue placeholder="End time" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-48">
-                        <SelectItem value="none">No time</SelectItem>
-                        {TIME_OPTIONS.filter(t => !selectedStartTime || selectedStartTime === 'none' || t > selectedStartTime).map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {format(new Date(`2000-01-01T${time}`), 'h:mm a')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsDatePickerOpen(false);
-                    }}
-                    className="flex-1 min-h-[44px]"
-                    size="sm"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleConfirmSchedule}
-                    disabled={!selectedDate}
-                    className="flex-1 min-h-[44px]"
-                    size="sm"
-                  >
-                    Schedule
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
 
           {/* Delete button */}
           {onDelete && (
