@@ -601,6 +601,7 @@ const CalendarTask = ({
                 }}
                 {...attributes}
                 {...listeners}
+                data-dnd-item
                 onPointerDownCapture={(e) => {
                   const target = e.target as HTMLElement;
                   if (target.closest('button, input, textarea, [data-no-select]')) return;

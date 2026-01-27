@@ -1,4 +1,4 @@
-export type WindowId = 'inbox' | 'calendar' | 'unfold';
+export type WindowId = 'inbox' | 'calendar' | 'notes' | 'now';
 
 export interface WindowDefinition {
   id: WindowId;
@@ -20,11 +20,17 @@ export const WINDOW_REGISTRY: Record<WindowId, WindowDefinition> = {
     defaultVisible: true,
     description: 'Schedule view',
   },
-  unfold: {
-    id: 'unfold',
-    title: 'Unfold',
-    defaultVisible: false,
-    description: 'Multi-time view (Offset Layer)',
+  notes: {
+    id: 'notes',
+    title: 'Notes',
+    defaultVisible: true,
+    description: 'Pinned task stash',
+  },
+  now: {
+    id: 'now',
+    title: 'Now',
+    defaultVisible: true,
+    description: 'Today’s focus',
   },
 };
 

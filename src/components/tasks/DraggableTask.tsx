@@ -129,6 +129,7 @@ const DraggableTask = ({
         ref={setNodeRef}
         style={style}
         {...dragProps}
+        data-dnd-item
         className={cn(
           'group flex items-center gap-2 pl-2.5 pr-1.5 py-1.5 rounded-lg text-xs bg-secondary/50 hover:bg-secondary border-l-2 transition-colors',
           energyColors[task.energy_level],

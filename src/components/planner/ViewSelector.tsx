@@ -39,15 +39,16 @@ const ViewSelector = memo(({ zoomLevel, onZoomLevelChange, canResetLayout, onRes
   };
   
   return (
-    <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full min-w-0">
       {/* Main view selector - full width on mobile */}
       <div className={cn(
-        "flex items-center bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 p-1",
-        isMobile ? "flex-1" : ""
+        "flex items-center bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 p-1 min-w-0",
+        isMobile ? "flex-1 w-full" : "w-auto"
       )}>
         {views.map((view) => (
           <button
             key={view.value}
+            type="button"
             onClick={() => onZoomLevelChange(view.value)}
             className={cn(
               "flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all touch-manipulation",
@@ -70,7 +71,7 @@ const ViewSelector = memo(({ zoomLevel, onZoomLevelChange, canResetLayout, onRes
       </div>
 
       {/* Action buttons - grouped together */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end">
         {/* Today button */}
         {onJumpToToday && (
           <TooltipProvider delayDuration={300}>
@@ -79,7 +80,12 @@ const ViewSelector = memo(({ zoomLevel, onZoomLevelChange, canResetLayout, onRes
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onJumpToToday}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onJumpToToday();
+                  }}
                   className={cn(
                     "border-border/50 bg-secondary/60 backdrop-blur-sm gap-1.5 touch-manipulation",
                     "h-11 min-h-[44px] sm:h-10 sm:min-h-[40px] px-3"

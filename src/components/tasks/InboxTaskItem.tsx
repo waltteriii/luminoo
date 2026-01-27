@@ -146,7 +146,7 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
       style={style}
       {...containerDragProps}
       className={cn(
-        "group flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded bg-card border border-border transition-all",
+        "group flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-lg bg-card border border-border transition-all min-h-[48px]",
         isMobile ? "touch-auto" : "touch-none",
         isDragging && "opacity-70 shadow-lg ring-2 ring-primary",
         !isDragging && !isMobile && "cursor-grab active:cursor-grabbing"
@@ -155,6 +155,11 @@ const InboxTaskItem = memo(({ task, onSchedule, onEnergyChange, onTitleChange, o
       {/* Grip handle for dragging */}
       <div 
         {...dragHandleProps}
+        data-task-draggable="true"
+        data-task-handle
+        data-dnd-item
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         className={cn(
           "flex-shrink-0 p-1.5 -m-1 rounded touch-none cursor-grab active:cursor-grabbing",
           isMobile ? "opacity-100" : "opacity-40 group-hover:opacity-70 transition-opacity"

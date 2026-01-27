@@ -165,6 +165,67 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     const overData = over?.data.current;
     const overId = over?.id as string;
 
+    const inferZone = (task: Task | undefined): string => {
+      if (!task) return 'unknown';
+      if (task.location === 'notes') return 'notes';
+      if (task.location === 'memory') return 'memory';
+      // Scheduled tasks live in the calendar lane even if location is null.
+      if (task.due_date) return 'calendar';
+      return 'inbox';
+    };
+
+    const inferToZone = (): string => {
+      if (overData?.type === 'inbox' || overData?.type === 'notes' || overData?.type === 'calendar') return overData.type as string;
+      if (overData?.type === 'time-slot' || overData?.type === 'day') return 'calendar';
+      if (typeof overId === 'string' && (/^\d{4}-\d{2}-\d{2}$/.test(overId) || /^month-\d+$/.test(overId))) return 'calendar';
+      return 'unknown';
+    };
+
+    if (import.meta.env.DEV) {
+      const t = activeData?.task as Task | undefined;
+      console.log('[DnD]', active.id, inferZone(t), over?.id, inferToZone());
+    }
+
+    // Cross-window targets (Inbox / Notes / Calendar)
+    const draggedTask = activeData?.task as Task | undefined;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    const clearScheduling = {
+      due_date: null,
+      start_time: null,
+      end_time: null,
+      end_date: null,
+    } as const;
+
+    if (draggedTask && (overData?.type === 'inbox')) {
+      await updateTask(draggedTask.id, { ...clearScheduling, location: null });
+      onTaskScheduled?.();
+      return;
+    }
+
+    if (draggedTask && (overData?.type === 'notes')) {
+      await updateTask(draggedTask.id, { ...clearScheduling, location: 'notes' });
+      onTaskScheduled?.();
+      return;
+    }
+
+    // Calendar surface (not a slot/day): treat as "untimed on that date".
+    if (draggedTask && overData?.type === 'calendar') {
+      const date = (overData.date as Date | undefined) ?? new Date();
+      const nextDueDate = format(date, 'yyyy-MM-dd');
+      await updateTask(draggedTask.id, {
+        location: null,
+        due_date: nextDueDate,
+        start_time: null,
+        end_time: null,
+        end_date: null,
+      });
+      onTaskScheduled?.();
+      return;
+    }
+
+    // NOW is view-only (no-op on drop). (It does not register as a droppable zone.)
+
     // Handle multi-day resizing
     if (activeData?.type === 'resize-start' || activeData?.type === 'resize-end') {
       const taskId = activeData.taskId as string;
@@ -311,7 +372,6 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         const hour = overData.hour as number;
         const date = overData.date as Date | undefined;
         const nextDate = date || (task.due_date ? parse(task.due_date, 'yyyy-MM-dd', new Date()) : new Date());
-        const nextDueDate = format(nextDate, 'yyyy-MM-dd');
 
         // Preserve duration if possible
         let durationHours = 1;
@@ -321,6 +381,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
           durationHours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
         }
 
+        const nextDueDate = format(nextDate, 'yyyy-MM-dd');
         const endHour = Math.min(hour + durationHours, 24);
         const start = `${String(hour).padStart(2, '0')}:00:00`;
         const end = `${String(Math.floor(endHour)).padStart(2, '0')}:${String(Math.round((endHour % 1) * 60)).padStart(2, '0')}:00`;
@@ -349,8 +410,8 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
       return;
     }
 
-    // Inbox task being dragged (unscheduled) => schedule immediately without dialog
-    if (activeData?.type === 'inbox-task') {
+    // Inbox/Notes/Now task being dragged (unscheduled) => schedule immediately without dialog
+    if (activeData?.type === 'inbox-task' || activeData?.type === 'notes-task' || activeData?.type === 'now-task') {
       const task = activeData.task as Task;
 
       // Dropped on a time slot (day view) - schedule immediately
@@ -363,6 +424,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         const end = `${String(hour + 1).padStart(2, '0')}:00:00`;
 
         await updateTask(task.id, {
+          location: null,
           due_date: nextDueDate,
           start_time: start,
           end_time: end,
@@ -377,7 +439,11 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         const nextDueDate = format(date, 'yyyy-MM-dd');
 
         await updateTask(task.id, {
+          location: null,
           due_date: nextDueDate,
+          start_time: null,
+          end_time: null,
+          end_date: null,
         });
         onTaskScheduled?.();
         return;
@@ -392,7 +458,11 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         const nextDueDate = format(date, 'yyyy-MM-dd');
 
         await updateTask(task.id, {
+          location: null,
           due_date: nextDueDate,
+          start_time: null,
+          end_time: null,
+          end_date: null,
         });
         onTaskScheduled?.();
         return;

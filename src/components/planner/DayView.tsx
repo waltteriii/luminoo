@@ -15,6 +15,7 @@ import DayViewTimeControls from '@/components/planner/DayViewTimeControls';
 import { useDroppable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useContainerSize } from '@/hooks/useContainerSize';
 
 import { useDndContext } from '@/components/dnd/DndProvider';
 import { useDensity } from '@/contexts/DensityContext';
@@ -138,6 +139,9 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
   const [currentDate, setCurrentDate] = useState(date);
   const timeGridRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { ref: paneRef, width: paneWidth } = useContainerSize<HTMLDivElement>();
+  const isNarrowPane = paneWidth > 0 && paneWidth <= 900;
+  const stackUntimed = isNarrowPane || isMobile;
   const { activeTask, dragOverInfo } = useDndContext();
   const { isTooltipEnabledForView, timeRangeSettings } = useDensity();
 
@@ -762,10 +766,10 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         </div>
       </div>
 
-      {/* Mobile: stacked layout. Desktop: side-by-side */}
-      <div className={cn("flex gap-4", isMobile ? "flex-col" : "flex-row")}>
+      {/* Narrow panes: stack Untimed Tasks above timeline */}
+      <div ref={paneRef} className={cn("flex gap-4 min-w-0", stackUntimed ? "flex-col" : "flex-row")}>
         {/* Time grid - unified timeline */}
-        <div className={cn("flex-1", isMobile && "order-2")}>
+        <div className={cn("flex-1 min-w-0", stackUntimed && "order-2")}>
 
           <div
             ref={timeGridRef}
@@ -1055,7 +1059,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
         {/* Untimed tasks */}
         <div className={cn(
           "shrink-0 relative",
-          isMobile ? "order-1 w-full" : "w-80",
+          stackUntimed ? "order-1 w-full" : "w-80",
           newTaskIds.size > 0 && "animate-underline-glow"
         )}>
           <h3 className="text-sm font-semibold text-foreground mb-3">

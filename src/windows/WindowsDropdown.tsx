@@ -1,19 +1,29 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { WindowId, getAllWindows } from './windowRegistry';
 import { useWindowStateContext } from './useWindowState';
+import { useWorkspace } from './WorkspaceContext';
+import WorkspacesDialog from './WorkspacesDialog';
 
 function WindowsDropdown() {
   const { visibleWindows, toggleWindow } = useWindowStateContext();
   const windows = getAllWindows();
+  const { locked, setLocked, restoreLastGood, hasLastGood, templates, applyTemplate } = useWorkspace();
+  const [workspacesOpen, setWorkspacesOpen] = useState(false);
 
   return (
     <DropdownMenu>
@@ -54,7 +64,43 @@ function WindowsDropdown() {
             </DropdownMenuCheckboxItem>
           );
         })}
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Templates</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-56">
+            {templates.map((t) => (
+              <DropdownMenuItem
+                key={t.id}
+                onSelect={(e) => e.preventDefault()}
+                onClick={() => applyTemplate(t.id)}
+              >
+                {t.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuCheckboxItem
+          checked={locked}
+          onCheckedChange={(v) => setLocked(!!v)}
+          onSelect={(e) => e.preventDefault()}
+        >
+          Lock layout
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuItem
+          disabled={!hasLastGood}
+          onSelect={(e) => e.preventDefault()}
+          onClick={() => restoreLastGood()}
+        >
+          Restore last good
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setWorkspacesOpen(true)}>
+          Manage workspaces…
+        </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <WorkspacesDialog open={workspacesOpen} onOpenChange={setWorkspacesOpen} />
     </DropdownMenu>
   );
 }

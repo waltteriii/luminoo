@@ -7,6 +7,7 @@ import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTasksContext, type TaskUpdate } from '@/contexts/TasksContext';
+import { useContainerSize } from '@/hooks/useContainerSize';
 
 import {
   Popover,
@@ -72,23 +73,17 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   }, []);
 
   // Responsive columns and max visible tasks
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const { ref: containerRef, width: containerWidth } = useContainerSize<HTMLDivElement>();
 
   // Calculate columns and max visible to fill complete rows
   const { columns, maxVisible } = useMemo(() => {
     let cols: number;
     let rows: number;
 
-    if (windowWidth >= 1536) {
+    if (containerWidth >= 1536) {
       cols = 3;
       rows = ROWS_DESKTOP;
-    } else if (windowWidth >= 1024) {
+    } else if (containerWidth >= 1024) {
       cols = 2;
       rows = ROWS_TABLET;
     } else {
@@ -101,7 +96,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     const maxTasks = totalSlots - 1;
 
     return { columns: cols, maxVisible: maxTasks };
-  }, [windowWidth]);
+  }, [containerWidth]);
 
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
@@ -207,9 +202,8 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   if (!showInbox) return null;
 
   return (
-    <div className={cn(
-      "border-b border-border bg-secondary/30",
-      isOverflowing && !expanded && "border-l border-l-highlight/40"
+    <div ref={containerRef} className={cn(
+      "border-b border-border bg-secondary/30"
     )}>
       <div
         role="button"
@@ -280,113 +274,121 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-highlight focus-within:border-highlight transition-colors min-h-[48px] group">
-              <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-highlight flex-shrink-0 transition-colors" />
-              <input
-                ref={newTaskInputRef}
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') createNewTask(false);
-                  if (e.key === 'Escape') {
-                    setNewTaskTitle('');
-                    setSelectedEnergy(null);
-                    newTaskInputRef.current?.blur();
-                  }
-                }}
-                placeholder="New task…"
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0 min-w-0"
-              />
+          <div
+            className={cn(
+              "grid gap-2",
+              columns === 3 ? "grid-cols-3" : columns === 2 ? "grid-cols-2" : "grid-cols-1"
+            )}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-highlight focus-within:border-highlight transition-colors min-h-[48px] group">
+              <div className="flex items-center gap-2 min-w-0 w-full">
+                <Plus className="w-4 h-4 text-foreground-muted group-focus-within:text-highlight flex-shrink-0 transition-colors" />
+                <input
+                  ref={newTaskInputRef}
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') createNewTask(false);
+                    if (e.key === 'Escape') {
+                      setNewTaskTitle('');
+                      setSelectedEnergy(null);
+                      newTaskInputRef.current?.blur();
+                    }
+                  }}
+                  placeholder="New task…"
+                  className="w-full sm:flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-foreground-muted/60 focus:ring-0 focus:outline-none p-0 min-w-0"
+                />
+              </div>
 
-              <Popover open={energyPickerOpen} onOpenChange={setEnergyPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span
-                      className={cn(
-                        "w-3 h-3 rounded-full transition-colors",
-                        (selectedEnergy || defaultInboxEnergy) === 'high' && "bg-energy-high",
-                        (selectedEnergy || defaultInboxEnergy) === 'medium' && "bg-energy-medium",
-                        (selectedEnergy || defaultInboxEnergy) === 'low' && "bg-energy-low",
-                        (selectedEnergy || defaultInboxEnergy) === 'recovery' && "bg-energy-recovery"
-                      )}
-                    />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-40 p-1" align="end" onClick={(e) => e.stopPropagation()}>
-                  <div className="space-y-0.5">
-                    {([
-                      { value: 'high' as EnergyLevel, label: 'High Focus', color: 'bg-energy-high' },
-                      { value: 'medium' as EnergyLevel, label: 'Steady', color: 'bg-energy-medium' },
-                      { value: 'low' as EnergyLevel, label: 'Low Energy', color: 'bg-energy-low' },
-                      { value: 'recovery' as EnergyLevel, label: 'Recovery', color: 'bg-energy-recovery' },
-                    ] as const).map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedEnergy(option.value);
-                          setEnergyPickerOpen(false);
-                        }}
+              <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-end">
+                <Popover open={energyPickerOpen} onOpenChange={setEnergyPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-foreground/5 flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
                         className={cn(
-                          "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-secondary transition-colors",
-                          (selectedEnergy || defaultInboxEnergy) === option.value && "bg-secondary"
+                          "w-3 h-3 rounded-full transition-colors",
+                          (selectedEnergy || defaultInboxEnergy) === 'high' && "bg-energy-high",
+                          (selectedEnergy || defaultInboxEnergy) === 'medium' && "bg-energy-medium",
+                          (selectedEnergy || defaultInboxEnergy) === 'low' && "bg-energy-low",
+                          (selectedEnergy || defaultInboxEnergy) === 'recovery' && "bg-energy-recovery"
                         )}
-                      >
-                        <span className={cn("w-3 h-3 rounded-full", option.color)} />
-                        <span>{option.label}</span>
-                        {(selectedEnergy || defaultInboxEnergy) === option.value && (
-                          <Check className="w-3 h-3 ml-auto text-primary" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                      />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-40 p-1" align="end" onClick={(e) => e.stopPropagation()}>
+                    <div className="space-y-0.5">
+                      {([
+                        { value: 'high' as EnergyLevel, label: 'High Focus', color: 'bg-energy-high' },
+                        { value: 'medium' as EnergyLevel, label: 'Steady', color: 'bg-energy-medium' },
+                        { value: 'low' as EnergyLevel, label: 'Low Energy', color: 'bg-energy-low' },
+                        { value: 'recovery' as EnergyLevel, label: 'Recovery', color: 'bg-energy-recovery' },
+                      ] as const).map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEnergy(option.value);
+                            setEnergyPickerOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-secondary transition-colors",
+                            (selectedEnergy || defaultInboxEnergy) === option.value && "bg-secondary"
+                          )}
+                        >
+                          <span className={cn("w-3 h-3 rounded-full", option.color)} />
+                          <span>{option.label}</span>
+                          {(selectedEnergy || defaultInboxEnergy) === option.value && (
+                            <Check className="w-3 h-3 ml-auto text-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-8 w-8 p-0 flex-shrink-0 transition-colors",
-                      selectedDate ? "text-highlight bg-highlight/10" : "text-foreground-muted hover:text-foreground"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedDate) {
-                        e.preventDefault();
-                        setSelectedDate(undefined);
-                        setSelectedStartTime('');
-                        setSelectedEndTime('');
-                        setShowDatePicker(false);
-                      }
-                    }}
-                  >
-                    <Calendar className="w-4 h-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3 space-y-3" align="end" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">Schedule Task</span>
+                <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                  <PopoverTrigger asChild>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => {
-                        setSelectedDate(undefined);
-                        setSelectedStartTime('');
-                        setSelectedEndTime('');
-                        setShowDatePicker(false);
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8 p-0 flex-shrink-0 transition-colors",
+                        selectedDate ? "text-highlight bg-highlight/10" : "text-foreground-muted hover:text-foreground"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (selectedDate) {
+                          e.preventDefault();
+                          setSelectedDate(undefined);
+                          setSelectedStartTime('');
+                          setSelectedEndTime('');
+                          setShowDatePicker(false);
+                        }
                       }}
                     >
-                      <X className="w-4 h-4" />
+                      <Calendar className="w-4 h-4" />
                     </Button>
-                  </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3 space-y-3" align="end" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">Schedule Task</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => {
+                          setSelectedDate(undefined);
+                          setSelectedStartTime('');
+                          setSelectedEndTime('');
+                          setShowDatePicker(false);
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
 
                   <CalendarPicker
                     mode="single"
@@ -441,22 +443,23 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
                     <Check className="w-3.5 h-3.5" />
                     <span className="text-xs">Confirm</span>
                   </Button>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
 
-              {newTaskTitle.trim() && (
-                <Button
-                  size="sm"
-                  className="h-8 px-3 gap-1.5 flex-shrink-0 ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    createNewTask(!!selectedDate);
-                  }}
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span className="text-xs">{selectedDate ? 'Schedule' : 'Add'}</span>
-                </Button>
-              )}
+                {newTaskTitle.trim() && (
+                  <Button
+                    size="sm"
+                    className="h-8 px-3 gap-1.5 w-full sm:w-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      createNewTask(!!selectedDate);
+                    }}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span className="text-xs">{selectedDate ? 'Schedule' : 'Add'}</span>
+                  </Button>
+                )}
+              </div>
             </div>
 
             {visibleTasks.map(task => (

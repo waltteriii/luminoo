@@ -2,12 +2,13 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { WindowId, WINDOW_REGISTRY } from './windowRegistry';
 
 const STORAGE_KEY = 'ui.windows.visible';
-const DEFAULT_VISIBLE: WindowId[] = ['inbox', 'calendar'];
+const DEFAULT_VISIBLE: WindowId[] = ['inbox', 'calendar', 'notes', 'now'];
 
 export type WindowStateValue = {
   visibleWindows: WindowId[];
   toggleWindow: (windowId: WindowId) => void;
   setWindowVisible: (windowId: WindowId, visible: boolean) => void;
+  setVisibleWindows: (next: WindowId[]) => void;
   isWindowVisible: (windowId: WindowId) => boolean;
 };
 
@@ -61,7 +62,16 @@ export function useWindowState(): WindowStateValue {
 
   const isWindowVisible = useCallback((windowId: WindowId) => visibleWindows.includes(windowId), [visibleWindows]);
 
-  return { visibleWindows, toggleWindow, setWindowVisible, isWindowVisible };
+  const setVisibleWindowsSafe = useCallback((next: WindowId[]) => {
+    const validIds = new Set<WindowId>(Object.keys(WINDOW_REGISTRY) as WindowId[]);
+    const filtered = next.filter((id): id is WindowId => validIds.has(id));
+    setVisibleWindows((prev) => {
+      const final = filtered.length > 0 ? filtered : prev.length > 0 ? prev : DEFAULT_VISIBLE;
+      return final;
+    });
+  }, []);
+
+  return { visibleWindows, toggleWindow, setWindowVisible, setVisibleWindows: setVisibleWindowsSafe, isWindowVisible };
 }
 
 const WindowStateContext = createContext<WindowStateValue | null>(null);

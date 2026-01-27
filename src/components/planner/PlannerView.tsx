@@ -107,7 +107,7 @@ const PlannerView = ({
   // Day view
   if (zoomLevel === 'day' && focusedDate) {
     return (
-      <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
+      <div ref={containerRef} className="h-full min-h-0">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
           <ViewSelector
             zoomLevel={zoomLevel}
@@ -131,7 +131,7 @@ const PlannerView = ({
   // Week view
   if (zoomLevel === 'week' && focusedDate) {
     return (
-      <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
+      <div ref={containerRef} className="h-full min-h-0">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
           <ViewSelector
             zoomLevel={zoomLevel}
@@ -153,7 +153,7 @@ const PlannerView = ({
   // Month detail view
   if (zoomLevel === 'month' && focusedMonth !== null) {
     return (
-      <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
+      <div ref={containerRef} className="h-full min-h-0">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
           <ViewSelector
             zoomLevel={zoomLevel}
@@ -184,7 +184,7 @@ const PlannerView = ({
   };
 
   return (
-    <div ref={containerRef} className="h-full p-4 sm:p-6 lg:p-8">
+    <div ref={containerRef} className="h-full min-h-0">
       <div className="flex items-center justify-between mb-4 sm:mb-5">
         <ViewSelector
           zoomLevel={zoomLevel}

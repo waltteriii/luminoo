@@ -8,6 +8,19 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* react-grid-layout placeholder (window drop indicator) - calm blue, never red */
+.react-grid-placeholder {
+  background: rgba(59, 130, 246, 0.08) !important;
+  border: 1px solid rgba(59, 130, 246, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+  border-radius: var(--radius) !important;
+}
+
+/* While showing custom docking zones, hide the generic placeholder to avoid double indicators. */
+.is-window-docking .react-grid-placeholder {
+  opacity: 0 !important;
+}
+
 /* AI-Powered Marketing Planner Design System
    Framer-inspired dark-first aesthetic
    All colors in HSL */

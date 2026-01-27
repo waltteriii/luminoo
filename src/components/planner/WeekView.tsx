@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTasksContext } from '@/contexts/TasksContext';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useContainerSize } from '@/hooks/useContainerSize';
 import {
   Tooltip,
   TooltipContent,
@@ -282,7 +282,7 @@ const DroppableDay = memo(({
         }
       }}
       className={cn(
-        "rounded-xl border border-border bg-card p-3 sm:p-4 transition-all flex flex-col relative group/day",
+        "rounded-xl border border-border bg-card p-3 sm:p-4 transition-all flex flex-col relative group/day min-w-0 overflow-hidden",
         "min-h-[240px] sm:min-h-[300px] lg:min-h-[360px]",
         today && "border-highlight ring-2 ring-inset ring-highlight/40 bg-highlight/5 z-10",
         isOver && "ring-2 ring-highlight bg-highlight-muted",
@@ -476,7 +476,9 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const [createDialogDate, setCreateDialogDate] = useState<Date>(new Date());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const isMobile = useIsMobile();
+  const { ref: containerRef, width: containerWidth } = useContainerSize<HTMLDivElement>();
+  const weekCols = containerWidth > 0 && containerWidth < 520 ? 1 : containerWidth > 0 && containerWidth < 760 ? 2 : 7;
+  const compact = containerWidth > 0 && containerWidth < 900;
 
   useEffect(() => {
     setUserId('demo-user');
@@ -613,9 +615,9 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
   const completedCount = tasks.filter(t => t.completed).length;
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3 min-w-0">
+    <div ref={containerRef} className="animate-fade-in min-w-0">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Button variant="ghost" size="sm" onClick={onBack} className="flex-shrink-0 h-11 w-11 p-0 hover:bg-highlight/10">
             <ChevronLeft className="w-5 h-5" />
           </Button>
@@ -629,16 +631,18 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
           <Button variant="outline" size="sm" onClick={handlePrevWeek} className="h-11 w-11 p-0 border-border/50 hover:border-highlight/50 transition-colors"><ChevronLeft className="w-5 h-5" /></Button>
           <Button variant="outline" size="sm" onClick={handleNextWeek} className="h-11 w-11 p-0 border-border/50 hover:border-highlight/50 transition-colors"><ChevronRight className="w-5 h-5" /></Button>
         </div>
       </div>
 
-      <div className={cn(
-        "grid gap-px bg-border/20 rounded-2xl overflow-hidden border border-border/10",
-        isMobile ? "grid-cols-1 xs:grid-cols-2" : "grid-cols-7"
-      )}>
+      <div
+        className={cn(
+          "grid gap-px bg-border/20 rounded-2xl overflow-hidden border border-border/10 min-w-0",
+          weekCols === 7 ? "grid-cols-7" : weekCols === 2 ? "grid-cols-2" : "grid-cols-1"
+        )}
+      >
         {weekDays.map((day) => (
           <DroppableDay
             key={day.toISOString()}
@@ -652,7 +656,7 @@ const WeekView = ({ startDate, currentEnergy, energyFilter = [], onDayClick, onB
             onUpdateTask={updateTask}
             onDeleteTask={deleteTask}
             onEditTask={handleEditTask}
-            compact={isMobile}
+            compact={compact}
             hoveredTaskId={hoveredTaskId}
             setHoveredTaskId={setHoveredTaskId}
             selectedTaskId={selectedTaskId}

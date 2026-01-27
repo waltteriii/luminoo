@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useDroppable, useDraggable as useDndDraggable } from '@dnd-kit/core';
 import { useTasksContext } from '@/contexts/TasksContext';
 import EditTaskDialog from '@/components/tasks/EditTaskDialog';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useContainerSize } from '@/hooks/useContainerSize';
 import {
   Tooltip,
   TooltipContent,
@@ -268,7 +268,7 @@ const DroppableDayCell = memo(({ day, tasks, multiDayTasks, allTasksInView, inMo
         }
       }}
       className={cn(
-        "p-1 lg:p-2 rounded-lg border text-left transition-all min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] flex flex-col group/cell shadow-sm relative",
+        "p-1 lg:p-2 rounded-lg border text-left transition-all min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] flex flex-col group/cell shadow-sm relative min-w-0 overflow-hidden",
         inMonth
           ? "bg-card border-border hover:border-highlight/50 hover:bg-highlight-muted/50 cursor-pointer"
           : "bg-secondary/50 border-transparent opacity-50",
@@ -473,7 +473,9 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
   const [currentYear, setCurrentYear] = useState(year);
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const isMobile = useIsMobile();
+  const { ref: containerRef, width: containerWidth } = useContainerSize<HTMLDivElement>();
+  const isNarrow = containerWidth > 0 && containerWidth < 600;
+  const isCompact = containerWidth > 0 && containerWidth < 900;
 
   useEffect(() => {
     setUserId('demo-user');
@@ -600,28 +602,28 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
     return result;
   }, [calendarDays]);
 
-  const weekdayLabels = isMobile ? WEEKDAYS_SHORT : WEEKDAYS;
+  const weekdayLabels = isNarrow ? WEEKDAYS_SHORT : WEEKDAYS;
 
   return (
-    <div className="animate-fade-in">
+    <div ref={containerRef} className="animate-fade-in min-w-0">
       <div className={cn(
-        "flex items-center justify-between gap-3",
-        isMobile ? "mb-4" : "mb-6"
+        "flex flex-wrap items-center gap-3",
+        isNarrow ? "mb-4" : "mb-6"
       )}>
-        <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className={cn("flex-shrink-0 gap-1.5", isMobile ? "h-11 w-11 p-0" : "h-10 px-3")}>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Button variant="ghost" size="sm" onClick={onBack} className={cn("flex-shrink-0 gap-1.5", isNarrow ? "h-11 w-11 p-0" : "h-10 px-3")}>
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden lg:inline text-sm">Back</span>
           </Button>
-          <h2 className={cn("font-semibold tracking-tight text-foreground truncate", isMobile ? "text-xl" : "text-2xl")}>{format(monthDate, 'MMMM yyyy')}</h2>
+          <h2 className={cn("font-semibold tracking-tight text-foreground truncate", isNarrow ? "text-xl" : "text-2xl")}>{format(monthDate, 'MMMM yyyy')}</h2>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={handlePrevMonth} className={cn("border-border/50", isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0")}><ChevronLeft className="w-5 h-5" /></Button>
-          <Button variant="outline" size="sm" onClick={handleNextMonth} className={cn("border-border/50", isMobile ? "h-11 w-11 p-0" : "h-10 w-10 p-0")}><ChevronRight className="w-5 h-5" /></Button>
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+          <Button variant="outline" size="sm" onClick={handlePrevMonth} className={cn("border-border/50", isNarrow ? "h-11 w-11 p-0" : "h-10 w-10 p-0")}><ChevronLeft className="w-5 h-5" /></Button>
+          <Button variant="outline" size="sm" onClick={handleNextMonth} className={cn("border-border/50", isNarrow ? "h-11 w-11 p-0" : "h-10 w-10 p-0")}><ChevronRight className="w-5 h-5" /></Button>
         </div>
       </div>
 
-      <div className={cn("grid gap-px mb-2 lg:mb-3", "grid-cols-[auto_repeat(7,1fr)]")}>
+      <div className={cn("grid gap-px mb-2 lg:mb-3", "grid-cols-[auto_repeat(7,minmax(0,1fr))]")}>
         <div className="w-6 sm:w-8 lg:w-12" />
         {weekdayLabels.map((day, idx) => (
           <div key={idx} className="text-center text-[9px] sm:text-[10px] lg:text-xs text-foreground-muted uppercase py-0.5 lg:py-2">{day}</div>
@@ -630,7 +632,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
 
       <div className="space-y-px">
         {weeks.map((week, weekIdx) => (
-          <div key={weekIdx} className="grid grid-cols-[auto_repeat(7,1fr)] gap-px bg-border/5">
+          <div key={weekIdx} className="grid grid-cols-[auto_repeat(7,minmax(0,1fr))] gap-px bg-border/5">
             <button onClick={() => onWeekClick(week[0])} className="w-6 sm:w-8 lg:w-12 flex items-center justify-center text-[9px] sm:text-[10px] lg:text-xs text-foreground-muted hover:text-primary hover:bg-secondary rounded transition-colors min-h-[36px] lg:min-h-[40px]">W{getWeek(week[0])}</button>
             {week.map((day) => (
               <DroppableDayCell
@@ -643,7 +645,7 @@ const MonthDetailView = ({ month, year, currentEnergy, energyFilter = [], onDayC
                 userId={userId}
                 onDayClick={onDayClick}
                 onEditTask={handleEditTask}
-                compact={isMobile}
+                compact={isCompact}
                 hoveredTaskId={hoveredTaskId}
                 setHoveredTaskId={setHoveredTaskId}
                 selectedTaskId={selectedTaskId}
