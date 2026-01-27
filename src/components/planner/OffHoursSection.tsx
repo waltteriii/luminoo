@@ -183,7 +183,7 @@ const NightTaskItem = memo(({ task, onUpdate, onDelete, onCopy, isSelected, onSe
           <div
             ref={(node) => {
               setNodeRef(node);
-              (containerRef as any).current = node;
+              containerRef.current = node;
             }}
             style={style}
             onClick={handleClick}

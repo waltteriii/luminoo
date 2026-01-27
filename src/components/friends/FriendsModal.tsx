@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,14 +43,10 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open) {
-      loadFriends();
-      loadSharedCalendars();
-    }
-  }, [open, userId]);
+  type FriendshipRow = { id: string; user_id: string; friend_id: string; status: string };
+  type SharedCalendarRow = { id: string; owner_id: string; shared_with_id: string; can_edit: boolean };
 
-  const loadFriends = async () => {
+  const loadFriends = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -61,7 +57,7 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
       if (error) throw error;
 
       const friendsList: Friend[] = await Promise.all(
-        (data || []).map(async (f: any) => {
+        ((data || []) as FriendshipRow[]).map(async (f) => {
           const isIncoming = f.friend_id === userId;
           const friendId = isIncoming ? f.user_id : f.friend_id;
 
@@ -89,9 +85,9 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
-  const loadSharedCalendars = async () => {
+  const loadSharedCalendars = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('shared_calendars')
@@ -101,7 +97,7 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
       if (error) throw error;
 
       const calendars: SharedCalendar[] = await Promise.all(
-        (data || []).map(async (c: any) => {
+        ((data || []) as SharedCalendarRow[]).map(async (c) => {
           const isOwner = c.owner_id === userId;
           const friendId = isOwner ? c.shared_with_id : c.owner_id;
 
@@ -125,7 +121,14 @@ const FriendsModal = ({ open, onOpenChange, userId }: FriendsModalProps) => {
     } catch (err) {
       console.error('Load shared calendars error:', err);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (open) {
+      loadFriends();
+      loadSharedCalendars();
+    }
+  }, [open, loadFriends, loadSharedCalendars]);
 
   const handleSendInvite = async () => {
     if (!inviteEmail.trim()) return;

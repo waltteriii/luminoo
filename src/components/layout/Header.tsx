@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { EnergyLevel } from '@/types';
-import EnergySelector from '@/components/planner/NewEnergySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import WindowsDropdown from '@/windows/WindowsDropdown';
@@ -99,7 +98,7 @@ const Header = memo(({
             >
               <Squirrel className="w-4 h-4 text-white group-hover:animate-squirrel-hello" />
             </div>
-            <span className="font-medium text-foreground text-sm hidden lg:block">luminoo-demo</span>
+            <span className="font-medium text-foreground text-sm hidden lg:block">luminoo</span>
           </button>
         )}
       </div>

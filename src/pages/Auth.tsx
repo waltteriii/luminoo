@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Mail, Lock, ArrowRight, Squirrel } from 'lucide-react';
-import { AuthError } from '@supabase/supabase-js';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -39,6 +38,7 @@ const Auth = () => {
       return;
     }
 
+    setLoading(true);
     try {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({
@@ -58,10 +58,12 @@ const Auth = () => {
           description: "Please check your email for the confirmation link.",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Something went wrong. Please try again.";
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -80,20 +82,20 @@ const Auth = () => {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <Squirrel className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-medium text-foreground">luminoo-demo-0.2</span>
+              <span className="text-xl font-medium text-foreground">luminoo-0.2</span>
             </div>
           </div>
 
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl font-light text-foreground leading-tight">
-              luminoo-demo-0.2
+              luminoo-0.2
             </h1>
             <p className="text-lg text-foreground-muted max-w-md">
               An AI-powered marketing calendar that understands your creative energy
               and helps you plan content that resonates.
             </p>
             <p className="text-base text-foreground-subtle max-w-md">
-              Dump your thoughts, ideas, tasks, and half-formed plans into luminoo-demo.
+              Dump your thoughts, ideas, tasks, and half-formed plans into luminoo.
               It turns mental noise into clarity, structure, and realistic action,
               without forcing you into rigid systems.
             </p>
@@ -128,7 +130,7 @@ const Auth = () => {
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
               <Squirrel className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-medium text-foreground">luminoo-demo-0.2</span>
+            <span className="text-xl font-medium text-foreground">luminoo-0.2</span>
           </div>
 
           <div className="space-y-2 text-center lg:text-left">

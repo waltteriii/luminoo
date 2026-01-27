@@ -34,7 +34,7 @@ const ParsedItemCard = ({ item, onEnergyChange, onRemove, onDateChange, onTextCh
   const Icon = typeIcons[item.type];
   const currentEnergy = item.user_override_energy || item.detected_energy;
   // Handle due_date from parsed response - default to null (inbox)
-  const dueDate = (item as any).due_date || null;
+  const dueDate = item.due_date ?? null;
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(item.text);

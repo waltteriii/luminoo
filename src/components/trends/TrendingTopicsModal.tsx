@@ -38,6 +38,18 @@ interface BookmarkedTrend extends Trend {
   created_at: string;
 }
 
+type TrendBookmarkRow = {
+  id: string;
+  title: string;
+  description: string;
+  content_ideas: string[] | null;
+  platform: string;
+  urgency: Trend['urgency'];
+  energy_level: EnergyLevel;
+  category: Trend['category'];
+  created_at: string;
+};
+
 const urgencyConfig = {
   now: { label: 'Act Now', color: 'bg-destructive text-destructive-foreground' },
   this_week: { label: 'This Week', color: 'bg-energy-high text-white' },
@@ -112,15 +124,15 @@ const TrendingTopicsModal = ({ open, onOpenChange, userProfile, onAddTask }: Tre
 
       if (error) throw error;
 
-      setBookmarks((data || []).map((b: any) => ({
+      setBookmarks(((data || []) as TrendBookmarkRow[]).map((b) => ({
         id: b.id,
         title: b.title,
         description: b.description,
         content_ideas: b.content_ideas || [],
         platform: b.platform,
-        urgency: b.urgency as Trend['urgency'],
-        energy_level: b.energy_level as EnergyLevel,
-        category: b.category as Trend['category'],
+        urgency: b.urgency,
+        energy_level: b.energy_level,
+        category: b.category,
         created_at: b.created_at,
       })));
     } catch (err) {

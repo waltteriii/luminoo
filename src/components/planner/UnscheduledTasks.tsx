@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useTasksContext } from '@/contexts/TasksContext';
+import { useTasksContext, type TaskUpdate } from '@/contexts/TasksContext';
 
 import {
   Popover,
@@ -115,7 +115,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     startTime?: string,
     endTime?: string
   ) => {
-    const updates: Record<string, unknown> = { due_date: dueDate };
+    const updates: TaskUpdate = { due_date: dueDate };
 
     if (startTime !== undefined) {
       if (startTime === 'none' || startTime === '') {
@@ -130,7 +130,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
       updates.end_time = endTime === 'none' || endTime === '' ? null : endTime;
     }
 
-    await updateTask(taskId, updates as any);
+    await updateTask(taskId, updates);
   }, [updateTask]);
 
   const handleEnergyChange = useCallback(async (taskId: string, energy: EnergyLevel) => {

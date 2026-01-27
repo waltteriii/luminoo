@@ -15,7 +15,7 @@ import {
 } from '@dnd-kit/core';
 import { Task, EnergyLevel } from '@/types';
 import { parse, format, addMinutes, parseISO, addDays, startOfDay } from 'date-fns';
-import { useTasksContext } from '@/contexts/TasksContext';
+import { useTasksContext, type TaskUpdate } from '@/contexts/TasksContext';
 import ScheduleConfirmDialog from '@/components/tasks/ScheduleConfirmDialog';
 
 interface DragOverInfo {
@@ -296,7 +296,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         await updateTask(task.id, {
           start_time: start,
           end_time: end,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -329,7 +329,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
           due_date: nextDueDate,
           start_time: start,
           end_time: end,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -341,7 +341,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
         await updateTask(task.id, {
           due_date: nextDueDate,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -366,7 +366,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
           due_date: nextDueDate,
           start_time: start,
           end_time: end,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -378,7 +378,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
         await updateTask(task.id, {
           due_date: nextDueDate,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -393,7 +393,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
         await updateTask(task.id, {
           due_date: nextDueDate,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -443,7 +443,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         await updateTask(task.id, {
           start_time: start,
           end_time: end,
-        } as any);
+        });
         onTaskScheduled?.();
         return;
       }
@@ -451,7 +451,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
       if (!nextDate) return;
 
       const nextDueDate = format(nextDate, 'yyyy-MM-dd');
-      const updateData: Record<string, unknown> = {};
+      const updateData: TaskUpdate = {};
 
       if (task.due_date !== nextDueDate) {
         updateData.due_date = nextDueDate;
@@ -491,7 +491,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
       if (Object.keys(updateData).length === 0) return;
 
-      await updateTask(task.id, updateData as any);
+      await updateTask(task.id, updateData);
       onTaskScheduled?.();
       return;
     }
@@ -504,7 +504,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     endTime?: string,
     updates?: { title?: string; energy_level?: EnergyLevel; location?: string; is_shared?: boolean }
   ) => {
-    const updateData: Record<string, unknown> = {
+    const updateData: TaskUpdate = {
       due_date: dueDate,
     };
 
@@ -529,7 +529,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
       if (updates.is_shared !== undefined) updateData.is_shared = updates.is_shared;
     }
 
-    await updateTask(taskId, updateData as any);
+    await updateTask(taskId, updateData);
     onTaskScheduled?.();
   }, [onTaskScheduled, updateTask]);
 
@@ -557,7 +557,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
     // 2) If reordering, prefer reorder zones even when pointer isn't inside one
     if (activeType === 'calendar-task') {
-      const reorderContainers = args.droppableContainers.filter((c: any) => String(c.id).startsWith('reorder-zone-'));
+      const reorderContainers = args.droppableContainers.filter((c) => String(c.id).startsWith('reorder-zone-'));
       if (reorderContainers.length) {
         const reorderClosest = closestCenter({ ...args, droppableContainers: reorderContainers });
         if (reorderClosest.length) return reorderClosest;

@@ -149,9 +149,10 @@ const ProfileModal = ({ open, onOpenChange, userId, userEmail, onDefaultViewChan
       setAvatarUrl(publicUrl);
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
       toast({ title: "Avatar updated" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Avatar upload error:', error);
-      toast({ title: "Error uploading avatar", description: error.message, variant: "destructive" });
+      const message = error instanceof Error ? error.message : 'Could not upload avatar.';
+      toast({ title: "Error uploading avatar", description: message, variant: "destructive" });
     } finally { setUploadingAvatar(false); }
   };
 
@@ -175,9 +176,10 @@ const ProfileModal = ({ open, onOpenChange, userId, userEmail, onDefaultViewChan
       if (onDefaultViewChange) onDefaultViewChange(defaultView);
       toast({ title: "Profile saved", description: "Your profile has been updated successfully." });
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save profile error:', error);
-      toast({ title: "Error saving profile", description: error.message, variant: "destructive" });
+      const message = error instanceof Error ? error.message : 'Could not save profile.';
+      toast({ title: "Error saving profile", description: message, variant: "destructive" });
     } finally { setSaving(false); }
   };
 

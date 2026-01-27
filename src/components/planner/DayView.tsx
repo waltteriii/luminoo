@@ -358,7 +358,7 @@ const DayView = ({ date, currentEnergy, energyFilter = [], onBack, showHourFocus
       const potentialWidth = currentWidth + delta; // Add delta: dragging left (positive) increases width
 
       // Clamp left position to 0 minimum and width to limits
-      let newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
+      const newLeft = Math.max(0, Math.min(100 - MIN_WIDTH, potentialLeft));
       let newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, potentialWidth));
 
       // Ensure left + width <= 100

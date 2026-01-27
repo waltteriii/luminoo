@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Session } from '@supabase/supabase-js';
+import { Session, type User } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
@@ -39,8 +40,15 @@ interface UserProfile {
 const VIEW_STATE_KEY = 'luminoo-view-state';
 const HIGHLIGHT_KEY = 'luminoo-highlight';
 
+type CachedViewState = {
+  zoomLevel: ZoomLevel;
+  focusedMonth: number | null;
+  focusedDate: Date | null;
+  viewMode: ViewMode;
+};
+
 // Load cached view state from localStorage
-const loadCachedViewState = () => {
+const loadCachedViewState = (): CachedViewState | null => {
   try {
     const saved = localStorage.getItem(VIEW_STATE_KEY);
     if (saved) {
@@ -78,7 +86,7 @@ if (cachedHighlight) {
 const Index = () => {
   // Use a dummy user for demo mode
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<{ id: string, email?: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -168,11 +176,11 @@ const AuthenticatedApp = ({
   cachedViewState,
   cachedHighlight
 }: {
-  user: { id: string, email?: string },
+  user: User,
   session: Session,
   userProfile: UserProfile,
-  setUserProfile: any,
-  cachedViewState: any,
+  setUserProfile: Dispatch<SetStateAction<UserProfile>>,
+  cachedViewState: CachedViewState | null,
   cachedHighlight: string
 }) => {
   const { addTask, refreshTasks } = useTasksContext();
@@ -361,7 +369,7 @@ const AuthenticatedApp = ({
     <DndProvider onTaskScheduled={refreshTasks}>
       <WindowStateProvider>
         <Header
-          user={user as any}
+          user={user}
           currentEnergy={currentEnergy}
           onEnergyChange={setCurrentEnergy}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}

@@ -8,6 +8,16 @@ import { useUndoOptional } from '@/contexts/UndoContext';
 export type TaskInsert = Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>> & { title: string };
 export type TaskUpdate = Partial<Task>;
 
+const getErrorMessage = (err: unknown): string => {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && 'message' in err) {
+    const maybeMessage = (err as Record<string, unknown>).message;
+    if (typeof maybeMessage === 'string') return maybeMessage;
+  }
+  return 'Unknown error';
+};
+
 interface TasksContextValue {
   tasks: Task[];
   loading: boolean;
@@ -138,11 +148,11 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
 
         if (error) throw error;
         return true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Update task error:', err);
         toast({
           title: 'Update failed',
-          description: err.message || 'Could not save changes to database',
+          description: getErrorMessage(err) || 'Could not save changes to database',
           variant: 'destructive',
         });
         return false;
@@ -174,11 +184,11 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
         }
 
         return true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Delete task error:', err);
         toast({
           title: 'Delete failed',
-          description: err.message || 'Could not delete from database',
+          description: getErrorMessage(err) || 'Could not delete from database',
           variant: 'destructive',
         });
         return false;
