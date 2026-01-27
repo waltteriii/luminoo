@@ -16,6 +16,7 @@ import { EnergyLevel } from '@/types';
 import EnergySelector from '@/components/planner/NewEnergySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import WindowsDropdown from '@/windows/WindowsDropdown';
 
 interface HeaderProps {
   user: User;
@@ -103,8 +104,9 @@ const Header = memo(({
         )}
       </div>
 
-      {/* Right section - theme toggle + avatar */}
+      {/* Right section - windows + theme toggle + avatar */}
       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <WindowsDropdown />
         <ThemeToggle />
 
         <DropdownMenu>
