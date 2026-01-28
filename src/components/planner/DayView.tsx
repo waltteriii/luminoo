@@ -47,9 +47,13 @@ interface TimeSlotDropZoneProps {
 }
 
 const TimeSlotDropZone = memo(({ hour, slotIndex, date, children }: TimeSlotDropZoneProps) => {
+  const dateISO = format(date, 'yyyy-MM-dd');
+  const minutesFromStartOfDay = slotIndex * 60;
+  const hh = String(Math.floor(minutesFromStartOfDay / 60)).padStart(2, '0');
+  const mm = String(minutesFromStartOfDay % 60).padStart(2, '0');
   const { setNodeRef, isOver } = useDroppable({
-    id: `time-slot-${slotIndex}-${hour}`,
-    data: { hour, type: 'time-slot', date },
+    id: `cal:slot:${dateISO}:${hh}:${mm}`,
+    data: { kind: 'cal-slot', zone: 'calendar', dateISO, minutesFromStartOfDay, hour, type: 'time-slot', date },
   });
 
   const { activeTaskDuration, activeTask } = useDndContext();

@@ -419,7 +419,7 @@ const DroppableDay = memo(({
       </div>
 
       <SortableContext
-        items={tasks.map(t => t.id)}
+        items={tasks.map(t => `task:${t.id}`)}
         strategy={verticalListSortingStrategy}
       >
         <div className="flex flex-col gap-1.5 flex-1 min-h-[100px] mt-2">
