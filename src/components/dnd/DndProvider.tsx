@@ -49,7 +49,7 @@ interface DndProviderProps {
 }
 
 const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
-  const { tasks: allTasks, updateTask } = useTasksContext();
+  const { tasks: allTasks, updateTask, moveTask } = useTasksContext();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [dragOverInfo, setDragOverInfo] = useState<DragOverInfo | null>(null);
   const [resizeInfo, setResizeInfo] = useState<ResizeInfo | null>(null);
@@ -284,7 +284,11 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
     if (draggedTask && overKind === 'zone' && toZone === 'inbox') {
       // Keep time metadata, but clear scheduling.
-      await updateTask(draggedTask.id, { due_date: null, end_date: null, location: null });
+      if (fromZone === 'inbox' || fromZone === 'notes') {
+        await moveTask(draggedTask.id, fromZone, 'inbox');
+      } else {
+        await updateTask(draggedTask.id, { due_date: null, end_date: null, location: null });
+      }
       if (import.meta.env.DEV) console.log('[Move]', fromZone ?? 'unknown', '->', 'inbox', draggedTask.id);
       onTaskScheduled?.();
       return;
@@ -292,7 +296,11 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
     if (draggedTask && overKind === 'zone' && toZone === 'notes') {
       // Notes keep metadata; clear scheduling so it isn't placed on calendar.
-      await updateTask(draggedTask.id, { due_date: null, end_date: null, location: 'notes' });
+      if (fromZone === 'inbox' || fromZone === 'notes') {
+        await moveTask(draggedTask.id, fromZone, 'notes');
+      } else {
+        await updateTask(draggedTask.id, { due_date: null, end_date: null, location: 'notes' });
+      }
       if (import.meta.env.DEV) console.log('[Move]', fromZone ?? 'unknown', '->', 'notes', draggedTask.id);
       onTaskScheduled?.();
       return;
