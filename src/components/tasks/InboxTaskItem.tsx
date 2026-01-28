@@ -26,8 +26,7 @@ interface InboxTaskItemProps {
   onEnergyChange?: (taskId: string, energy: EnergyLevel) => void;
   onTitleChange?: (taskId: string, title: string) => void;
   onDelete?: (taskId: string) => void;
-  dndType?: 'inbox-task' | 'notes-task';
-  dndIdPrefix?: string;
+  fromZone?: 'inbox' | 'notes' | 'calendar';
   showSchedulingControls?: boolean;
   badge?: React.ReactNode;
 }
@@ -44,8 +43,7 @@ const InboxTaskItem = memo(
     onEnergyChange,
     onTitleChange,
     onDelete,
-    dndType = 'inbox-task',
-    dndIdPrefix = 'inbox-',
+    fromZone = 'inbox',
     showSchedulingControls = true,
     badge,
   }: InboxTaskItemProps) => {
@@ -66,8 +64,8 @@ const InboxTaskItem = memo(
     transform,
     isDragging,
   } = useDraggable({
-    id: `${dndIdPrefix}${task.id}`,
-    data: { task, type: dndType },
+    id: `task:${task.id}`,
+    data: { kind: 'task', taskId: task.id, fromZone, task, type: fromZone === 'notes' ? 'notes-task' : 'inbox-task' },
   });
 
   const style = transform
@@ -160,6 +158,8 @@ const InboxTaskItem = memo(
       ref={setNodeRef}
       style={style}
       {...containerDragProps}
+      data-task-draggable="true"
+      data-dnd-kit-draggable="true"
       className={cn(
         "group flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-lg bg-card border border-border transition-all min-h-[48px]",
         isMobile ? "touch-auto" : "touch-none",
@@ -171,10 +171,8 @@ const InboxTaskItem = memo(
       <div 
         {...dragHandleProps}
         data-task-draggable="true"
-        data-task-handle
+        data-task-handle="true"
         data-dnd-item
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
         className={cn(
           "flex-shrink-0 p-1.5 -m-1 rounded touch-none cursor-grab active:cursor-grabbing",
           isMobile ? "opacity-100" : "opacity-40 group-hover:opacity-70 transition-opacity"

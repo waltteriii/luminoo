@@ -40,8 +40,8 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared, isNew }: Dra
   const movedRef = useRef(false);
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `untimed-${task.id}`,
-    data: { type: 'inbox-task', task },
+    id: `task:${task.id}`,
+    data: { kind: 'task', type: 'inbox-task', fromZone: 'calendar', taskId: task.id, task },
     disabled: isEditing || editDialogOpen,
   });
 
@@ -83,6 +83,7 @@ const DraggableUntimedTask = ({ task, onUpdate, onDelete, isShared, isNew }: Dra
       <div
         ref={setNodeRef}
         {...dragProps}
+        data-dnd-kit-draggable="true"
         onPointerDownCapture={(e) => {
           if (isEditing || editDialogOpen) return;
           downPosRef.current = { x: e.clientX, y: e.clientY };

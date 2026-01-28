@@ -35,7 +35,7 @@ const ROWS_TABLET = 3;
 const ROWS_DESKTOP = 3;
 
 const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
-  const { tasks: allTasks, loading, addTask, updateTask, deleteTask } = useTasksContext();
+  const { inboxTasks: tasks, loading, addInboxTask, updateTask, deleteTask } = useTasksContext();
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,11 +60,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
   }), []);
   const isMobile = useIsMobile();
 
-  // Filter to only unscheduled, uncompleted tasks
-  const tasks = useMemo(() =>
-    allTasks.filter(t => !t.due_date && !t.completed && t.location !== 'memory'),
-    [allTasks]
-  );
+  // tasks already scoped to inboxTasks from context
 
   // Fetch user's default inbox energy setting
   useEffect(() => {
@@ -154,7 +150,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     const startTime = withSchedule && selectedStartTime && selectedStartTime !== 'none' ? selectedStartTime : null;
     const endTime = withSchedule && selectedEndTime && selectedEndTime !== 'none' ? selectedEndTime : null;
 
-    await addTask({
+    await addInboxTask({
       title,
       energy_level: energy,
       due_date: dueDate,
@@ -170,7 +166,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
     setSelectedStartTime('');
     setSelectedEndTime('');
     setShowDatePicker(false);
-  }, [newTaskTitle, addTask, defaultInboxEnergy, selectedEnergy, selectedDate, selectedStartTime, selectedEndTime]);
+  }, [newTaskTitle, addInboxTask, defaultInboxEnergy, selectedEnergy, selectedDate, selectedStartTime, selectedEndTime]);
 
   const energyFilteredTasks = useMemo(() =>
     energyFilter.length > 0
@@ -466,6 +462,7 @@ const UnscheduledTasks = memo(({ energyFilter }: UnscheduledTasksProps) => {
               <InboxTaskItem
                 key={task.id}
                 task={task}
+                fromZone="inbox"
                 onSchedule={handleScheduleTask}
                 onEnergyChange={handleEnergyChange}
                 onTitleChange={handleTitleChange}

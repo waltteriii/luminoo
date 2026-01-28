@@ -244,7 +244,7 @@ export default function WindowLayout({ visibleWindows, children, className }: Wi
             isDraggable={!locked}
             isResizable={!locked}
             draggableHandle="[data-window-drag-handle]"
-            draggableCancel=".window-content, [data-task-draggable], [data-task-handle], button, a, input, textarea, select, [role='button'], [contenteditable='true'], [data-dnd-item], [data-window-no-drag]"
+            draggableCancel=".window-content, [data-task-draggable], [data-task-handle], [data-dnd-kit-draggable], button, a, input, textarea, select, [role='button'], [contenteditable='true'], [data-dnd-item], [data-window-no-drag]"
             resizeHandles={['se']}
             compactType="vertical"
             onBreakpointChange={(bp) => setCurrentBreakpoint(bp as keyof typeof breakpoints)}

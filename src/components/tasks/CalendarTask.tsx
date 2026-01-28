@@ -163,8 +163,8 @@ const CalendarTask = ({
     transform,
     isDragging,
   } = useDraggable({
-    id: task.id,
-    data: { type: 'calendar-task', task },
+    id: `task:${task.id}`,
+    data: { kind: 'task', type: 'calendar-task', fromZone: 'calendar', taskId: task.id, task },
     disabled: isResizing || isEditingTitle || isEditingDescription,
   });
 
@@ -602,6 +602,7 @@ const CalendarTask = ({
                 {...attributes}
                 {...listeners}
                 data-dnd-item
+                data-dnd-kit-draggable="true"
                 onPointerDownCapture={(e) => {
                   const target = e.target as HTMLElement;
                   if (target.closest('button, input, textarea, [data-no-select]')) return;

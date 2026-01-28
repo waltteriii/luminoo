@@ -74,8 +74,8 @@ const NightTaskItem = memo(({ task, onUpdate, onDelete, onCopy, isSelected, onSe
     transform,
     isDragging,
   } = useDraggable({
-    id: task.id,
-    data: { type: 'night-task', task },
+    id: `task:${task.id}`,
+    data: { kind: 'task', type: 'night-task', fromZone: 'calendar', taskId: task.id, task },
     disabled: isEditingTitle,
   });
 
@@ -186,6 +186,7 @@ const NightTaskItem = memo(({ task, onUpdate, onDelete, onCopy, isSelected, onSe
               containerRef.current = node;
             }}
             style={style}
+            data-dnd-kit-draggable="true"
             onClick={handleClick}
             onDoubleClick={handleDoubleClick}
             {...attributes}

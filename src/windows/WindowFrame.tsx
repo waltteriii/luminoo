@@ -13,7 +13,7 @@ function isInteractive(target: EventTarget | null) {
   const el = target instanceof Element ? target : null;
   if (!el) return false;
   return !!el.closest(
-    'button,a,input,textarea,select,[role="button"],[contenteditable="true"],[data-task-draggable],[data-task-handle],[data-dnd-item],[data-window-no-drag]'
+    'button,a,input,textarea,select,[role="button"],[contenteditable="true"],[data-task-draggable],[data-task-handle],[data-dnd-kit-draggable],[data-dnd-item],[data-window-no-drag]'
   );
 }
 

@@ -8,19 +8,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, StickyNote } from 'lucide-react';
 import InboxTaskItem from '@/components/tasks/InboxTaskItem';
+import { useDndContext } from '@/components/dnd/DndProvider';
 
 export default function NotesPane() {
-  const { tasks, addTask, updateTask, deleteTask } = useTasksContext();
-  const { setNodeRef, isOver } = useDroppable({ id: 'notes', data: { type: 'notes' } });
+  const { notesTasks, addNotesTask, updateTask, deleteTask } = useTasksContext();
+  const { activeTask } = useDndContext();
+  const { setNodeRef, isOver } = useDroppable({ id: 'zone:notes', data: { kind: 'zone', zone: 'notes' } });
 
-  const notes = useMemo(() => tasks.filter((t) => t.location === 'notes' && !t.completed), [tasks]);
+  const notes = useMemo(() => notesTasks, [notesTasks]);
 
   const [title, setTitle] = useState('');
 
   const handleAdd = async () => {
     const trimmed = title.trim();
     if (!trimmed) return;
-    await addTask({
+    const created = await addNotesTask({
       title: trimmed,
       energy_level: 'medium',
       completed: false,
@@ -29,8 +31,8 @@ export default function NotesPane() {
       start_time: null,
       end_time: null,
       end_date: null,
-      location: 'notes',
     });
+    if (import.meta.env.DEV && created?.id) console.log('[Notes:add]', created.id);
     setTitle('');
   };
 
@@ -39,10 +41,16 @@ export default function NotesPane() {
       <div
         ref={setNodeRef}
         className={cn(
-          'h-full min-h-0 flex flex-col gap-3',
+          'h-full min-h-0 flex flex-col gap-3 pointer-events-auto relative',
+          import.meta.env.DEV && activeTask && 'outline outline-1 outline-blue-500/30',
           isOver && 'rounded-lg ring-1 ring-blue-500/55 shadow-[0_0_0_3px_rgba(59,130,246,0.18)] bg-blue-500/5'
         )}
       >
+        {import.meta.env.DEV && activeTask && (
+          <div className="pointer-events-none absolute top-2 right-2 text-[10px] text-blue-200/80 bg-blue-500/10 border border-blue-500/30 rounded px-2 py-1">
+            droppable: zone:notes
+          </div>
+        )}
         <div className="flex gap-2 min-w-0">
           <Input
             value={title}
@@ -67,8 +75,7 @@ export default function NotesPane() {
               <InboxTaskItem
                 key={t.id}
                 task={t}
-                dndType="notes-task"
-                dndIdPrefix="notes-"
+                fromZone="notes"
                 showSchedulingControls={false}
                 badge={
                   <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground border border-border rounded-md px-1.5 py-0.5 flex-shrink-0">

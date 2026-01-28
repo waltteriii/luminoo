@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useDndContext } from '@/components/dnd/DndProvider';
 
@@ -408,9 +409,9 @@ interface DraggableMonthTaskProps {
 }
 
 const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonthTaskProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
-    id: `month-task-${task.id}`,
-    data: { task, type: 'calendar-task' },
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `task:${task.id}`,
+    data: { kind: 'task', type: 'calendar-task', fromZone: 'calendar', taskId: task.id, task },
   });
 
   const style = {
@@ -431,6 +432,7 @@ const DraggableMonthTask = memo(({ task, userId, onDoubleClick }: DraggableMonth
             style={style}
             {...attributes}
             {...listeners}
+            data-dnd-kit-draggable="true"
             onClick={handleClick}
             onDoubleClick={onDoubleClick}
             className={cn(

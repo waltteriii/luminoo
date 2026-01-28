@@ -20,10 +20,15 @@ const getErrorMessage = (err: unknown): string => {
 
 interface TasksContextValue {
   tasks: Task[];
+  inboxTasks: Task[];
+  notesTasks: Task[];
   loading: boolean;
   addTask: (task: TaskInsert) => Promise<Task | null>;
+  addInboxTask: (task: Omit<TaskInsert, 'location'>) => Promise<Task | null>;
+  addNotesTask: (task: Omit<TaskInsert, 'location'>) => Promise<Task | null>;
   updateTask: (id: string, updates: TaskUpdate) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
+  moveTask: (taskId: string, fromZone: 'inbox' | 'notes', toZone: 'inbox' | 'notes') => Promise<boolean>;
   rescheduleTask: (id: string, newDate: string | null, startTime?: string | null, endTime?: string | null) => Promise<boolean>;
   refreshTasks: () => Promise<void>;
 }
@@ -46,6 +51,18 @@ interface TasksProviderProps {
 export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  // Derived lists (separate UI "stores") + localStorage snapshots (no DB refactor).
+  const inboxTasks = tasks.filter((t) => !t.completed && !t.due_date && t.location === null);
+  const notesTasks = tasks.filter((t) => !t.completed && t.location === 'notes');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('luminoo.inboxTasks', JSON.stringify(inboxTasks));
+      localStorage.setItem('luminoo.notesTasks', JSON.stringify(notesTasks));
+    } catch {
+      // ignore
+    }
+  }, [inboxTasks, notesTasks]);
   const { toast } = useToast();
   const { pushUndo } = useUndoOptional() || {};
 
@@ -137,6 +154,16 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
     [userId, toast]
   );
 
+  const addInboxTask = useCallback(
+    async (taskData: Omit<TaskInsert, 'location'>) => addTask({ ...taskData, location: null }),
+    [addTask]
+  );
+
+  const addNotesTask = useCallback(
+    async (taskData: Omit<TaskInsert, 'location'>) => addTask({ ...taskData, location: 'notes' }),
+    [addTask]
+  );
+
   // Update task
   const updateTask = useCallback(
     async (id: string, updates: TaskUpdate): Promise<boolean> => {
@@ -208,14 +235,29 @@ export const TasksProvider = ({ children, userId }: TasksProviderProps) => {
     [updateTask]
   );
 
+  const moveTask = useCallback(
+    async (taskId: string, fromZone: 'inbox' | 'notes', toZone: 'inbox' | 'notes') => {
+      if (fromZone === toZone) return true;
+      // MOVE-only: update location and clear calendar placement fields.
+      const nextLocation = toZone === 'notes' ? 'notes' : null;
+      return updateTask(taskId, { location: nextLocation, due_date: null, end_date: null });
+    },
+    [updateTask]
+  );
+
   return (
     <TasksContext.Provider
       value={{
         tasks,
+        inboxTasks,
+        notesTasks,
         loading,
         addTask,
+        addInboxTask,
+        addNotesTask,
         updateTask,
         deleteTask,
+        moveTask,
         rescheduleTask,
         refreshTasks: fetchTasks,
       }}

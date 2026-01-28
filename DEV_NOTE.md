@@ -17,12 +17,13 @@ All task drag/drop is handled by a single root `@dnd-kit` context (`src/componen
 - Inbox: `zone:inbox`
 - Notes: `zone:notes`
 - Calendar surface (fallback for “untimed” drops): `zone:calendar`
+- Calendar time-slot: `cal:slot:YYYY-MM-DD:HH:MM` (data `kind="cal-slot"`)
 - NOW is **view-only** (no droppable zone, no drag start)
 
 ### Outcomes
-- **Inbox → Notes**: `location = "notes"`, clear schedule fields
-- **Calendar → Notes**: `location = "notes"`, clear schedule fields
-- **Notes → Inbox**: `location = null`, clear schedule fields
+- **Inbox → Notes**: `location = "notes"`, clear `due_date`/`end_date` (keeps time metadata)
+- **Calendar → Notes**: `location = "notes"`, clear `due_date`/`end_date` (keeps time metadata)
+- **Notes → Inbox**: `location = null`, clear `due_date`/`end_date` (keeps time metadata)
 - **Notes/Inbox → Calendar slot/day**: schedule via existing calendar drop logic
 - **Any → Calendar surface** (`zone:calendar`): set `due_date` to the provided date, clear times (untimed)
 

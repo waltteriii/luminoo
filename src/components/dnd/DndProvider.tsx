@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, memo, useMemo } from 'react';
+import { createContext, useContext, useRef, useState, ReactNode, useCallback, memo, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -58,6 +58,10 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
   const [targetDate, setTargetDate] = useState<Date | null>(null);
   const [targetHour, setTargetHour] = useState<number | undefined>();
 
+  const activeDragIdRef = useRef<string | null>(null);
+  const loggedDroppablesForRef = useRef<string | null>(null);
+  const lastOverIdRef = useRef<string | null>(null);
+
   // Configure sensors with touch support for mobile
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -73,9 +77,25 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     })
   );
 
+  const getClientPoint = (ev: Event | null): { x: number; y: number } | null => {
+    if (!ev) return null;
+    if (ev instanceof MouseEvent || ev instanceof PointerEvent) return { x: ev.clientX, y: ev.clientY };
+    if (window.TouchEvent && ev instanceof TouchEvent) {
+      const t = ev.touches[0] ?? ev.changedTouches[0];
+      return t ? { x: t.clientX, y: t.clientY } : null;
+    }
+    return null;
+  };
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const task = event.active.data.current?.task as Task | undefined;
     const type = event.active.data.current?.type as string | undefined;
+    activeDragIdRef.current = String(event.active.id);
+    loggedDroppablesForRef.current = null;
+
+    if (import.meta.env.DEV) {
+      console.log('[DnD:start]', event.active.id, event.active.data.current);
+    }
 
     if (type?.startsWith('resize-')) {
       setResizeInfo({
@@ -103,6 +123,13 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     const { over } = event;
+    if (import.meta.env.DEV) {
+      const overId = over?.id ? String(over.id) : null;
+      if (overId !== lastOverIdRef.current) {
+        lastOverIdRef.current = overId;
+        console.log('[DnD:over]', { overId: over?.id, overData: over?.data.current });
+      }
+    }
 
     // Check if hovering over a reorder drop zone
     if (over && typeof over.id === 'string' && over.id.startsWith('reorder-zone-')) {
@@ -158,6 +185,9 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     setActiveTask(null);
     setDragOverInfo(null);
     setResizeInfo(null);
+    lastOverIdRef.current = null;
+    activeDragIdRef.current = null;
+    loggedDroppablesForRef.current = null;
 
     // If nothing to drop on and no resize preview date exists, return early
     if (!over && !currentResizeInfo?.targetDate) return;
@@ -165,29 +195,26 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
     const overData = over?.data.current;
     const overId = over?.id as string;
 
-    const inferZone = (task: Task | undefined): string => {
-      if (!task) return 'unknown';
-      if (task.location === 'notes') return 'notes';
-      if (task.location === 'memory') return 'memory';
-      // Scheduled tasks live in the calendar lane even if location is null.
-      if (task.due_date) return 'calendar';
-      return 'inbox';
-    };
-
-    const inferToZone = (): string => {
-      if (overData?.type === 'inbox' || overData?.type === 'notes' || overData?.type === 'calendar') return overData.type as string;
-      if (overData?.type === 'time-slot' || overData?.type === 'day') return 'calendar';
-      if (typeof overId === 'string' && (/^\d{4}-\d{2}-\d{2}$/.test(overId) || /^month-\d+$/.test(overId))) return 'calendar';
-      return 'unknown';
-    };
-
     if (import.meta.env.DEV) {
-      const t = activeData?.task as Task | undefined;
-      console.log('[DnD]', active.id, inferZone(t), over?.id, inferToZone());
+      console.log('[DnD:end]', active.id, over?.id, over?.data.current);
     }
 
-    // Cross-window targets (Inbox / Notes / Calendar)
-    const draggedTask = activeData?.task as Task | undefined;
+    // Cross-window targets (Inbox / Notes / Calendar) - deterministic routing via active/over data.
+    const activeKind =
+      activeData && typeof activeData === 'object' && 'kind' in activeData && typeof (activeData as { kind?: unknown }).kind === 'string'
+        ? (activeData as { kind: string }).kind
+        : undefined;
+    const draggedTaskId =
+      activeData && typeof activeData === 'object' && 'taskId' in activeData && typeof (activeData as { taskId?: unknown }).taskId === 'string'
+        ? (activeData as { taskId: string }).taskId
+        : undefined;
+    const fromZone =
+      activeData && typeof activeData === 'object' && 'fromZone' in activeData && typeof (activeData as { fromZone?: unknown }).fromZone === 'string'
+        ? (activeData as { fromZone: string }).fromZone
+        : undefined;
+    const draggedTask =
+      (activeData && typeof activeData === 'object' && 'task' in activeData ? (activeData as { task?: unknown }).task : undefined) as Task | undefined
+      || (draggedTaskId ? allTasks.find((t) => t.id === draggedTaskId) : undefined);
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     const clearScheduling = {
@@ -197,21 +224,86 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
       end_date: null,
     } as const;
 
-    if (draggedTask && (overData?.type === 'inbox')) {
-      await updateTask(draggedTask.id, { ...clearScheduling, location: null });
+    const overKind =
+      overData && typeof overData === 'object' && 'kind' in overData && typeof (overData as { kind?: unknown }).kind === 'string'
+        ? (overData as { kind: string }).kind
+        : undefined;
+    const toZone =
+      overData && typeof overData === 'object' && 'zone' in overData && typeof (overData as { zone?: unknown }).zone === 'string'
+        ? (overData as { zone: string }).zone
+        : undefined;
+
+    if (import.meta.env.DEV) {
+      console.log('[DnD:route]', { kind: activeKind, taskId: draggedTaskId, fromZone, overKind, toZone, overId });
+    }
+
+    if (draggedTask && fromZone && toZone && fromZone === toZone) {
+      if (import.meta.env.DEV) console.log('[Move]', fromZone, '->', toZone, draggedTask.id, '(noop)');
+      return;
+    }
+
+    // If dropped on a calendar time slot, schedule to that exact slot.
+    if (draggedTask && overKind === 'cal-slot') {
+      const dateISO =
+        overData && typeof overData === 'object' && 'dateISO' in overData && typeof (overData as { dateISO?: unknown }).dateISO === 'string'
+          ? (overData as { dateISO: string }).dateISO
+          : format(new Date(), 'yyyy-MM-dd');
+      const minutes =
+        overData && typeof overData === 'object' && 'minutesFromStartOfDay' in overData && typeof (overData as { minutesFromStartOfDay?: unknown }).minutesFromStartOfDay === 'number'
+          ? (overData as { minutesFromStartOfDay: number }).minutesFromStartOfDay
+          : 0;
+
+      const startHour = Math.floor(minutes / 60);
+      const startMin = minutes % 60;
+      const start = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`;
+
+      // Preserve duration if task has it, else default 30m.
+      let durationMinutes = 30;
+      if (draggedTask.start_time && draggedTask.end_time) {
+        const [sh, sm] = draggedTask.start_time.split(':').map(Number);
+        const [eh, em] = draggedTask.end_time.split(':').map(Number);
+        const d = (eh * 60 + em) - (sh * 60 + sm);
+        if (Number.isFinite(d) && d > 0) durationMinutes = d;
+      }
+
+      const endTotal = Math.min(startHour * 60 + startMin + durationMinutes, 24 * 60);
+      const endHour = Math.floor(endTotal / 60);
+      const endMin = endTotal % 60;
+      const end = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
+
+      await updateTask(draggedTask.id, {
+        location: null,
+        due_date: dateISO,
+        start_time: start,
+        end_time: end,
+        end_date: null,
+      });
       onTaskScheduled?.();
       return;
     }
 
-    if (draggedTask && (overData?.type === 'notes')) {
-      await updateTask(draggedTask.id, { ...clearScheduling, location: 'notes' });
+    if (draggedTask && overKind === 'zone' && toZone === 'inbox') {
+      // Keep time metadata, but clear scheduling.
+      await updateTask(draggedTask.id, { due_date: null, end_date: null, location: null });
+      if (import.meta.env.DEV) console.log('[Move]', fromZone ?? 'unknown', '->', 'inbox', draggedTask.id);
+      onTaskScheduled?.();
+      return;
+    }
+
+    if (draggedTask && overKind === 'zone' && toZone === 'notes') {
+      // Notes keep metadata; clear scheduling so it isn't placed on calendar.
+      await updateTask(draggedTask.id, { due_date: null, end_date: null, location: 'notes' });
+      if (import.meta.env.DEV) console.log('[Move]', fromZone ?? 'unknown', '->', 'notes', draggedTask.id);
       onTaskScheduled?.();
       return;
     }
 
     // Calendar surface (not a slot/day): treat as "untimed on that date".
-    if (draggedTask && overData?.type === 'calendar') {
-      const date = (overData.date as Date | undefined) ?? new Date();
+    if (draggedTask && overKind === 'zone' && toZone === 'calendar') {
+      const date =
+        (overData && typeof overData === 'object' && 'date' in overData && (overData as { date?: unknown }).date instanceof Date)
+          ? (overData as { date: Date }).date
+          : new Date();
       const nextDueDate = format(date, 'yyyy-MM-dd');
       await updateTask(draggedTask.id, {
         location: null,
@@ -605,6 +697,17 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
 
   const collisionDetectionStrategy = useCallback<CollisionDetection>((args) => {
     const activeType = args.active?.data?.current?.type as string | undefined;
+    if (import.meta.env.DEV) {
+      const activeId = args.active?.id ? String(args.active.id) : null;
+      if (activeId && loggedDroppablesForRef.current !== activeId) {
+        loggedDroppablesForRef.current = activeId;
+        console.log('[DnD:droppables]', {
+          activeId,
+          pointer: args.pointerCoordinates ?? null,
+          droppables: args.droppableContainers.map((c) => c.id),
+        });
+      }
+    }
 
     // 1) Prefer pointer-based collisions (feels like "snapping" follows the cursor)
     const pointerCollisions = pointerWithin(args);
@@ -652,7 +755,7 @@ const DndProvider = memo(({ children, onTaskScheduled }: DndProviderProps) => {
         {/* Global drag overlay */}
         <DragOverlay>
           {activeTask && (
-            <div className="p-2 rounded bg-card border border-primary shadow-lg opacity-90 max-w-xs touch-none">
+            <div className="pointer-events-none p-2 rounded bg-card border border-primary shadow-lg opacity-90 max-w-xs">
               <span className="text-sm truncate block">{activeTask.title}</span>
             </div>
           )}
